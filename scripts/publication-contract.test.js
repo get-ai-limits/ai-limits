@@ -10,10 +10,10 @@ import {
 } from "./publication-contract.mjs";
 
 const providerNames = Object.values(catalogNames);
-const issuesUrl = "https://github.com/TiantianFlow/ai-limits/issues";
+const issuesUrl = "https://github.com/get-ai-limits/ai-limits/issues";
 const storeUrl =
   "https://chromewebstore.google.com/detail/ai-limits/hcfdchpajckemcdflcjhigngpipdkdeo";
-const releaseUrl = "https://github.com/TiantianFlow/ai-limits/releases/latest";
+const releaseUrl = "https://github.com/get-ai-limits/ai-limits/releases/latest";
 
 /** The repository's own documents are the valid baseline. */
 let real;
@@ -206,7 +206,7 @@ describe("publication content", () => {
     it("rejects repository URLs under another owner", () => {
       expect(
         validate({ readme: `${real.readme}\nhttps://github.com/someone-else/ai-limits\n` }),
-      ).toContain("Publication documents must use the canonical TiantianFlow repository URL.");
+      ).toContain("Publication documents must use the canonical get-ai-limits repository URL.");
     });
 
     it.each(["../README.md", "../../PRIVACY.md"])(
@@ -245,7 +245,7 @@ describe("publication content", () => {
       expect(
         validate({
           listing: real.listing.replaceAll(
-            "https://github.com/TiantianFlow/ai-limits/blob/main/SUPPORTED_PROVIDERS.md",
+            "https://github.com/get-ai-limits/ai-limits/blob/main/SUPPORTED_PROVIDERS.md",
             "",
           ),
         }),

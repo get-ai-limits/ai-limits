@@ -3,7 +3,7 @@ import React from "react";
 import { l10n } from "../../../i18n/index";
 import { Icon } from "./Icon";
 
-const REPOSITORY_URL = "https://github.com/TiantianFlow/ai-limits";
+const REPOSITORY_URL = "https://github.com/get-ai-limits/ai-limits";
 const ISSUES_URL = `${REPOSITORY_URL}/issues`;
 const SAFE_LINK_REL = "noopener noreferrer";
 
