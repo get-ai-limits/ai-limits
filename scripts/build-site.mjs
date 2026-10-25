@@ -70,7 +70,7 @@ const COPY = {
     providersHeading: "Supported services",
     providersMore: "How each provider is read",
     nav: { privacy: "Privacy", providers: "Providers", faq: "FAQ", security: "Security", issues: "Report an issue", source: "GitHub" },
-    disclaimer: "AI Limits is an independent open-source project by TiantianFlow. It is not affiliated with, endorsed by, or authorized by any supported provider.",
+    disclaimer: "AI Limits is an independent open-source project by TiantianFlow. It is not affiliated with, endorsed by, or authorized by any supported provider, its parent company, or its affiliates.",
     shotAlt: [
       "AI Limits side panel showing subscription usage, reset timing, and pace indicators",
       "AI Limits pace view comparing quota use with elapsed time",
@@ -94,7 +94,7 @@ const COPY = {
     providersHeading: "支持的服务",
     providersMore: "各服务的读取方式",
     nav: { privacy: "隐私（英文）", providers: "支持的服务", faq: "常见问题", security: "安全（英文）", issues: "报告问题", source: "GitHub" },
-    disclaimer: "AI Limits 是 TiantianFlow 开发的独立开源项目，与任何受支持的服务商不存在隶属、背书或授权关系。",
+    disclaimer: "AI Limits 是 TiantianFlow 开发的独立开源项目，与任何受支持的服务商、其母公司或关联方不存在隶属、背书或授权关系。",
     shotAlt: [
       "AI Limits 侧边栏展示订阅用量、重置时间和用量节奏",
       "AI Limits 用量节奏视图，将配额消耗与已过时间比较",
@@ -258,7 +258,7 @@ function documentPage(md, source, { path, lang }) {
   return layout({
     lang,
     title: title.replace(/^AI Limits\s*/, "") || title,
-    description: `${title}. AI Limits Chrome extension.`,
+    description: lang === "zh-CN" ? `${title}。AI Limits Chrome 扩展。` : `${title}. AI Limits Chrome extension.`,
     path,
     body: `<article class="doc">\n${html}</article>`,
   });

@@ -172,7 +172,8 @@ main, .bar, .foot {
 .doc pre { background: var(--code); padding: 12px; border-radius: 8px; overflow-x: auto; }
 .doc pre code { padding: 0; }
 
-.doc table { border-collapse: collapse; display: block; overflow-x: auto; }
+.doc table { border-collapse: collapse; display: block; overflow-x: auto; overflow-wrap: normal; }
+.doc th, .doc td { min-width: 8em; }
 .doc th, .doc td { border: 1px solid var(--line); padding: 6px 10px; text-align: left; vertical-align: top; }
 
 .foot {
