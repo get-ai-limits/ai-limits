@@ -8,6 +8,7 @@
     "assets:store": "node scripts/capture-store-assets.mjs",
     "dev": "wxt",
     "build": "wxt build && node scripts/stage-unpacked.mjs && node scripts/publish-dev-build.mjs",
+    "build:site": "node scripts/build-site.mjs",
     "postinstall": "wxt prepare",
     "test": "vitest",
     "test:run": "vitest run",
