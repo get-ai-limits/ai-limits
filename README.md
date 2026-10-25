@@ -3,9 +3,9 @@
 English | [简体中文](README.zh-CN.md)
 
 [![Chrome Web Store version](https://img.shields.io/chrome-web-store/v/hcfdchpajckemcdflcjhigngpipdkdeo.svg?label=Chrome%20Web%20Store&logo=googlechrome&logoColor=white)](https://chromewebstore.google.com/detail/ai-limits/hcfdchpajckemcdflcjhigngpipdkdeo)
-[![CI](https://github.com/TiantianFlow/ai-limits/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/TiantianFlow/ai-limits/actions/workflows/ci.yml?query=branch%3Amain)
-[![GitHub release](https://img.shields.io/github/v/release/TiantianFlow/ai-limits.svg?display_name=release&sort=semver)](https://github.com/TiantianFlow/ai-limits/releases/latest)
-[![MIT license](https://img.shields.io/github/license/TiantianFlow/ai-limits.svg)](LICENSE)
+[![CI](https://github.com/get-ai-limits/ai-limits/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/get-ai-limits/ai-limits/actions/workflows/ci.yml?query=branch%3Amain)
+[![GitHub release](https://img.shields.io/github/v/release/get-ai-limits/ai-limits.svg?display_name=release&sort=semver)](https://github.com/get-ai-limits/ai-limits/releases/latest)
+[![MIT license](https://img.shields.io/github/license/get-ai-limits/ai-limits.svg)](LICENSE)
 
 **[Install from the Chrome Web Store](https://chromewebstore.google.com/detail/ai-limits/hcfdchpajckemcdflcjhigngpipdkdeo)**
 
@@ -196,7 +196,7 @@ continuous compatibility.
 ## Contributing
 
 Read [CONTRIBUTING.md](CONTRIBUTING.md) before submitting a change. This project
-uses [GitHub Issues](https://github.com/TiantianFlow/ai-limits/issues) for public
+uses [GitHub Issues](https://github.com/get-ai-limits/ai-limits/issues) for public
 support and bug reports. Do not include cookies, access credentials, private
 usage data, or other secrets in an issue.
 

@@ -3247,8 +3247,8 @@ describe("Cockpit", () => {
     const issues = screen.getByRole("link", {
       name: "Share feedback",
     });
-    expect(repository).toHaveAttribute("href", "https://github.com/TiantianFlow/ai-limits");
-    expect(issues).toHaveAttribute("href", "https://github.com/TiantianFlow/ai-limits/issues");
+    expect(repository).toHaveAttribute("href", "https://github.com/get-ai-limits/ai-limits");
+    expect(issues).toHaveAttribute("href", "https://github.com/get-ai-limits/ai-limits/issues");
     for (const link of [repository, issues]) {
       expect(link).toHaveAttribute("target", "_blank");
       expect(link).toHaveAttribute("rel", expect.stringContaining("noopener"));
@@ -3264,12 +3264,12 @@ describe("Cockpit", () => {
 
     expect(
       screen.getByRole("link", { name: "View source" }),
-    ).toHaveAttribute("href", "https://github.com/TiantianFlow/ai-limits");
+    ).toHaveAttribute("href", "https://github.com/get-ai-limits/ai-limits");
     expect(
       screen.getByRole("link", {
         name: "Share feedback",
       }),
-    ).toHaveAttribute("href", "https://github.com/TiantianFlow/ai-limits/issues");
+    ).toHaveAttribute("href", "https://github.com/get-ai-limits/ai-limits/issues");
     expect(
       screen.getByText(
         "Do not include cookies, access credentials, private usage data, or other secrets in an issue.",

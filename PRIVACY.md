@@ -342,6 +342,6 @@ policies still apply. See
 
 ## Contact
 
-Use [GitHub Issues](https://github.com/TiantianFlow/ai-limits/issues) for public
+Use [GitHub Issues](https://github.com/get-ai-limits/ai-limits/issues) for public
 privacy questions or requests. Never include cookies, access credentials,
 private usage details, or other secrets in an issue.

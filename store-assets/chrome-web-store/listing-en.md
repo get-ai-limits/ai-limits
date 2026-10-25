@@ -12,9 +12,9 @@ has approved the extension.
 - Mature content: No
 - Distribution: Public, all regions
 - Pricing: Free
-- Homepage: https://github.com/TiantianFlow/ai-limits
-- Privacy policy: https://github.com/TiantianFlow/ai-limits/blob/main/PRIVACY.md
-- Support: https://github.com/TiantianFlow/ai-limits/issues
+- Homepage: https://github.com/get-ai-limits/ai-limits
+- Privacy policy: https://github.com/get-ai-limits/ai-limits/blob/main/PRIVACY.md
+- Support: https://github.com/get-ai-limits/ai-limits/issues
 - Remote hosted code: No
 
 ## Artwork inventory and upload order
@@ -77,7 +77,7 @@ connection is opt-in. Browser-session services use the account already signed
 in to Chrome, while API services use a key you provide.
 
 Full compatibility details, connection methods, and known limitations:
-https://github.com/TiantianFlow/ai-limits/blob/main/SUPPORTED_PROVIDERS.md
+https://github.com/get-ai-limits/ai-limits/blob/main/SUPPORTED_PROVIDERS.md
 
 The side panel supports English and Simplified Chinese. It follows Chrome when
 Chrome is set to one of those languages, and falls back to English for other
