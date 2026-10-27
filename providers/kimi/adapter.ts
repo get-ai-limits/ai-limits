@@ -1,4 +1,5 @@
 import type { ProviderHealth, QuotaMetric } from "../../domain/model";
+import { calendarMonthsBefore } from "../../domain/quota";
 import type {
   CollectionContext,
   CollectionResult,
@@ -140,33 +141,6 @@ function optionalTimestamp(value: string | undefined): number | undefined {
   return Number.isFinite(timestamp) && timestamp > 0 ? timestamp : undefined;
 }
 
-function previousCalendarMonth(timestamp: number): number | undefined {
-  if (!Number.isFinite(timestamp) || timestamp <= 0) {
-    return undefined;
-  }
-
-  const reset = new Date(timestamp);
-  const resetYear = reset.getUTCFullYear();
-  const resetMonth = reset.getUTCMonth();
-  const targetYear = resetMonth === 0 ? resetYear - 1 : resetYear;
-  const targetMonth = resetMonth === 0 ? 11 : resetMonth - 1;
-  const lastTargetDay = new Date(
-    Date.UTC(targetYear, targetMonth + 1, 0),
-  ).getUTCDate();
-  const targetDay = Math.min(reset.getUTCDate(), lastTargetDay);
-  const boundary = Date.UTC(
-    targetYear,
-    targetMonth,
-    targetDay,
-    reset.getUTCHours(),
-    reset.getUTCMinutes(),
-    reset.getUTCSeconds(),
-    reset.getUTCMilliseconds(),
-  );
-
-  return Number.isFinite(boundary) && boundary > 0 ? boundary : undefined;
-}
-
 function monthlySegments(
   totalUsedRatio: number,
   codeUsedRatio: unknown,
@@ -200,7 +174,7 @@ function normalizeCurrentStats(body: unknown): QuotaMetric[] | undefined {
   if (balance.success) {
     const resetsAt = optionalTimestamp(balance.data.expireTime);
     const startedAt =
-      resetsAt === undefined ? undefined : previousCalendarMonth(resetsAt);
+      resetsAt === undefined ? undefined : calendarMonthsBefore(resetsAt, 1);
     const segments = monthlySegments(
       balance.data.amountUsedRatio,
       balance.data.kimiCodeUsedRatio,

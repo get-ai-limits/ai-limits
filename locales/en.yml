@@ -485,6 +485,7 @@ quota:
   meterTimeElapsed: "{label} time elapsed"
   meterTimeRemaining: "{label} time remaining"
   noResetTiming: No reset timing
+  startsAtFirstUse: Starts at first use
   expiredWaiting: "Reset {when} · waiting for a new reading"
   expiredEstimate: Estimate · waiting for a new reading
   segmentPercent: "{label} {percent}%"

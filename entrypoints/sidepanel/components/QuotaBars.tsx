@@ -151,7 +151,11 @@ export function QuotaBars({
       <div className="quota-bars__meta">
         <div className="quota-bars__meta-primary">
           <span className="quota-bars__timing">
-            {timeLabel ? <span>{timeLabel}</span> : <span>{l10n.t("quota.noResetTiming")}</span>}
+            {timeLabel ? (
+              <span>{timeLabel}</span>
+            ) : resetLabel ? null : (
+              <span>{l10n.t("quota.noResetTiming")}</span>
+            )}
           </span>
           <PaceSignal kind={paceKind} label={paceLabel} />
         </div>

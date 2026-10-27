@@ -61,6 +61,9 @@ export const METER_POLICIES: readonly MeterPolicy[] = [
   { providerKind: "grok", metricId: "weekly-pool", windowMs: 7 * DAY_MS, policy: "fixed" },
   { providerKind: "grok", metricId: "2-hour-fast-queries", windowMs: 2 * HOUR_MS, policy: "first-use" },
   { providerKind: "grok", metricId: "2-hour-fast-tokens", windowMs: 2 * HOUR_MS, policy: "first-use" },
+  // Factory sends no window clock for an unused 5-hour pool; it starts on use.
+  { providerKind: "factory", metricId: "standard-five-hour", windowMs: 5 * HOUR_MS, policy: "first-use" },
+  { providerKind: "factory", metricId: "core-five-hour", windowMs: 5 * HOUR_MS, policy: "first-use" },
 ];
 
 export function meterPolicy(

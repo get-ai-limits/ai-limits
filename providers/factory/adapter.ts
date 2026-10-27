@@ -6,6 +6,7 @@ import type {
   UsageMetric,
   UsageSnapshot,
 } from "../../domain/model";
+import { calendarMonthsBefore } from "../../domain/quota";
 import { retryAtFromResponse } from "../retry-after";
 import type {
   CollectionContext,
@@ -143,24 +144,42 @@ function poolIsActive(pool: FactoryLimitPool): boolean {
   );
 }
 
+/** A fixed length, or one calendar month back from the reset. */
+type WindowLength = number | "month";
+
+function windowCycle(
+  resetsAt: number | undefined,
+  now: number,
+  length: WindowLength,
+): MetricCycle {
+  if (resetsAt === undefined) return { cadence: "rolling" };
+  if (typeof length === "number") {
+    return { cadence: "rolling", resetsAt, durationMs: length };
+  }
+  const startedAt = calendarMonthsBefore(resetsAt, 1);
+  // A start in the future means the reported reset is not a monthly cycle.
+  if (startedAt === undefined || startedAt > now) {
+    return { cadence: "rolling", resetsAt };
+  }
+  return {
+    cadence: "rolling",
+    startedAt,
+    resetsAt,
+    durationMs: resetsAt - startedAt,
+  };
+}
+
 function quotaWindow(
   identity: Pick<QuotaMetric, "id" | "label" | "scope">,
   window: FactoryBillingWindow,
   now: number,
-  durationMs: number | undefined,
+  length: WindowLength,
 ): QuotaMetric {
-  const resetsAt = resetsAtForWindow(window, now);
   return {
     ...identity,
     type: "quota",
     usedRatio: Math.min(1, Math.max(0, window.usedPercent / 100)),
-    cycle: {
-      cadence: "rolling",
-      ...(resetsAt === undefined ? {} : { resetsAt }),
-      ...(durationMs === undefined || resetsAt === undefined
-        ? {}
-        : { durationMs }),
-    },
+    cycle: windowCycle(resetsAtForWindow(window, now), now, length),
   };
 }
 
@@ -182,7 +201,7 @@ function standardWindows(pool: FactoryLimitPool, now: number): QuotaMetric[] {
       { id: "standard-monthly", label: "Monthly", scope: "general" },
       pool.monthly,
       now,
-      undefined,
+      "month",
     ),
   ];
 }
@@ -205,7 +224,7 @@ function coreWindows(pool: FactoryLimitPool, now: number): QuotaMetric[] {
       { id: "core-monthly", label: "Core monthly", scope: "product" },
       pool.monthly,
       now,
-      undefined,
+      "month",
     ),
   ];
 }

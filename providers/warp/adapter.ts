@@ -7,6 +7,7 @@ import type {
   UsageMetric,
   UsageSnapshot,
 } from "../../domain/model";
+import { calendarMonthsBefore } from "../../domain/quota";
 import { retryAtFromResponse } from "../retry-after";
 import type {
   CollectionContext,
@@ -131,25 +132,6 @@ function timestamp(value: string | null | undefined): number | undefined {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
 }
 
-function previousMonthBoundary(resetsAt: number): number | undefined {
-  const reset = new Date(resetsAt);
-  const year = reset.getUTCMonth() === 0
-    ? reset.getUTCFullYear() - 1
-    : reset.getUTCFullYear();
-  const month = reset.getUTCMonth() === 0 ? 11 : reset.getUTCMonth() - 1;
-  const lastDay = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
-  const boundary = Date.UTC(
-    year,
-    month,
-    Math.min(reset.getUTCDate(), lastDay),
-    reset.getUTCHours(),
-    reset.getUTCMinutes(),
-    reset.getUTCSeconds(),
-    reset.getUTCMilliseconds(),
-  );
-  return Number.isFinite(boundary) && boundary < resetsAt ? boundary : undefined;
-}
-
 function includedCycle(info: WarpRequestLimitInfo, now: number): MetricCycle {
   const resetsAt = timestamp(info.nextRefreshTime);
   if (resetsAt === undefined || resetsAt <= now) return { cadence: "calendar" };
@@ -160,7 +142,7 @@ function includedCycle(info: WarpRequestLimitInfo, now: number): MetricCycle {
     fixedMs !== undefined
       ? resetsAt - fixedMs
       : duration === "MONTHLY"
-        ? previousMonthBoundary(resetsAt)
+        ? calendarMonthsBefore(resetsAt, 1)
         : undefined;
   // A start in the future means the reported cycle does not match the cadence.
   if (startedAt === undefined || startedAt > now) {

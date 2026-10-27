@@ -2887,6 +2887,38 @@ describe("Cockpit", () => {
     ).toBeVisible();
   });
 
+  it("says a first-use window has not started and never contradicts a known reset", () => {
+    const state = createFixtureState(NOW);
+    const chatGpt = state.instances.find((instance) => instance.providerKind === "chatgpt")!;
+    chatGpt.snapshot!.metrics = chatGpt.snapshot!.metrics.map((metric) =>
+      metric.type !== "quota"
+        ? metric
+        : metric.id === "five-hour"
+          ? { ...metric, usedRatio: 0, cycle: { cadence: "rolling" } }
+          : { ...metric, usedRatio: 0.03, cycle: { cadence: "rolling", resetsAt: NOW + 2 * 24 * 60 * 60 * 1_000 } },
+    );
+    chatGpt.history = [];
+    render(
+      <Cockpit
+        state={state}
+        now={NOW}
+        onDisplayModeChange={vi.fn()}
+        onRefresh={vi.fn()}
+        onConnectProvider={vi.fn()}
+      />,
+    );
+
+    const card = within(screen.getByRole("article", { name: "ChatGPT" }));
+    const fiveHour = within(card.getByRole("group", { name: /5-hour/ }));
+    expect(fiveHour.getByText("Starts at first use")).toBeVisible();
+    expect(fiveHour.queryByText("No reset timing")).not.toBeInTheDocument();
+
+    const weekly = within(card.getByRole("group", { name: /Weekly/ }));
+    expect(weekly.getByText(/^Resets /)).toBeVisible();
+    expect(weekly.queryByText("No reset timing")).not.toBeInTheDocument();
+    expect(weekly.queryByText("Starts at first use")).not.toBeInTheDocument();
+  });
+
   it("shows a past reset as an estimate on the overview and the current cycle", () => {
     const state = createFixtureState(NOW);
     const closedAt = NOW - 2 * 60 * 60 * 1_000;

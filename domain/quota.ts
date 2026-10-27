@@ -19,6 +19,37 @@ export function clampRatio(value: number): number {
   return Math.min(1, Math.max(0, value));
 }
 
+/**
+ * The same day and UTC time `months` calendar months before `resetsAt`, with
+ * the day clamped to the shorter month (Mar 31 -> Feb 28). Billing cycles that
+ * only report their next reset use this as the cycle start.
+ */
+export function calendarMonthsBefore(
+  resetsAt: number,
+  months: number,
+): number | undefined {
+  if (!Number.isFinite(resetsAt) || resetsAt <= 0) return undefined;
+
+  const reset = new Date(resetsAt);
+  const monthIndex = reset.getUTCFullYear() * 12 + reset.getUTCMonth() - months;
+  const year = Math.floor(monthIndex / 12);
+  const month = monthIndex - year * 12;
+  const lastDay = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+  const boundary = Date.UTC(
+    year,
+    month,
+    Math.min(reset.getUTCDate(), lastDay),
+    reset.getUTCHours(),
+    reset.getUTCMinutes(),
+    reset.getUTCSeconds(),
+    reset.getUTCMilliseconds(),
+  );
+
+  return Number.isFinite(boundary) && boundary > 0 && boundary < resetsAt
+    ? boundary
+    : undefined;
+}
+
 export function displayRatio(usedRatio: number, mode: DisplayMode): number {
   const used = clampRatio(usedRatio);
 

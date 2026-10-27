@@ -1,4 +1,5 @@
 import type { MetricCycle, ProviderHealth, QuotaMetric } from "../../domain/model";
+import { calendarMonthsBefore } from "../../domain/quota";
 import { retryAtFromResponse } from "../retry-after";
 import type {
   CollectionContext,
@@ -58,42 +59,9 @@ function previousCalendarBoundary(
   resetsAt: number,
   refreshPeriod: string | null | undefined,
 ): number | undefined {
-  if (refreshPeriod !== "monthly_period" && refreshPeriod !== "annual_period") {
-    return undefined;
-  }
-
-  const reset = new Date(resetsAt);
-  const resetYear = reset.getUTCFullYear();
-  const resetMonth = reset.getUTCMonth();
-  const targetYear =
-    refreshPeriod === "annual_period"
-      ? resetYear - 1
-      : resetMonth === 0
-        ? resetYear - 1
-        : resetYear;
-  const targetMonth =
-    refreshPeriod === "annual_period"
-      ? resetMonth
-      : resetMonth === 0
-        ? 11
-        : resetMonth - 1;
-  const lastTargetDay = new Date(
-    Date.UTC(targetYear, targetMonth + 1, 0),
-  ).getUTCDate();
-  const targetDay = Math.min(reset.getUTCDate(), lastTargetDay);
-  const boundary = Date.UTC(
-    targetYear,
-    targetMonth,
-    targetDay,
-    reset.getUTCHours(),
-    reset.getUTCMinutes(),
-    reset.getUTCSeconds(),
-    reset.getUTCMilliseconds(),
-  );
-
-  return Number.isFinite(boundary) && boundary > 0 && boundary < resetsAt
-    ? boundary
-    : undefined;
+  if (refreshPeriod === "monthly_period") return calendarMonthsBefore(resetsAt, 1);
+  if (refreshPeriod === "annual_period") return calendarMonthsBefore(resetsAt, 12);
+  return undefined;
 }
 
 function creditCycle(

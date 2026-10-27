@@ -174,7 +174,8 @@ function quotaView(
   now: number,
   _fetchedAt?: number,
 ): QuotaView {
-  const policy = meterPolicy(providerKind, metric.id)?.policy
+  const knownPolicy = meterPolicy(providerKind, metric.id)?.policy;
+  const policy = knownPolicy
     ?? (metric.cycle
       ? fallbackPolicy(metric.cycle.cadence, metric.cycle.durationMs)
       : undefined);
@@ -201,6 +202,13 @@ function quotaView(
       ? undefined
       : localizeQuotaValue(shownCount, metric.limit);
   const waitingWhen = reading.resetsAt === undefined ? "" : formatDateTime(reading.resetsAt);
+  // Only a known first-use meter may say so; an unknown meter without a clock
+  // could just be missing its reset time.
+  const notStarted =
+    !reading.closed &&
+    reading.resetsAt === undefined &&
+    usedRatio === 0 &&
+    knownPolicy === "first-use";
 
   return {
     id: metric.id,
@@ -215,9 +223,11 @@ function quotaView(
       ? reading.resetsAt === undefined
         ? l10n.t("quota.expiredEstimate")
         : l10n.t("quota.expiredWaiting", { when: waitingWhen })
-      : timeRatio === undefined
-        ? undefined
-        : formatDuration(metric, timeRatio, timeNoun),
+      : timeRatio !== undefined
+        ? formatDuration(metric, timeRatio, timeNoun)
+        : notStarted
+          ? l10n.t("quota.startsAtFirstUse")
+          : undefined,
     resetAt: reading.closed ? reading.nextResetAt : reading.resetsAt,
     resetLabel: reading.closed
       ? reading.nextResetAt === undefined
