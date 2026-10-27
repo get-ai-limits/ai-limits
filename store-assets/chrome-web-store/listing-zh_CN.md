@@ -9,9 +9,9 @@
 - 成人内容：No
 - 分发范围：Public, all regions
 - 定价：Free
-- 主页：https://github.com/TiantianFlow/ai-limits
-- 隐私政策：https://github.com/TiantianFlow/ai-limits/blob/main/PRIVACY.md
-- 支持：https://github.com/TiantianFlow/ai-limits/issues
+- 主页：https://github.com/get-ai-limits/ai-limits
+- 隐私政策：https://github.com/get-ai-limits/ai-limits/blob/main/PRIVACY.md
+- 支持：https://github.com/get-ai-limits/ai-limits/issues
 - 远程托管代码：No
 
 ## 素材清单与上传顺序
@@ -47,7 +47,7 @@ AI Limits 把你的 AI 订阅用量集中显示在同一个 Chrome 侧边栏中�
 AI Limits 支持 23 个 AI 服务。你可以逐个连接实际使用的服务；每项连接都需要主动启用。基于浏览器会话的服务使用你已登录的 Chrome 账号；基于 API 的服务使用你自行提供的密钥。
 
 完整的受支持服务、连接方式和已知限制：
-https://github.com/TiantianFlow/ai-limits/blob/main/SUPPORTED_PROVIDERS.zh-CN.md
+https://github.com/get-ai-limits/ai-limits/blob/main/SUPPORTED_PROVIDERS.zh-CN.md
 
 侧边栏仅支持英文和简体中文。跟随 Chrome 时，仅在 Chrome 为英文或简体中文时使用对应语言，其他 Chrome 语言会回退到英文。也可以在 Settings 中为侧边栏固定英文或简体中文。Chrome 自身的菜单和扩展名称仍跟随 Chrome 的语言。
 

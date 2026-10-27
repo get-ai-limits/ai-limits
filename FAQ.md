@@ -242,5 +242,5 @@ persistent provider account identifier. Disconnecting clears that instance's
 history and prevents same-plan accounts from being combined.
 
 For data handling details, see [Privacy](PRIVACY.md). To report a problem, use
-[GitHub Issues](https://github.com/TiantianFlow/ai-limits/issues) without including
+[GitHub Issues](https://github.com/get-ai-limits/ai-limits/issues) without including
 cookies, credentials, private usage data, or other secrets.

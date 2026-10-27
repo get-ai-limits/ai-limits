@@ -121,5 +121,5 @@ pnpm verify:zip
 The pull request should explain the user-visible change, privacy or permission
 impact, test evidence, and any provider compatibility risk.
 
-Use [GitHub Issues](https://github.com/TiantianFlow/ai-limits/issues) for
+Use [GitHub Issues](https://github.com/get-ai-limits/ai-limits/issues) for
 contributor questions. Never post secrets or private account data.

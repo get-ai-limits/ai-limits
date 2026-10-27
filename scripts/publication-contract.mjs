@@ -5,15 +5,15 @@ import MarkdownIt from "markdown-it";
 
 import { EXPECTED_DESCRIPTION } from "./artifact-contract.mjs";
 
-const issuesUrl = "https://github.com/TiantianFlow/ai-limits/issues";
+const issuesUrl = "https://github.com/get-ai-limits/ai-limits/issues";
 const supportedProvidersUrl =
-  "https://github.com/TiantianFlow/ai-limits/blob/main/SUPPORTED_PROVIDERS.md";
+  "https://github.com/get-ai-limits/ai-limits/blob/main/SUPPORTED_PROVIDERS.md";
 const supportedProvidersUrlZh =
-  "https://github.com/TiantianFlow/ai-limits/blob/main/SUPPORTED_PROVIDERS.zh-CN.md";
+  "https://github.com/get-ai-limits/ai-limits/blob/main/SUPPORTED_PROVIDERS.zh-CN.md";
 const storeUrl =
   "https://chromewebstore.google.com/detail/ai-limits/hcfdchpajckemcdflcjhigngpipdkdeo";
-const releaseUrl = "https://github.com/TiantianFlow/ai-limits/releases/latest";
-const canonicalRepositoryOwner = "TiantianFlow";
+const releaseUrl = "https://github.com/get-ai-limits/ai-limits/releases/latest";
+const canonicalRepositoryOwner = "get-ai-limits";
 const repositoryOwnerPatterns = [
   /https:\/\/github\.com\/([^/\s)]+)\/ai-limits\b/gi,
   /https:\/\/img\.shields\.io\/github\/(?:license|v\/release)\/([^/\s)]+)\/ai-limits\b/gi,
@@ -337,8 +337,8 @@ const requiredListingDefaults = [
   "Mature content: No",
   "Distribution: Public, all regions",
   "Pricing: Free",
-  "Homepage: https://github.com/TiantianFlow/ai-limits",
-  "Privacy policy: https://github.com/TiantianFlow/ai-limits/blob/main/PRIVACY.md",
+  "Homepage: https://github.com/get-ai-limits/ai-limits",
+  "Privacy policy: https://github.com/get-ai-limits/ai-limits/blob/main/PRIVACY.md",
   `Support: ${issuesUrl}`,
   "Remote hosted code: No",
 ];
@@ -622,7 +622,7 @@ export function validatePublicationDocuments(documents, { providerNames } = {}) 
     );
   })) {
     errors.push(
-      "Publication documents must use the canonical TiantianFlow repository URL.",
+      "Publication documents must use the canonical get-ai-limits repository URL.",
     );
   }
   const policies = [
