@@ -50,6 +50,16 @@ describe("site build", () => {
     expect(REDIRECTS["/issues/"]).toBe(`${REPOSITORY_URL}/issues`);
   });
 
+  it("shows the screenshots in a carousel with working assets", async () => {
+    for (const path of ["/", "/zh-CN/"]) {
+      const home = await page(path);
+      expect(home.match(/<li><img /g)).toHaveLength(3);
+      expect(home.match(/<div class="dots">(.*?)<\/div>/)[1].match(/<button /g)).toHaveLength(3);
+      expect(home).toContain('<script src="/assets/carousel.js" defer></script>');
+    }
+    expect(await page("/assets/carousel.js")).toContain(".carousel");
+  });
+
   it("writes the custom domain", async () => {
     expect(await page("/CNAME")).toBe("get-ai-limits.com\n");
   });

@@ -76,6 +76,7 @@ const COPY = {
       "AI Limits pace view comparing quota use with elapsed time",
       "AI Limits local quota history graph",
     ],
+    carousel: { label: "Screenshots", prev: "Previous screenshot", next: "Next screenshot", go: "Show screenshot" },
     notFound: ["Page not found", "That page does not exist.", "Go to the home page"],
     redirecting: "Redirecting to",
   },
@@ -100,6 +101,7 @@ const COPY = {
       "AI Limits 用量节奏视图，将配额消耗与已过时间比较",
       "AI Limits 本地配额历史图表",
     ],
+    carousel: { label: "截图", prev: "上一张截图", next: "下一张截图", go: "显示截图" },
     notFound: ["页面不存在", "找不到该页面。", "返回首页"],
     redirecting: "正在跳转至",
   },
@@ -219,10 +221,14 @@ function landing(lang, providers) {
   const features = copy.features
     .map(([heading, text]) => `<div><h2>${escapeHtml(heading)}</h2><p>${escapeHtml(text)}</p></div>`)
     .join("\n    ");
-  const shots = SCREENSHOTS
+  const slides = SCREENSHOTS
     .map((file, index) =>
-      `<img src="${shotDir}${file}" width="1280" height="800" alt="${escapeHtml(copy.shotAlt[index])}"${index ? ' loading="lazy"' : ""}>`)
-    .join("\n    ");
+      `<li><img src="${shotDir}${file}" width="1280" height="800" alt="${escapeHtml(copy.shotAlt[index])}"${index ? ' loading="lazy"' : ""}></li>`)
+    .join("\n      ");
+  const dots = SCREENSHOTS
+    .map((file, index) =>
+      `<button type="button" aria-label="${escapeHtml(`${copy.carousel.go} ${index + 1}`)}"${index ? "" : ' aria-current="true"'}></button>`)
+    .join("");
   const chips = providers.map((name) => `<li>${escapeHtml(name)}</li>`).join("");
   return layout({
     lang,
@@ -238,9 +244,17 @@ function landing(lang, providers) {
     <a class="button" href="${REPOSITORY_URL}">${copy.source}</a>
   </p>
 </section>
-<section class="shots">
-    ${shots}
+<section class="carousel" aria-roledescription="carousel" aria-label="${escapeHtml(copy.carousel.label)}">
+  <ul class="track" tabindex="0">
+      ${slides}
+  </ul>
+  <div class="controls" hidden>
+    <button type="button" class="prev" aria-label="${escapeHtml(copy.carousel.prev)}">‹</button>
+    <div class="dots">${dots}</div>
+    <button type="button" class="next" aria-label="${escapeHtml(copy.carousel.next)}">›</button>
+  </div>
 </section>
+<script src="/assets/carousel.js" defer></script>
 <section class="features">
     ${features}
 </section>
@@ -327,6 +341,7 @@ export async function buildSite() {
   await copyFile(join(ROOT, "public", "icons", "32.png"), join(assets, "icon-32.png"));
   await copyFile(join(ROOT, "public", "icons", "128.png"), join(assets, "icon-128.png"));
   await copyFile(join(ROOT, "site", "style.css"), join(assets, "style.css"));
+  await copyFile(join(ROOT, "site", "carousel.js"), join(assets, "carousel.js"));
   return OUT;
 }
 

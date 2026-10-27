@@ -111,12 +111,65 @@ main, .bar, .foot {
   color: var(--accent-text);
 }
 
-.shots {
-  display: grid;
+.carousel { position: relative; }
+
+.track {
+  display: flex;
   gap: 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  scrollbar-width: none;
+  border-radius: 12px;
 }
 
-.shots img, .doc img {
+.track::-webkit-scrollbar { display: none; }
+.track > li { flex: 0 0 100%; scroll-snap-align: center; }
+
+@media (prefers-reduced-motion: reduce) {
+  .track { scroll-behavior: auto; }
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 12px;
+}
+
+.controls[hidden] { display: none; }
+
+.prev, .next {
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 1.4rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.dots { display: flex; gap: 8px; }
+
+.dots button {
+  width: 10px;
+  height: 10px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--line);
+  cursor: pointer;
+}
+
+.dots button[aria-current="true"] { background: var(--accent); }
+
+.track img, .doc img {
   display: block;
   width: 100%;
   height: auto;
