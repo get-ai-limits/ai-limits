@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 
 import {
+  calendarMonthsBefore,
   clampRatio,
   closedWindowReading,
   displayRatio,
@@ -108,5 +109,30 @@ describe("quota semantics", () => {
       kind: "on-pace",
       deltaPoints: 5,
     });
+  });
+});
+
+describe("calendarMonthsBefore", () => {
+  test("keeps the day and time one month back", () => {
+    expect(calendarMonthsBefore(Date.parse("2026-11-16T19:38:00.000Z"), 1)).toBe(
+      Date.parse("2026-10-16T19:38:00.000Z"),
+    );
+  });
+
+  test("clamps to the end of a shorter month and crosses the year", () => {
+    expect(calendarMonthsBefore(Date.parse("2026-03-31T08:00:00.000Z"), 1)).toBe(
+      Date.parse("2026-02-28T08:00:00.000Z"),
+    );
+    expect(calendarMonthsBefore(Date.parse("2026-01-15T08:00:00.000Z"), 1)).toBe(
+      Date.parse("2025-12-15T08:00:00.000Z"),
+    );
+    expect(calendarMonthsBefore(Date.parse("2028-02-29T08:00:00.000Z"), 12)).toBe(
+      Date.parse("2027-02-28T08:00:00.000Z"),
+    );
+  });
+
+  test("rejects a missing timestamp", () => {
+    expect(calendarMonthsBefore(Number.NaN, 1)).toBeUndefined();
+    expect(calendarMonthsBefore(0, 1)).toBeUndefined();
   });
 });

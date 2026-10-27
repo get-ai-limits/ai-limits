@@ -485,6 +485,7 @@ quota:
   meterTimeElapsed: "{label} 已用时间"
   meterTimeRemaining: "{label} 剩余时间"
   noResetTiming: 无重置时间
+  startsAtFirstUse: 首次使用时开始
   expiredWaiting: "已于 {when} 重置 · 等待新的读数"
   expiredEstimate: 估计值 · 等待新的读数
   segmentPercent: "{label} {percent}%"

@@ -179,7 +179,12 @@ describe("Droid adapter", () => {
             label: "Monthly",
             scope: "general",
             usedRatio: 0.56,
-            cycle: { cadence: "rolling", resetsAt: NOW + WEEK_MS },
+            cycle: {
+              cadence: "rolling",
+              startedAt: Date.parse("2030-03-22T12:00:00.000Z"),
+              resetsAt: NOW + WEEK_MS,
+              durationMs: NOW + WEEK_MS - Date.parse("2030-03-22T12:00:00.000Z"),
+            },
           },
           {
             type: "quota",
@@ -284,7 +289,62 @@ describe("Droid adapter", () => {
       "standard-weekly",
       "standard-monthly",
     ]);
-    expect(result.snapshot.metrics[2]?.cycle).not.toHaveProperty("durationMs");
+  });
+
+  test("starts a monthly window one calendar month before its reset", async () => {
+    const fetch = routeFetch({
+      [BILLING_URL]: response(
+        billingFixture({
+          limits: {
+            standard: {
+              fiveHour: window(0),
+              weekly: window(0),
+              monthly: window(3, { windowEnd: "2030-05-10T08:00:00.000Z" }),
+            },
+          },
+        }),
+      ),
+      [AUTH_URL]: response({}, 500),
+    });
+
+    const result = await factoryAdapter.collect(context(fetch));
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.snapshot.metrics[2]?.cycle).toEqual({
+      cadence: "rolling",
+      startedAt: Date.parse("2030-04-10T08:00:00.000Z"),
+      resetsAt: Date.parse("2030-05-10T08:00:00.000Z"),
+      durationMs:
+        Date.parse("2030-05-10T08:00:00.000Z") -
+        Date.parse("2030-04-10T08:00:00.000Z"),
+    });
+  });
+
+  test("keeps a monthly reset without a start when it is over a month away", async () => {
+    const fetch = routeFetch({
+      [BILLING_URL]: response(
+        billingFixture({
+          limits: {
+            standard: {
+              fiveHour: window(0),
+              weekly: window(0),
+              monthly: window(3, { windowEnd: "2030-05-20T08:00:00.000Z" }),
+            },
+          },
+        }),
+      ),
+      [AUTH_URL]: response({}, 500),
+    });
+
+    const result = await factoryAdapter.collect(context(fetch));
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.snapshot.metrics[2]?.cycle).toEqual({
+      cadence: "rolling",
+      resetsAt: Date.parse("2030-05-20T08:00:00.000Z"),
+    });
   });
 
   test("keeps a zero extra-usage balance when extra usage is allowed", async () => {
