@@ -1,0 +1,238 @@
+:root {
+  --bg: #fbfbfa;
+  --surface: #ffffff;
+  --text: #1c1d1f;
+  --muted: #5d6168;
+  --line: #e4e4e1;
+  --accent: #2357d8;
+  --accent-text: #ffffff;
+  --code: #f1f1ee;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #131416;
+    --surface: #1b1c1f;
+    --text: #ececea;
+    --muted: #a3a6ad;
+    --line: #2d2f33;
+    --accent: #7ea2ff;
+    --accent-text: #0d1220;
+    --code: #24262a;
+    color-scheme: dark;
+  }
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 16px/1.6 system-ui, -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+
+a { color: var(--accent); }
+
+main, .bar, .foot {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 0 16px;
+}
+
+.bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 60px;
+  flex-wrap: wrap;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text);
+  font-weight: 650;
+  text-decoration: none;
+}
+
+.bar nav, .foot nav {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.bar nav a, .foot nav a { color: var(--muted); text-decoration: none; }
+.bar nav a:hover, .foot nav a:hover { color: var(--text); }
+
+.hero {
+  text-align: center;
+  padding: 48px 0 32px;
+}
+
+.hero h1 {
+  font-size: clamp(2rem, 6vw, 3rem);
+  line-height: 1.1;
+  margin: 16px 0 8px;
+}
+
+.tagline {
+  color: var(--muted);
+  font-size: 1.2rem;
+  max-width: 34em;
+  margin: 0 auto;
+}
+
+.actions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 24px;
+}
+
+.button {
+  display: inline-block;
+  padding: 10px 20px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-text);
+}
+
+.carousel { position: relative; }
+
+.track {
+  display: flex;
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  scrollbar-width: none;
+  border-radius: 12px;
+}
+
+.track::-webkit-scrollbar { display: none; }
+.track > li { flex: 0 0 100%; scroll-snap-align: center; }
+
+@media (prefers-reduced-motion: reduce) {
+  .track { scroll-behavior: auto; }
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 12px;
+}
+
+.controls[hidden] { display: none; }
+
+.prev, .next {
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 1.4rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.dots { display: flex; gap: 8px; }
+
+.dots button {
+  width: 10px;
+  height: 10px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--line);
+  cursor: pointer;
+}
+
+.dots button[aria-current="true"] { background: var(--accent); }
+
+.track img, .doc img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+.features {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 24px;
+  padding: 48px 0 16px;
+}
+
+.features h2 { font-size: 1.1rem; margin: 0 0 4px; }
+.features p { color: var(--muted); margin: 0; }
+
+.providers { padding: 32px 0; }
+.providers h2 { font-size: 1.1rem; }
+
+.providers ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  list-style: none;
+  padding: 0;
+}
+
+.providers li {
+  padding: 4px 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  font-size: 0.95rem;
+}
+
+.doc {
+  max-width: 760px;
+  padding: 16px 0 48px;
+  overflow-wrap: anywhere;
+}
+
+.doc h1 { line-height: 1.2; }
+.doc h2 { margin-top: 2em; padding-top: 0.5em; border-top: 1px solid var(--line); }
+
+.doc code {
+  background: var(--code);
+  border-radius: 4px;
+  padding: 0.1em 0.3em;
+  font-size: 0.9em;
+}
+
+.doc pre { background: var(--code); padding: 12px; border-radius: 8px; overflow-x: auto; }
+.doc pre code { padding: 0; }
+
+.doc table { border-collapse: collapse; display: block; overflow-x: auto; overflow-wrap: normal; }
+.doc th, .doc td { min-width: 8em; }
+.doc th, .doc td { border: 1px solid var(--line); padding: 6px 10px; text-align: left; vertical-align: top; }
+
+.foot {
+  border-top: 1px solid var(--line);
+  padding-top: 24px;
+  padding-bottom: 40px;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
