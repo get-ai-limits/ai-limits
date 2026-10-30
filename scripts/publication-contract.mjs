@@ -6,10 +6,9 @@ import MarkdownIt from "markdown-it";
 import { EXPECTED_DESCRIPTION } from "./artifact-contract.mjs";
 
 const issuesUrl = "https://github.com/get-ai-limits/ai-limits/issues";
-const supportedProvidersUrl =
-  "https://github.com/get-ai-limits/ai-limits/blob/main/SUPPORTED_PROVIDERS.md";
-const supportedProvidersUrlZh =
-  "https://github.com/get-ai-limits/ai-limits/blob/main/SUPPORTED_PROVIDERS.zh-CN.md";
+const siteUrl = "https://get-ai-limits.com";
+const supportedProvidersUrl = `${siteUrl}/providers/`;
+const supportedProvidersUrlZh = `${siteUrl}/zh-CN/providers/`;
 const storeUrl =
   "https://chromewebstore.google.com/detail/ai-limits/hcfdchpajckemcdflcjhigngpipdkdeo";
 const releaseUrl = "https://github.com/get-ai-limits/ai-limits/releases/latest";
@@ -337,9 +336,9 @@ const requiredListingDefaults = [
   "Mature content: No",
   "Distribution: Public, all regions",
   "Pricing: Free",
-  "Homepage: https://github.com/get-ai-limits/ai-limits",
-  "Privacy policy: https://github.com/get-ai-limits/ai-limits/blob/main/PRIVACY.md",
-  `Support: ${issuesUrl}`,
+  `Homepage: ${siteUrl}/`,
+  `Privacy policy: ${siteUrl}/privacy/`,
+  `Support: ${siteUrl}/support/`,
   "Remote hosted code: No",
 ];
 const requiredListingLinks = [

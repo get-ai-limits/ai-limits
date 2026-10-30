@@ -12,9 +12,9 @@ has approved the extension.
 - Mature content: No
 - Distribution: Public, all regions
 - Pricing: Free
-- Homepage: https://github.com/get-ai-limits/ai-limits
-- Privacy policy: https://github.com/get-ai-limits/ai-limits/blob/main/PRIVACY.md
-- Support: https://github.com/get-ai-limits/ai-limits/issues
+- Homepage: https://get-ai-limits.com/
+- Privacy policy: https://get-ai-limits.com/privacy/
+- Support: https://get-ai-limits.com/support/
 - Remote hosted code: No
 
 ## Artwork inventory and upload order
@@ -51,46 +51,36 @@ Track subscription usage, resets, pace, and local history for your connected AI 
 
 ## Detailed description
 
-AI Limits puts your AI subscription usage in one place, right in Chrome's side
-panel — no more opening a separate account page for each provider just to
-check whether you're about to hit a limit.
+The Detailed description field is plain text, so this section has no Markdown
+formatting and can be pasted as is.
 
-Connect the providers you use, one at a time. Each one shows its usage windows,
-reset times, credits, and plan at a glance. Switch between **Used** and
-**Left**, whichever view makes more sense to you. For quota windows with a
-reliable reset time plus either a start time or window duration, a pace signal
-compares quota consumed with elapsed time.
+Stop guessing how much of your AI plan is left. AI Limits shows the usage limits of all your AI subscriptions and API accounts in one Chrome side panel: what's left, when it resets, and whether you're on pace, before you hit a limit in the middle of your work.
 
-Every quota window can open its own local History screen, so you can see how
-your usage has trended over time, right on your device. Usage fills in as it
-climbs through each window and drops at each reset, and the header says where
-you stand: how much you're on pace to use by the reset, or that you've hit the
-limit.
-Prepaid-balance services chart their balance instead, with top-ups marked.
+WHY AI LIMITS
+• Every plan in one panel: chat subscriptions, coding assistants, API credit balances, and self-hosted gateways side by side, instead of scattered across account pages.
+• Used or Left: flip every meter to the view that makes sense to you, and see the current plan of each account.
+• Reset countdowns: see when each usage window refills, so you know whether to wait, slow down, or switch tools.
+• Pace: for quota windows with a reliable reset time plus either a start time or window duration, a pace signal compares quota consumed with elapsed time, so you see early if you'll run out before the reset.
+• History: open any quota window to see how usage climbed and reset over the last 30 days. Prepaid balances are charted too, with top-ups marked.
+• Your layout: drag providers into the order you want, or hide one without disconnecting it. Hidden providers stay connected and keep refreshing.
+• Automatic refresh about every 15 minutes in the background, even with the panel closed.
+• English and Simplified Chinese. The panel follows Chrome's language or can be pinned in Settings.
 
-Arrange the Overview your way: drag providers into the order you want, or hide
-one without disconnecting it. Hidden providers stay connected and keep
-refreshing.
+23 SUPPORTED SERVICES
+AI Limits supports 23 AI services: chat and coding subscriptions, API platforms with credits or balances, and self-hosted API gateways. Connect only the ones you use; every connection is opt-in and asks for its own Chrome permission. Subscription services use the account already signed in to Chrome, while API services use a key you provide through a guided setup.
 
-AI Limits supports 23 AI services. Connect only the services you use: every
-connection is opt-in. Browser-session services use the account already signed
-in to Chrome, while API services use a key you provide.
+See every supported service and what AI Limits shows for it:
+https://get-ai-limits.com/providers/
 
-Full compatibility details, connection methods, and known limitations:
-https://github.com/get-ai-limits/ai-limits/blob/main/SUPPORTED_PROVIDERS.md
+PRIVATE BY DESIGN
+• Everything stays local: your usage history stays on your device and is never sent anywhere else.
+• AI Limits reads usage and balances only, never your prompts or conversations.
+• No ads, no AI Limits account to create, no analytics or telemetry.
+• Free and open source under the MIT license: https://get-ai-limits.com/source/
 
-The side panel supports English and Simplified Chinese. It follows Chrome when
-Chrome is set to one of those languages, and falls back to English for other
-Chrome languages. Settings can pin English or Simplified Chinese for this panel.
-Chrome's own menus and the extension name stay in Chrome's language.
+Questions, bugs, or a service you'd like supported: https://get-ai-limits.com/support/
 
-AI Limits keeps everything local: your usage history stays on your device and
-is never sent anywhere else. No ads, no AI Limits account to create, no
-analytics or telemetry.
-
-AI Limits is an independent project by TiantianFlow. It is not affiliated with,
-endorsed by, or authorized by any of the connected service providers, their
-parent companies, or their affiliates.
+AI Limits is an independent project by TiantianFlow. It is not affiliated with, endorsed by, or authorized by any of the connected service providers, their parent companies, or their affiliates.
 
 ## Permission justifications
 
