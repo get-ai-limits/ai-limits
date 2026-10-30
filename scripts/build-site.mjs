@@ -35,7 +35,7 @@ export const DOCUMENTS = {
   "PRIVACY.md": {
     path: "/privacy/",
     lang: "en",
-    description: "How AI Limits handles your data: everything stays in your Chrome profile, with no AI Limits server, account, analytics, or telemetry.",
+    description: "How AI Limits handles your data: your data is stored in your Chrome profile, with no AI Limits server, account, analytics, or telemetry.",
   },
   "FAQ.md": {
     path: "/faq/",
@@ -64,11 +64,15 @@ const ALTERNATES = [
 const PROVIDERS_HREF = { en: "/providers/", "zh-CN": "/zh-CN/providers/" };
 const FAQ_HREF = { en: "/faq/", "zh-CN": "/zh-CN/faq/" };
 
+/** Per-provider technical notes; the providers pages link here for the details. */
+const TECHNICAL_NOTES = {
+  en: `${REPOSITORY_URL}/blob/main/SUPPORTED_PROVIDERS.md`,
+  "zh-CN": `${REPOSITORY_URL}/blob/main/SUPPORTED_PROVIDERS.zh-CN.md`,
+};
+
 const PAGE_LINKS = {
   "README.md": "/",
   "README.zh-CN.md": "/zh-CN/",
-  "SUPPORTED_PROVIDERS.md": PROVIDERS_HREF.en,
-  "SUPPORTED_PROVIDERS.zh-CN.md": PROVIDERS_HREF["zh-CN"],
   ...Object.fromEntries(
     Object.entries(DOCUMENTS).map(([file, { path }]) => [file, path]),
   ),
@@ -111,7 +115,7 @@ export const PROVIDER_GROUPS = [
       ["ElevenLabs", "Monthly credits and voice limits", "每月 Credits 和语音容量"],
       ["DeepInfra", "Monthly spend against your limit, or balance", "当月支出与消费上限，或余额"],
       ["Fireworks", "Spend over the last 30 days", "近 30 天支出"],
-      ["GroqCloud", "Request and token rates", "请求和令牌速率"],
+      ["GroqCloud", "Request and token rates (needs a key with metrics access)", "请求和令牌速率（需要具备监控权限的密钥）"],
     ],
   },
   {
@@ -143,13 +147,13 @@ const COPY = {
     steps: [
       ["Add to Chrome", "Install AI Limits from the Chrome Web Store. It starts empty, with nothing connected."],
       ["Connect what you use", "Pick a service and approve its permission. Subscriptions use the account you’re already signed in to; API accounts use a key you paste."],
-      ["Check at a glance", "Open the side panel to see what’s left. It refreshes about every 15 minutes in the background, even when the panel is closed."],
+      ["Check at a glance", "Open the side panel to see what’s left. Most services refresh about every 15 minutes in the background, even when the panel is closed."],
     ],
     featuresHeading: "Everything you need to pace your AI usage",
     features: [
       ["Every plan in one panel", "Chat subscriptions, coding assistants, API credit balances, and self-hosted gateways, side by side instead of scattered across account pages."],
-      ["Used or Left", "Flip every meter to the view that makes sense to you, and see the current plan of each account."],
-      ["Reset countdowns", "See when each usage window refills, so you know whether to wait, slow down, or switch to another tool."],
+      ["Used or Left", "Flip every meter to the view that makes sense to you, and see the plan name where the service reports it."],
+      ["Reset countdowns", "See when each usage window refills, where the service reports a reset time, so you know whether to wait, slow down, or switch to another tool."],
       ["Pace", "When a service reports a full reset window, AI Limits compares how much you’ve used with how much time has passed, so you see early if you’ll run out."],
       ["30 days of history", "Open any window to see how usage climbed and reset. Prepaid balances are charted too, with top-ups marked."],
       ["Your layout", "Drag services into the order you want, or hide one without disconnecting it. English and Simplified Chinese."],
@@ -157,7 +161,7 @@ const COPY = {
     privacyHeading: "Private by design",
     privacyPoints: [
       "Usage is read straight from each service and stored in your browser. There is no AI Limits server.",
-      "AI Limits reads usage and balances only, never your prompts or conversations.",
+      "AI Limits reads only the plan, usage, and balance data needed to show your limits. It never reads your prompts or conversations.",
       "Each service is opt-in and asks for its own Chrome permission.",
       "No account, no ads, no analytics, no telemetry. The code is open source under the MIT license.",
     ],
@@ -167,9 +171,9 @@ const COPY = {
     faqHeading: "Questions",
     faq: [
       ["Is AI Limits free?", "Yes. AI Limits is free and open source under the MIT license. There is no paid tier and no account to create."],
-      ["Can AI Limits see my prompts or conversations?", "No. It reads only usage, limit, and balance information from each service. It does not read page text, prompts, conversations, or generated responses."],
-      ["Where is my data stored?", "In your own Chrome profile. Usage History is kept for up to 30 days on your device and is never sent to the developer or anyone else. Disconnecting a service deletes its data."],
-      ["Do I need to keep the side panel open?", "No. AI Limits refreshes about every 15 minutes in the background while Chrome is running, and shows the latest data when you open the panel."],
+      ["Can AI Limits see my prompts or conversations?", "No. It reads the plan, usage, limit, and balance information each service reports. It does not read page text, prompts, conversations, or generated responses."],
+      ["Where is my data stored?", "In your own Chrome profile. Usage History is kept for up to 30 days on your device and is never sent to the developer or anyone else. Disconnecting a service deletes the data AI Limits saved for it."],
+      ["Do I need to keep the side panel open?", "No. While Chrome is running, AI Limits refreshes most services about every 15 minutes in the background, and shows the latest data when you open the panel. A few services refresh some details only when you refresh them by hand; the full FAQ explains which."],
       ["Which browsers are supported?", "Google Chrome 116 or later on desktop."],
       ["My AI service isn’t supported. Can you add it?", "Open an issue on GitHub with the service you’d like to see, and include a link to its usage or billing page."],
     ],
@@ -209,7 +213,7 @@ const COPY = {
     home: "/zh-CN/",
     other: { label: "English", href: "/" },
     title: "AI Limits – 在 Chrome 中查看 ChatGPT、Claude、Cursor 等 AI 用量限额",
-    description: "免费的 Chrome 扩展，在一个侧边栏中查看 ChatGPT、Claude、Cursor 等 23 个 AI 服务的用量、重置时间和用量节奏。数据只保存在本地，开源免费。",
+    description: "免费的 Chrome 扩展，在一个侧边栏中查看 ChatGPT、Claude、Cursor 等 23 个 AI 服务的用量、重置时间和用量节奏。数据保存在本地，开源免费。",
     headline: "用完之前，先知道还剩多少",
     lede: "AI Limits 是一款免费的 Chrome 扩展。在一个侧边栏里查看 ChatGPT、Claude、Cursor 等 23 个 AI 服务还剩多少用量、何时重置，以及当前用量节奏是否过快。",
     install: "免费添加至 Chrome",
@@ -219,13 +223,13 @@ const COPY = {
     steps: [
       ["添加至 Chrome", "从 Chrome 应用商店安装 AI Limits。安装后默认为空，不会自动连接任何服务。"],
       ["连接你在用的服务", "选择服务并授予对应权限。订阅类服务直接使用你已登录的账号；API 类服务粘贴一个密钥即可。"],
-      ["随时一眼看清", "打开侧边栏即可查看剩余用量。即使关闭侧边栏，后台也会约每 15 分钟自动刷新一次。"],
+      ["随时一眼看清", "打开侧边栏即可查看剩余用量。即使关闭侧边栏，大多数服务也会在后台约每 15 分钟自动刷新一次。"],
     ],
     featuresHeading: "合理安排 AI 用量所需的一切",
     features: [
       ["所有套餐，一个面板", "聊天订阅、编程助手、API 余额和自建网关并排显示，不用再挨个打开账户页面。"],
-      ["已用或剩余", "所有用量条都可以在“已用”和“剩余”之间切换，并显示每个账号的当前套餐。"],
-      ["重置倒计时", "查看每个用量周期何时恢复，决定是等一等、放慢节奏，还是换个工具。"],
+      ["已用或剩余", "所有用量条都可以在“已用”和“剩余”之间切换，并显示服务提供的套餐名称。"],
+      ["重置倒计时", "在服务提供重置时间时，查看每个用量周期何时恢复，决定是等一等、放慢节奏，还是换个工具。"],
       ["用量节奏", "当服务提供完整的重置周期时，AI Limits 会比较已用量与已过时间，提前提醒你是否会在重置前用完。"],
       ["30 天用量历史", "打开任一用量周期即可查看用量的上升与重置。预付费余额同样绘制成图，并标出充值。"],
       ["按你的习惯排列", "拖动调整服务顺序，或在不断开连接的情况下隐藏某个服务。支持简体中文和英文。"],
@@ -233,7 +237,7 @@ const COPY = {
     privacyHeading: "隐私优先",
     privacyPoints: [
       "用量直接从各服务读取，并保存在你的浏览器中。AI Limits 没有服务器。",
-      "AI Limits 只读取用量和余额，绝不读取你的提示词或对话。",
+      "AI Limits 只读取显示限额所需的套餐、用量和余额数据，绝不读取你的提示词或对话。",
       "每个服务都需要单独启用，并单独申请 Chrome 权限。",
       "无需账号，没有广告、分析或遥测。代码以 MIT 许可证开源。",
     ],
@@ -243,9 +247,9 @@ const COPY = {
     faqHeading: "常见问题",
     faq: [
       ["AI Limits 免费吗？", "免费。AI Limits 以 MIT 许可证开源，没有付费版本，也无需注册账号。"],
-      ["AI Limits 能看到我的提示词或对话吗？", "不能。它只读取各服务的用量、限额和余额信息，不会读取页面文字、提示词、对话或生成的回复。"],
-      ["我的数据保存在哪里？", "保存在你自己的 Chrome 配置文件中。用量历史最多在本地保留 30 天，绝不会发送给开发者或任何其他人。断开某个服务会删除它的数据。"],
-      ["需要一直打开侧边栏吗？", "不需要。只要 Chrome 在运行，AI Limits 就会在后台约每 15 分钟刷新一次，打开侧边栏时显示最新数据。"],
+      ["AI Limits 能看到我的提示词或对话吗？", "不能。它读取各服务提供的套餐、用量、限额和余额信息，不会读取页面文字、提示词、对话或生成的回复。"],
+      ["我的数据保存在哪里？", "保存在你自己的 Chrome 配置文件中。用量历史最多在本地保留 30 天，绝不会发送给开发者或任何其他人。断开某个服务会删除 AI Limits 为它保存的数据。"],
+      ["需要一直打开侧边栏吗？", "不需要。只要 Chrome 在运行，AI Limits 就会在后台约每 15 分钟刷新大多数服务，打开侧边栏时显示最新数据。少数服务的部分信息只在手动刷新时更新，完整常见问题中有说明。"],
       ["支持哪些浏览器？", "桌面版 Google Chrome 116 或更高版本。"],
       ["我用的 AI 服务还不支持，可以添加吗？", "欢迎在 GitHub 上提交 Issue，写明你希望支持的服务，并附上它的用量或账单页面链接。"],
     ],
@@ -281,10 +285,6 @@ const COPY = {
   },
 };
 
-const TECHNICAL_NOTES = {
-  en: `${REPOSITORY_URL}/blob/main/SUPPORTED_PROVIDERS.md`,
-  "zh-CN": `${REPOSITORY_URL}/blob/main/SUPPORTED_PROVIDERS.zh-CN.md`,
-};
 
 export function escapeHtml(text) {
   return String(text)

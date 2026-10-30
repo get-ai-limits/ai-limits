@@ -51,19 +51,18 @@ Track subscription usage, resets, pace, and local history for your connected AI 
 
 ## Detailed description
 
-The Detailed description field is plain text, so this section has no Markdown
-formatting and can be pasted as is.
+<!-- This store field is plain text, so the section has no Markdown formatting and can be pasted as is. -->
 
-Stop guessing how much of your AI plan is left. AI Limits shows the usage limits of all your AI subscriptions and API accounts in one Chrome side panel: what's left, when it resets, and whether you're on pace, before you hit a limit in the middle of your work.
+Stop guessing how much of your AI plan is left. AI Limits shows the usage limits of your AI subscriptions and API accounts in one Chrome side panel: what's left, when it resets, and whether you're on pace, before you hit a limit in the middle of your work.
 
 WHY AI LIMITS
 • Every plan in one panel: chat subscriptions, coding assistants, API credit balances, and self-hosted gateways side by side, instead of scattered across account pages.
-• Used or Left: flip every meter to the view that makes sense to you, and see the current plan of each account.
-• Reset countdowns: see when each usage window refills, so you know whether to wait, slow down, or switch tools.
+• Used or Left: flip every meter to the view that makes sense to you, and see the plan name where the service reports it.
+• Reset countdowns: see when each usage window refills, where the service reports a reset time, so you know whether to wait, slow down, or switch tools.
 • Pace: for quota windows with a reliable reset time plus either a start time or window duration, a pace signal compares quota consumed with elapsed time, so you see early if you'll run out before the reset.
 • History: open any quota window to see how usage climbed and reset over the last 30 days. Prepaid balances are charted too, with top-ups marked.
 • Your layout: drag providers into the order you want, or hide one without disconnecting it. Hidden providers stay connected and keep refreshing.
-• Automatic refresh about every 15 minutes in the background, even with the panel closed.
+• Automatic refresh about every 15 minutes in the background for most services, even with the panel closed.
 • English and Simplified Chinese. The panel follows Chrome's language or can be pinned in Settings.
 
 23 SUPPORTED SERVICES
@@ -73,8 +72,8 @@ See every supported service and what AI Limits shows for it:
 https://get-ai-limits.com/providers/
 
 PRIVATE BY DESIGN
-• Everything stays local: your usage history stays on your device and is never sent anywhere else.
-• AI Limits reads usage and balances only, never your prompts or conversations.
+• Stored locally: your usage history stays on your device and is never sent to the developer or anyone else. Requests go only to the services you connect.
+• AI Limits reads only the plan, usage, and balance data needed to show your limits. It never reads your prompts or conversations.
 • No ads, no AI Limits account to create, no analytics or telemetry.
 • Free and open source under the MIT license: https://get-ai-limits.com/source/
 

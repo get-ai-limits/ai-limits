@@ -53,6 +53,15 @@ describe("site build", () => {
     expect(await page("/zh-CN/")).toContain(`支持 ${count} 个 AI 服务`);
   });
 
+  it("references only assets that the build emits", async () => {
+    for (const path of sitemapPaths()) {
+      const html = await page(path);
+      for (const [, ref] of html.matchAll(/(?:src|href|content)="(?:https:\/\/get-ai-limits\.com)?(\/assets\/[^"]+)"/g)) {
+        await expect(page(ref), `${path} -> ${ref}`).resolves.toBeTruthy();
+      }
+    }
+  });
+
   it("keeps internal schema-evidence wording off the public site", async () => {
     for (const path of sitemapPaths()) {
       const html = await page(path);
@@ -117,6 +126,7 @@ describe("rewriteHref", () => {
     expect(rewriteHref("PRIVACY.md")).toBe("/privacy/");
     expect(rewriteHref("FAQ.zh-CN.md#x")).toBe("/zh-CN/faq/#x");
     expect(rewriteHref("README.md")).toBe("/");
+    expect(rewriteHref("SUPPORTED_PROVIDERS.md#x")).toBe(`${REPOSITORY_URL}/blob/main/SUPPORTED_PROVIDERS.md#x`);
   });
 
   it("sends other repository files to GitHub and leaves absolute links alone", () => {
