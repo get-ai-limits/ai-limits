@@ -51,7 +51,7 @@ Track subscription usage, resets, pace, and local history for your connected AI 
 
 ## Detailed description
 
-<!-- This store field is plain text, so the section has no Markdown formatting and can be pasted as is. -->
+<!-- This store field is plain text: paste everything below this line, up to the next heading. -->
 
 Stop guessing how much of your AI plan is left. AI Limits shows the usage limits of your AI subscriptions and API accounts in one Chrome side panel: what's left, when it resets, and whether you're on pace, before you hit a limit in the middle of your work.
 
@@ -66,14 +66,14 @@ WHY AI LIMITS
 • English and Simplified Chinese. The panel follows Chrome's language or can be pinned in Settings.
 
 23 SUPPORTED SERVICES
-AI Limits supports 23 AI services: chat and coding subscriptions, API platforms with credits or balances, and self-hosted API gateways. Connect only the ones you use; every connection is opt-in and asks for its own Chrome permission. Subscription services use the account already signed in to Chrome, while API services use a key you provide through a guided setup.
+AI Limits supports 23 AI services: chat and coding subscriptions, API platforms with credits or balances, and self-hosted API gateways. Connect only the ones you use; every connection is opt-in and asks for its own Chrome permission. Subscription services use the account you're already signed in to in Chrome, while API services use a key you provide through a guided setup.
 
 See every supported service and what AI Limits shows for it:
 https://get-ai-limits.com/providers/
 
 PRIVATE BY DESIGN
 • Stored locally: your usage history stays on your device and is never sent to the developer or anyone else. Requests go only to the services you connect.
-• AI Limits reads only the plan, usage, and balance data needed to show your limits. It never reads your prompts or conversations.
+• AI Limits uses your sign-in session or API key only to fetch plan, usage, and balance data, and keeps only what it needs to show your limits. It never reads your prompts or conversations.
 • No ads, no AI Limits account to create, no analytics or telemetry.
 • Free and open source under the MIT license: https://get-ai-limits.com/source/
 
