@@ -245,7 +245,7 @@ describe("publication content", () => {
       expect(
         validate({
           listing: real.listing.replaceAll(
-            "https://github.com/get-ai-limits/ai-limits/blob/main/SUPPORTED_PROVIDERS.md",
+            "https://get-ai-limits.com/providers/",
             "",
           ),
         }),
