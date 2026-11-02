@@ -1063,9 +1063,8 @@ section[aria-labelledby="first-run-title"] > div:first-child > p:last-child {
   display: grid;
   gap: 1px;
   max-width: 180px;
-  max-height: calc(100% * 84 / 136);
-  overflow: hidden;
-  /* Never above the plot. The header and status sit outside the canvas. */
+  /* Starts at the plot top so it never covers the header and status, and
+     floats over whatever is below when it is taller than the plot. */
   top: calc(100% * 22 / 136);
   padding: 3px 6px;
   border: 1px solid var(--border);

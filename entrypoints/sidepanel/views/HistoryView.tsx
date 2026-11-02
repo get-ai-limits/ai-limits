@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 
 import { l10n, type MessageKey } from "../../../i18n/index";
 import {
@@ -40,12 +40,44 @@ const RANGE_OPTIONS = [
   { hours: 30 * 24, shortKey: "history.range30dShort", labelKey: "history.range30d" },
 ] as const;
 
-const RANGE_STORAGE_KEY = "ai-limits.historyRangeHours";
+// Picked ranges, per provider kind. The earlier single global key also
+// stored the default on every open, so one short-window meter left every
+// provider on 7 days; it is dropped on the next pick.
+const RANGE_STORAGE_KEY = "ai-limits.historyRangeHoursByProvider";
+const LEGACY_RANGE_STORAGE_KEY = "ai-limits.historyRangeHours";
 
-function readStoredRange(): number | undefined {
-  if (typeof localStorage === "undefined") return undefined;
-  const stored = Number(localStorage.getItem(RANGE_STORAGE_KEY));
-  return RANGE_OPTIONS.some((option) => option.hours === stored) ? stored : undefined;
+function readStoredRanges(): Record<string, number> {
+  try {
+    if (typeof localStorage === "undefined") return {};
+    const parsed: unknown = JSON.parse(localStorage.getItem(RANGE_STORAGE_KEY) ?? "{}");
+    if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) return {};
+    return Object.fromEntries(
+      Object.entries(parsed).filter(([, hours]) =>
+        RANGE_OPTIONS.some((option) => option.hours === hours),
+      ),
+    ) as Record<string, number>;
+  } catch {
+    return {};
+  }
+}
+
+function readStoredRange(providerKind: string | undefined): number | undefined {
+  if (!providerKind) return undefined;
+  return readStoredRanges()[providerKind];
+}
+
+function storeRange(providerKind: string | undefined, hours: number): void {
+  if (!providerKind) return;
+  try {
+    if (typeof localStorage === "undefined") return;
+    localStorage.setItem(
+      RANGE_STORAGE_KEY,
+      JSON.stringify({ ...readStoredRanges(), [providerKind]: hours }),
+    );
+    localStorage.removeItem(LEGACY_RANGE_STORAGE_KEY);
+  } catch {
+    // Storage can be unavailable; the pick still holds for this view.
+  }
 }
 
 function readingsInRange(
@@ -102,15 +134,23 @@ export function HistoryView({
     metrics.find((metric) => metric.id === metricId) ?? metrics[0];
   const providerKind = instance?.providerKind;
   const openingMetric = metrics.find((item) => item.id === metricId) ?? metrics[0];
-  // A picked range is the user's, so it survives meter and provider changes
-  // and a panel reload. The v15 default applies only before any pick.
-  const [rangeHours, setRangeHours] = useState<number>(() =>
-    readStoredRange() ?? defaultRangeHours(providerKind, openingMetric?.id ?? "", openingMetric?.cycle?.durationMs),
-  );
-  useEffect(() => {
-    if (typeof localStorage === "undefined") return;
-    localStorage.setItem(RANGE_STORAGE_KEY, String(rangeHours));
-  }, [rangeHours]);
+  // A range the user picks for a provider survives meter changes and a panel
+  // reload for that provider. Before any pick, the meter's window decides:
+  // a window of a day or less opens on 7 days, a longer one on 30 days.
+  const initialRange = (): number =>
+    readStoredRange(providerKind) ??
+      defaultRangeHours(providerKind, openingMetric?.id ?? "", openingMetric?.cycle?.durationMs);
+  const [range, setRange] = useState(() => ({ providerKind, hours: initialRange() }));
+  let rangeHours = range.hours;
+  if (range.providerKind !== providerKind) {
+    // Another provider: its own pick, or its own default.
+    rangeHours = initialRange();
+    setRange({ providerKind, hours: rangeHours });
+  }
+  const setRangeHours = (hours: number): void => {
+    setRange({ providerKind, hours });
+    storeRange(providerKind, hours);
+  };
 
   if (!instance || !selectedMetric) {
     return (

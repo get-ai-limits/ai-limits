@@ -24,6 +24,7 @@ import {
   VIEWBOX_WIDTH,
   type Focus,
 } from "./HistoryChart";
+import { useOutsideDismiss } from "./use-outside-dismiss";
 
 export interface BalanceHistoryChartProps {
   providerName: string;
@@ -88,6 +89,10 @@ export function BalanceHistoryChart({
   const [pinned, setPinned] = useState<Focus | null>(null);
   const [keyIndex, setKeyIndex] = useState<number | null>(null);
   const [infoOpen, setInfoOpen] = useState(false);
+  useOutsideDismiss(canvasRef, pinned !== null || keyIndex !== null, () => {
+    setPinned(null);
+    setKeyIndex(null);
+  });
 
   useEffect(() => {
     const element = chartRef.current;

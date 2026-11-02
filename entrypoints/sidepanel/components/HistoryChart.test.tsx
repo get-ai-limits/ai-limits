@@ -930,8 +930,19 @@ describe("HistoryChart", () => {
     fireEvent.click(chart, { clientX: clientXForView(180) });
     expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
 
+    // A pinned readout stays while the pointer is inside the chart and goes
+    // away on a press anywhere else.
+    fireEvent.click(chart, { clientX: clientXForView(180) });
+    fireEvent.pointerLeave(chart);
+    fireEvent.pointerDown(chart);
+    expect(screen.getByRole("tooltip")).toBeVisible();
+    fireEvent.pointerDown(document.body);
+    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+
     fireEvent.keyDown(chart, { key: "ArrowRight" });
     expect(screen.getByRole("tooltip")).toBeVisible();
+    fireEvent.pointerDown(document.body);
+    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
     void container;
   });
 
@@ -960,17 +971,8 @@ function instanceFor(meter: RealisticMeter, id: string): ProviderInstanceView {
     };
   }
 
-  it("keeps a picked range across meters and providers, and shows a clean empty meter", () => {
-    localStorage.clear();
-    const claude = REALISTIC_METERS.find((meter) => meter.providerKind === "claude")!;
-    const chatgpt = REALISTIC_METERS.find((meter) => meter.providerKind === "chatgpt")!;
-    const empty = REALISTIC_METERS.find((meter) => meter.history.length === 0)!;
-    const instances = [
-      instanceFor(claude, "claude:default"),
-      instanceFor(chatgpt, "chatgpt:default"),
-      instanceFor(empty, "cursor:default"),
-    ];
-    const view = (instanceId: string) => (
+  function historyView(instances: ProviderInstanceView[], instanceId: string) {
+    return (
       <HistoryView
         instances={instances}
         instanceId={instanceId}
@@ -983,19 +985,73 @@ function instanceFor(meter: RealisticMeter, id: string): ProviderInstanceView {
         onSelectionChange={() => undefined}
       />
     );
-    const { rerender } = render(view("claude:default"));
+  }
+
+  it("keeps a picked range per provider, and shows a clean empty meter", () => {
+    localStorage.clear();
+    const claude = REALISTIC_METERS.find((meter) => meter.providerKind === "claude")!;
+    const chatgpt = REALISTIC_METERS.find((meter) => meter.providerKind === "chatgpt")!;
+    const empty = REALISTIC_METERS.find((meter) => meter.history.length === 0)!;
+    const instances = [
+      instanceFor(claude, "claude:default"),
+      instanceFor(chatgpt, "chatgpt:default"),
+      instanceFor(empty, "cursor:default"),
+    ];
+    const { rerender, unmount } = render(historyView(instances, "claude:default"));
     const ranges = screen.getByRole("radiogroup", { name: "History range" });
     fireEvent.click(within(ranges).getByRole("radio", { name: "48 hours" }));
     expect(within(ranges).getByRole("radio", { name: "48 hours" })).toBeChecked();
 
-    rerender(view("chatgpt:default"));
-    expect(screen.getByRole("radio", { name: "48 hours" })).toBeChecked();
+    // Another provider opens on its own default, not Claude's pick.
+    rerender(historyView(instances, "chatgpt:default"));
+    expect(screen.getByRole("radio", { name: "30 days" })).toBeChecked();
 
-    rerender(view("cursor:default"));
+    rerender(historyView(instances, "cursor:default"));
     expect(screen.getByText(/No readings in/i)).toBeVisible();
     expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
     expect(screen.queryByText(/· 0/)).not.toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "30 days" })).toBeChecked();
+
+    rerender(historyView(instances, "claude:default"));
     expect(screen.getByRole("radio", { name: "48 hours" })).toBeChecked();
+
+    // The pick survives a panel reload.
+    unmount();
+    render(historyView(instances, "claude:default"));
+    expect(screen.getByRole("radio", { name: "48 hours" })).toBeChecked();
+  });
+
+  it("opens a 30-day Cursor meter on 30 days after a short-window provider", () => {
+    localStorage.clear();
+    // An older build stored the range globally, including unpicked defaults.
+    localStorage.setItem("ai-limits.historyRangeHours", String(7 * 24));
+    const kimi = REALISTIC_METERS.find((meter) => meter.metricId === "five-hour-coding")!;
+    const cursor = REALISTIC_METERS.find((meter) => meter.metricId === "other-models-monthly")!;
+    const instances = [
+      instanceFor(kimi, "kimi:default"),
+      { ...instanceFor(cursor, "cursor:default"), snapshot: {
+        ...instanceFor(cursor, "cursor:default").snapshot!,
+        metrics: [{
+          type: "quota" as const,
+          id: cursor.metricId,
+          label: cursor.label,
+          scope: "general" as const,
+          usedRatio: 0.3,
+          cycle: { cadence: "calendar" as const, durationMs: 30 * DAY, resetsAt: FIXTURE_NOW + 10 * DAY },
+        }],
+      } },
+    ];
+
+    const first = render(historyView(instances, "kimi:default"));
+    expect(screen.getByRole("radio", { name: "7 days" })).toBeChecked();
+    first.unmount();
+
+    const second = render(historyView(instances, "cursor:default"));
+    expect(screen.getByRole("radio", { name: "30 days" })).toBeChecked();
+    second.unmount();
+
+    render(historyView(instances, "kimi:default"));
+    expect(screen.getByRole("radio", { name: "7 days" })).toBeChecked();
   });
 
   it("does not draw a chart from a single fresh reading that has not repeated", () => {
