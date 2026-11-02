@@ -40,7 +40,7 @@ Regeneration and validation instructions are in
 ## Single purpose
 
 AI Limits gives a user one Chrome side panel for viewing current subscription
-usage as **Used** or **Left**, reset timing, pace, and local quota-history
+usage as Used or Left, reset timing, pace, and local quota-history
 graphs across twenty-three supported services. Browser-session services use an account
 already signed in within the user's browser profile; API-key services use a key
 the user connects through guided setup.
@@ -60,13 +60,13 @@ WHY AI LIMITS
 • Used or Left: flip every meter to the view that makes sense to you, and see the plan name where the service reports it.
 • Reset countdowns: see when each usage window refills, where the service reports a reset time, so you know whether to wait, slow down, or switch tools.
 • Pace: for quota windows with a reliable reset time plus either a start time or window duration, a pace signal compares quota consumed with elapsed time, so you see early if you'll run out before the reset.
-• History: open any quota window to see how usage climbed and reset over the last 30 days. Prepaid balances are charted too, with top-ups marked.
+• History: open any quota window to see how usage climbed and reset, with up to 30 days kept on your device. Prepaid balances are charted too, with top-ups marked.
 • Your layout: drag providers into the order you want, or hide one without disconnecting it. Hidden providers stay connected and keep refreshing.
 • Automatic refresh about every 15 minutes in the background for most services, even with the panel closed.
 • English and Simplified Chinese. The panel follows Chrome's language or can be pinned in Settings.
 
 23 SUPPORTED SERVICES
-AI Limits supports 23 AI services: chat and coding subscriptions, API platforms with credits or balances, and self-hosted API gateways. Connect only the ones you use; every connection is opt-in and asks for its own Chrome permission. Subscription services use the account you're already signed in to in Chrome, while API services use a key you provide through a guided setup.
+AI Limits supports 23 AI services: chat and coding subscriptions, API platforms with credits or balances, and self-hosted API gateways. Connect only the ones you use; every connection is opt-in and only gets the Chrome access you approve for it. Subscription services use the account you're already signed in to in Chrome, while API services use a key you provide through a guided setup.
 
 See every supported service and what AI Limits shows for it:
 https://get-ai-limits.com/providers/
