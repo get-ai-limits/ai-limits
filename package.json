@@ -28,7 +28,7 @@
     "@wxt-dev/i18n": "0.2.7",
     "react": "19.2.8",
     "react-dom": "19.2.8",
-    "zod": "4.4.3"
+    "zod": "4.6.6"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "6.9.1",
@@ -43,7 +43,7 @@
     "pngjs": "7.0.0",
     "typescript": "7.0.2",
     "vite": "7.3.7",
-    "vitest": "4.1.11",
+    "vitest": "4.1.12",
     "wxt": "0.21.3"
   },
   "packageManager": "pnpm@10.33.0"
