@@ -5,6 +5,21 @@
 export const page = "history-hover";
 export const viewport = { width: 700, height: 1400 };
 
+/** True when the tooltip's own box or a clipping ancestor cuts its text. */
+async function isCut(tooltip) {
+  return tooltip.evaluate((el) => {
+    if (el.scrollHeight > el.clientHeight + 1) return true;
+    const rect = el.getBoundingClientRect();
+    for (let node = el.parentElement; node && node !== document.body; node = node.parentElement) {
+      const style = getComputedStyle(node);
+      if (style.overflowX === "visible" && style.overflowY === "visible") continue;
+      const clip = node.getBoundingClientRect();
+      if (rect.top < clip.top - 1 || rect.bottom > clip.bottom + 1 || rect.left < clip.left - 1 || rect.right > clip.right + 1) return true;
+    }
+    return false;
+  });
+}
+
 export async function run({ page, fail, log }) {
   for (const width of [340, 400, 460]) {
     const card = page.locator(`[data-width="${width}"]`);
@@ -31,9 +46,7 @@ export async function run({ page, fail, log }) {
       if (!tip || tip.width - 0.5 > 180) {
         fail(`${width}px step ${step} tooltip is ${Math.round(tip?.width ?? 0)}px`);
       }
-      if (tip && (tip.y < box.y - 1 || tip.y + tip.height > box.y + box.height + 1)) {
-        fail(`${width}px step ${step} tooltip spills the plot`);
-      }
+      if (await isCut(canvas.locator(".history-chart__tooltip"))) fail(`${width}px step ${step} tooltip is cut off`);
       // The plot grid starts 22/136 down the canvas. A tooltip above that
       // covers the card header and the status line.
       const plotTop = box.y + box.height * (22 / 136);
@@ -59,6 +72,13 @@ export async function run({ page, fail, log }) {
     }
     log(`${width}px ${distinct.length} times`);
 
+    // A click pins the readout past the chart edge; a click outside clears it.
+    await page.mouse.click(box.x + box.width * 0.5, plotY);
+    await page.mouse.move(box.x + box.width * 0.5, box.y + box.height + 40);
+    if (await canvas.locator(".history-chart__tooltip").count() !== 1) fail(`${width}px pinned tooltip did not stay`);
+    await page.mouse.click(box.x + box.width * 0.5, box.y + box.height + 40);
+    if (await canvas.locator(".history-chart__tooltip").count() !== 0) fail(`${width}px pinned tooltip stayed after an outside click`);
+
     const kimi = page.locator(`[data-kimi="${width}"]`);
     await kimi.scrollIntoViewIfNeeded();
     const kimiCanvas = kimi.locator(".history-chart__canvas");
@@ -70,8 +90,16 @@ export async function run({ page, fail, log }) {
       if (!box) throw new Error(`No ${selector} at ${width}px`);
       await page.mouse.move(box.x + box.width / 2, box.y + Math.min(box.height / 2, plot.height - 4));
       await page.waitForTimeout(25);
-      return kimiCanvas.locator(".history-chart__tooltip");
+      const tip = kimiCanvas.locator(".history-chart__tooltip");
+      if (await isCut(tip)) fail(`${width}px ${selector} tooltip is cut off`);
+      return tip;
     };
+    for (let step = 0; step <= 40; step += 1) {
+      await page.mouse.move(plot.x + plot.width * (0.05 + 0.9 * (step / 40)), plot.y + plot.height * 0.45);
+      await page.waitForTimeout(10);
+      const tip = kimiCanvas.locator(".history-chart__tooltip");
+      if ((await tip.count()) > 0 && (await isCut(tip))) fail(`${width}px Kimi step ${step} tooltip is cut off`);
+    }
     const idleTip = await hoverBox(".history-chart__idle");
     const idleText = (await idleTip.innerText()).replace(/\s+/g, " ");
     // Kimi 5-hour is a fixed grid, so a 0% window is "no usage", not "no active window".
@@ -80,9 +108,6 @@ export async function run({ page, fail, log }) {
     const emptyText = (await emptyTip.innerText()).replace(/\s+/g, " ");
     if (!/No readings/.test(emptyText)) fail(`${width}px empty tooltip was "${emptyText}"`);
     const tipBox = await emptyTip.boundingBox();
-    if (tipBox && (tipBox.y < plot.y - 1 || tipBox.y + tipBox.height > plot.y + plot.height + 1)) {
-      fail(`${width}px tooltip spills the plot`);
-    }
     if (tipBox && tipBox.y < plot.y + plot.height * (22 / 136) - 1) {
       fail(`${width}px tooltip covers the header`);
     }

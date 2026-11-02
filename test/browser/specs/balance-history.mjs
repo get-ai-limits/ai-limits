@@ -36,8 +36,8 @@ export async function run({ page, fail, log }) {
       const tip = canvas.locator(".history-chart__tooltip");
       const text = (await tip.innerText().catch(() => "")).replace(/\s+/g, " ").trim();
       const tipBox = await tip.boundingBox();
-      if (tipBox && (tipBox.y < box.y - 1 || tipBox.y + tipBox.height > box.y + box.height + 1)) {
-        fail(`${width}px tooltip spills the plot`);
+      if (tipBox && tipBox.y < box.y + box.height * (22 / 136) - 1) {
+        fail(`${width}px tooltip covers the header`);
       }
       return text;
     };
@@ -45,6 +45,13 @@ export async function run({ page, fail, log }) {
     if (!topUp.includes("Top-up +$20.00")) fail(`${width}px top-up readout was "${topUp}"`);
     const gap = await readout(fixture.gapAt);
     if (!gap.includes("No readings")) fail(`${width}px gap readout was "${gap}"`);
+
+    // A click pins the readout; a click outside the chart clears it.
+    await page.mouse.click(xAt(fixture.topUpAt), plotY);
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height + 40);
+    if (await canvas.locator(".history-chart__tooltip").count() !== 1) fail(`${width}px pinned tooltip did not stay`);
+    await page.mouse.click(box.x + box.width / 2, box.y + box.height + 40);
+    if (await canvas.locator(".history-chart__tooltip").count() !== 0) fail(`${width}px pinned tooltip stayed after an outside click`);
     log(`${width}px ok`);
   }
 }

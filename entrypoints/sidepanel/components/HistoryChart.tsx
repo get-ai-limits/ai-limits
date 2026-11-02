@@ -22,6 +22,7 @@ import {
   type UsageHistoryObservation,
   type ProviderKind,
 } from "../../../domain/public-protocol";
+import { useOutsideDismiss } from "./use-outside-dismiss";
 
 export interface HistoryChartProps {
   providerName: string;
@@ -487,6 +488,10 @@ export function HistoryChart({
   const [pinned, setPinned] = useState<Focus | null>(null);
   const [keyIndex, setKeyIndex] = useState<number | null>(null);
   const [infoOpen, setInfoOpen] = useState(false);
+  useOutsideDismiss(canvasRef, pinned !== null || keyIndex !== null, () => {
+    setPinned(null);
+    setKeyIndex(null);
+  });
   const [selectedMetricId, setSelectedMetricId] = useState(
     () => metricId ?? metrics[0]?.id ?? "",
   );
