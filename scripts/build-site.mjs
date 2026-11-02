@@ -162,7 +162,7 @@ const COPY = {
     privacyPoints: [
       "Usage is read straight from each service and stored in your browser. There is no AI Limits server.",
       "AI Limits uses your sign-in session or API key only to fetch plan, usage, and balance data, and keeps only what it needs to show your limits. It never reads your prompts or conversations.",
-      "Each service is opt-in and asks for its own Chrome permission.",
+      "Each service is opt-in and only gets access to the site you approve for it.",
       "No account, no ads, no analytics, no telemetry. The code is open source under the MIT license.",
     ],
     privacyMore: "Read the privacy policy",
@@ -184,7 +184,7 @@ const COPY = {
     providersPage: {
       title: "Supported AI services",
       description: "AI Limits tracks usage limits, credits, and balances for 23 AI services in Chrome, including ChatGPT, Claude, Cursor, Grok, OpenAI, OpenRouter, and DeepSeek.",
-      lede: "Connect only the services you use. Each one is opt-in and asks for its own Chrome permission.",
+      lede: "Connect only the services you use. Each one is opt-in and only gets access to the site you approve for it.",
       groups: {
         subscriptions: ["Subscriptions", "Sign in to the service in Chrome as usual. AI Limits uses that session; there is nothing to paste."],
         api: ["API accounts", "Paste an API key from the service’s dashboard. A guided setup shows where to create one."],
@@ -238,7 +238,7 @@ const COPY = {
     privacyPoints: [
       "用量直接从各服务读取，并保存在你的浏览器中。AI Limits 没有服务器。",
       "AI Limits 仅使用你的登录状态或 API 密钥获取套餐、用量和余额数据，并只保存显示限额所需的内容，绝不读取你的提示词或对话。",
-      "每个服务都需要单独启用，并单独申请 Chrome 权限。",
+      "每个服务都需要单独启用，并且只能访问你为它批准的网站。",
       "无需账号，没有广告、分析或遥测。代码以 MIT 许可证开源。",
     ],
     privacyMore: "阅读隐私政策（英文）",
@@ -260,7 +260,7 @@ const COPY = {
     providersPage: {
       title: "支持的 AI 服务",
       description: "AI Limits 在 Chrome 中查看 23 个 AI 服务的用量限额、额度和余额，包括 ChatGPT、Claude、Cursor、Grok、OpenAI、OpenRouter 和 DeepSeek。",
-      lede: "只连接你在用的服务。每个服务都需要单独启用，并单独申请 Chrome 权限。",
+      lede: "只连接你在用的服务。每个服务都需要单独启用，并且只能访问你为它批准的网站。",
       groups: {
         subscriptions: ["订阅服务", "像平常一样在 Chrome 中登录该服务即可。AI Limits 使用现有登录状态，无需粘贴任何内容。"],
         api: ["API 账户", "从服务后台复制一个 API 密钥粘贴进来。引导页面会告诉你在哪里创建。"],
