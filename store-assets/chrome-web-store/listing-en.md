@@ -66,7 +66,7 @@ WHY AI LIMITS
 • English and Simplified Chinese. The panel follows Chrome's language or can be pinned in Settings.
 
 23 SUPPORTED SERVICES
-AI Limits supports 23 AI services: chat and coding subscriptions, API platforms with credits or balances, and self-hosted API gateways. Connect only the ones you use; every connection is opt-in and only gets access to the site you approve for it. Subscription services use the account you're already signed in to in Chrome, while API services use a key you provide through a guided setup.
+AI Limits supports 23 AI services: chat and coding subscriptions, API platforms with credits or balances, and self-hosted API gateways. Connect only the ones you use; every connection is opt-in and only gets the Chrome access you approve for it. Subscription services use the account you're already signed in to in Chrome, while API services use a key you provide through a guided setup.
 
 See every supported service and what AI Limits shows for it:
 https://get-ai-limits.com/providers/
