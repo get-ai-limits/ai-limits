@@ -41,7 +41,7 @@ describe("ApiKeyConnectView", () => {
     expect(
       document.querySelector('img[src="/provider-marks/openrouter.svg"]'),
     ).not.toBeNull();
-    expect(screen.getByText("Balance, API key budget")).toBeVisible();
+    expect(screen.getByText("Balance, API key budget, Promotional credits")).toBeVisible();
     expect(screen.getByLabelText("OpenRouter API key")).toHaveAttribute(
       "type",
       "password",

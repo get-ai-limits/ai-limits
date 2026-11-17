@@ -87,7 +87,7 @@ AI Limits 是 TiantianFlow 独立开发的项目，与任何已连接的服务�
 - `https://admin.mistral.ai/*` 和 `https://console.mistral.ai/*`：从已登录的 Mistral 会话读取本月用量和额度。
 - `https://www.perplexity.ai/*`：从已登录的 Perplexity 会话读取额度池。
 - `https://api.elevenlabs.io/*`：仅在只读订阅请求中，将用户创建的 API 密钥作为 `xi-api-key` 请求头发送，然后标准化每月额度和受支持的语音限制。扩展不会请求 `https://elevenlabs.io/*`；设置页面按普通网页打开，不会获得扩展主机访问权限。
-- `https://api.deepseek.com/*`、`https://api.moonshot.ai/*`、`https://api.deepinfra.com/*`、`https://api.fireworks.ai/*`、`https://api.openai.com/*`、`https://api.groq.com/*`、`https://openrouter.ai/*`、`https://api.factory.ai/*`、`https://api.z.ai/*` 和 `https://app.warp.dev/*`：只会将所选服务已保存的密钥发送到该服务固定的只读余额、用量、指标或账单接口。
+- `https://api.deepseek.com/*`、`https://api.moonshot.ai/*`、`https://api.deepinfra.com/*`、`https://api.fireworks.ai/*`、`https://api.openai.com/*`、`https://api.groq.com/*`、`https://openrouter.ai/*`、`https://api.factory.ai/*`、`https://api.z.ai/*` 和 `https://app.warp.dev/*`：只会将所选服务已保存的密钥发送到该服务固定的只读余额、用量、指标或账单接口。对于 OpenRouter，扩展还会在不附带密钥的情况下读取已登录的 Credits 页面，并且只在已登录账号与密钥所属账号一致时显示促销赠送额度。
 - `https://*/*`：用于 New API、LiteLLM、ClawRouter、sub2api 和 LLM Proxy 实例的可选动态主机能力。扩展在运行时绝不会请求此通配符；在网址标准化后，Chrome 只会被请求该实例的精确 HTTPS 来源。
 - `http://localhost/*` 和 `http://127.0.0.1/*`：用于本地 New API 开发的可选动态能力。运行时权限仍仅限于用户输入的精确 localhost 来源和端口。公共 HTTP 来源会被拒绝。
 
@@ -100,9 +100,9 @@ AI Limits 是 TiantianFlow 独立开发的项目，与任何已连接的服务�
 
 ## 数据披露答案
 
-- **身份验证信息：** 是。这包括用户创建、并在验证成功后由 AI Limits 保存在本地的服务商 API 密钥。其他服务的浏览器会话 JSON、cookie 和访问凭据仅在所选采集序列期间使用，不会被持久化。API 密钥保存在单独的受信任上下文凭据记录中，只发送到所选服务的 API，绝不会发送给开发者。
-- **网站内容：** 是。AI Limits 会处理私有的服务会话、用量、订阅和组织响应 JSON，以及 Kimi 精确的 `access_token` 浏览器存储条目、Cursor 的手动页面上下文仪表板 JSON 响应（Grok Bot、额度授予和汇总包含用量），以及 Grok 页面来源的会话、用量池、订阅和速率限制响应。它不会读取已渲染的页面文本、提示词、对话或生成的回复。
-- **账户标识符和个人身份信息：** 是，但处理范围很窄。从访问凭据派生的 ChatGPT 账户标识，以及 Claude 的组织 UUID/能力信息，仅在请求期间使用，不会被持久化。Claude 的组织名称可能会被标准化并存储为可见的套餐标签。类似电子邮件形态的账户标签会被丢弃，当前适配器不会查询 Claude 或 Cursor 的电子邮件端点。
+- **身份验证信息：** 是。这包括用户创建、并在验证成功后由 AI Limits 保存在本地的服务商 API 密钥。其他服务的浏览器会话 JSON、cookie 和访问凭据，以及 Chrome 为 OpenRouter 促销额度页面读取附带的 openrouter.ai 会话 cookie，仅在所选采集序列期间使用，不会被持久化。API 密钥保存在单独的受信任上下文凭据记录中，只发送到所选服务的 API，绝不会发送给开发者。
+- **网站内容：** 是。AI Limits 会处理私有的服务会话、用量、订阅和组织响应 JSON，以及 Kimi 精确的 `access_token` 浏览器存储条目、Cursor 的手动页面上下文仪表板 JSON 响应（Grok Bot、额度授予和汇总包含用量），以及 Grok 页面来源的会话、用量池、订阅和速率限制响应，还有 OpenRouter 已登录 Credits 页面服务端组件载荷中的促销额度池。它不会读取已渲染的页面文本、提示词、对话或生成的回复。
+- **账户标识符和个人身份信息：** 是，但处理范围很窄。从访问凭据派生的 ChatGPT 账户标识，Claude 的组织 UUID/能力信息，以及 OpenRouter 已登录用户 ID 和密钥创建者 ID（用于确认是同一账号），仅在请求期间使用，不会被持久化。Claude 的组织名称可能会被标准化并存储为可见的套餐标签。类似电子邮件形态的账户标签会被丢弃，当前适配器不会查询 Claude 或 Cursor 的电子邮件端点。
 - **财务和支付信息：** 是，仅限于用量响应中包含的、由服务商报告的用量额度余额、额外用量金额或限额，以及按需支出数值/限额。这些标准化计数和余额可能会保留在本地的分实例 History 中。不会访问或保留支付卡、银行信息、原始服务响应或交易历史。
 - **网络历史：** 是，分类范围很窄且偏保守。在 Kimi 采集期间，AI Limits 可能会检查是否已有匹配 Kimi 精确来源的已打开标签页。在 Cursor **连接** 或手动 **刷新** 期间，它可能会检查是否已有一个匹配 Cursor 精确来源的已打开标签页。在 Grok 采集期间，它可能会检查是否已有一个匹配 Grok 精确来源的已打开标签页。这只会揭示该固定服务来源的标签页当前是否打开，仅在本地用于所请求的服务操作，绝不会被保留、传输或汇编成已访问页面列表。AI Limits 不会查询任意页面网址、标题或 Chrome 浏览历史。
 - **用户活动：** 不会监控点击、按键、指针移动、滚动或一般浏览活动。
@@ -144,7 +144,7 @@ AI Limits 是 TiantianFlow 独立开发的项目，与任何已连接的服务�
 18. **Fireworks：** 连接恰好可访问一个账户的临时密钥，只批准 `https://api.fireworks.ai/*`，并确认显示最近 30 天已计价支出。
 19. **OpenAI：** 连接临时密钥，只批准 `https://api.openai.com/*`，并确认显示组织支出/补全用量或旧版可用额度回退。记录所需组织或项目范围。
 20. **GroqCloud：** 连接临时密钥，只批准 `https://api.groq.com/*`。具备所需范围时确认显示 Prometheus 速率；标准密钥返回 404 时应显示需要更高范围。
-21. **OpenRouter：** 连接临时密钥，只批准 `https://openrouter.ai/*`，并确认显示额度余额，以及服务报告时的密钥预算。
+21. **OpenRouter：** 连接临时密钥，只批准 `https://openrouter.ai/*`，并确认显示额度余额，以及服务报告时的密钥预算。在已登录 openrouter.ai 且有有效促销额度时，确认显示促销赠送额度；登录另一个 openrouter.ai 账号时，确认其被隐藏。
 22. **Droid：** 连接临时 Factory API 密钥，只批准 `https://api.factory.ai/*`，并确认显示 5 小时、每周和每月 Standard 限制。账户报告时确认 Droid Core 窗口和额外用量余额。不应打开 Factory 标签页。
 23. **GLM：** 连接临时 Z.ai GLM Coding Plan API 密钥，只批准 `https://api.z.ai/*`，并确认显示 Coding Plan 的 5 小时和每周额度，以及服务报告时的 MCP 工具额度。不应打开 Z.ai 标签页。
 24. **Warp：** 连接临时 Warp API 密钥，只批准 `https://app.warp.dev/*`，并确认显示套餐包含的额度及重置时间，以及账户持有附加额度时的附加额度余额。不应打开 Warp 标签页。

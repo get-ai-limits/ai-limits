@@ -22,6 +22,8 @@ export interface CollectionContext {
   credential?: ProviderCredential;
   baseUrl?: string;
   accessToken?: string;
+  /** The instance's last stored snapshot, for adapters that carry readings. */
+  previousSnapshot?: UsageSnapshot;
 }
 
 export type CollectionResult =

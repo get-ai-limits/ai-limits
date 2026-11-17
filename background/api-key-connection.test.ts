@@ -117,6 +117,22 @@ describe("API-key instance connection lifecycle", () => {
     );
   });
 
+  test("validates a replacement key without the previous key's snapshot", async () => {
+    const collect = vi.fn<ProviderPackage["collect"]>(async () => success());
+    const previous = success();
+    if (!previous.ok) throw new Error("expected success");
+
+    await createApiKeyConnectionLifecycle().connect(
+      { ...instance(FIRST), snapshot: previous.snapshot },
+      providerPackage(collect),
+      "replacement-secret",
+      services,
+      () => NOW,
+    );
+
+    expect(collect.mock.calls[0]?.[0]).not.toHaveProperty("snapshot");
+  });
+
   test("invalidating one sibling does not supersede another sibling connection", async () => {
     const finish = new Map<ProviderInstanceId, (value: CollectionResult) => void>();
     const collect = vi.fn(

@@ -33,6 +33,10 @@ export const openRouterKeyResponseSchema = z.object({
       })
       .nullable()
       .optional(),
+    // Used only in memory to confirm the signed-in Credits page belongs to the
+    // same personal account as the key; never stored.
+    creator_user_id: z.string().optional(),
+    organization_id: z.string().nullable().optional(),
   }),
 });
 

@@ -307,4 +307,191 @@ describe("OpenRouter adapter", () => {
       health: { kind: "temporary_error" },
     });
   });
+
+  describe("promotional credits from the signed-in Credits page", () => {
+    const PAGE_URL = "https://openrouter.ai/settings/credits";
+    const OWNER = "user_syntheticOwner01";
+
+    function rscPage(userId: string, pools: unknown[]) {
+      return new Response(
+        `1:["$","$L2",null,{"userId":"${userId}"}]\n3:["$","$L4",null,${JSON.stringify({
+          purchasedBalance: 0,
+          creditPools: pools,
+        })}]\n`,
+        { status: 200, headers: { "content-type": "text/x-component" } },
+      );
+    }
+
+    const grant = {
+      id: "00000000-0000-4000-8000-000000000002",
+      name: "Promo: SYNTHETIC",
+      credit_amount: 25,
+      disabled: false,
+      expires_at: "2031-04-15T12:00:00.000Z",
+      restrictions: null,
+      usedAmount: 5,
+    };
+
+    function previousWithPromo(fetchedAt: number) {
+      return {
+        providerKind: "openrouter" as const,
+        source: "api-key" as const,
+        fetchedAt,
+        metrics: [
+          {
+            type: "balance" as const,
+            id: "promo-credits",
+            label: "Promotional credits",
+            scope: "product" as const,
+            value: 7,
+            unit: "USD",
+            initialLimit: 10,
+          },
+        ],
+      };
+    }
+
+    function promoFetch(
+      page: Response | Error,
+      keyData: Record<string, unknown> = { creator_user_id: OWNER, organization_id: null },
+    ) {
+      return vi.fn<typeof globalThis.fetch>(async (input) => {
+        const url = String(input);
+        if (url === CREDITS_URL) return response(creditsFixture({ total_credits: 0, total_usage: 0 }));
+        if (url === KEY_URL) return response({ data: keyData });
+        if (url === PAGE_URL) {
+          if (page instanceof Error) throw page;
+          return page;
+        }
+        throw new Error(`unexpected url ${url}`);
+      });
+    }
+
+    test("adds the grant as a balance when the session matches the key's account", async () => {
+      const fetch = promoFetch(rscPage(OWNER, [grant]));
+
+      const result = await openRouterAdapter.collect(context(fetch));
+
+      expect(fetch).toHaveBeenNthCalledWith(3, PAGE_URL, {
+        method: "GET",
+        credentials: "include",
+        redirect: "error",
+        headers: { RSC: "1" },
+        signal: expect.any(AbortSignal),
+      });
+      expect(result).toMatchObject({
+        ok: true,
+        snapshot: {
+          metrics: [
+            { id: "balance", value: 0 },
+            {
+              type: "balance",
+              id: "promo-credits",
+              value: 20,
+              initialLimit: 25,
+              unit: "USD",
+            },
+          ],
+        },
+      });
+      if (result.ok) expect(result.snapshot.metrics[1]).not.toHaveProperty("observedAt");
+      expect(JSON.stringify(result)).not.toContain(OWNER);
+      expect(JSON.stringify(result)).not.toContain("SYNTHETIC");
+    });
+
+    test("aborts a slow Credits page without failing the refresh", async () => {
+      vi.useFakeTimers();
+      try {
+        const fetch = vi.fn<typeof globalThis.fetch>(async (input, init) => {
+          const url = String(input);
+          if (url === CREDITS_URL) return response(creditsFixture());
+          if (url === KEY_URL) return response({ data: { creator_user_id: OWNER } });
+          return new Promise<Response>((_resolve, reject) => {
+            init?.signal?.addEventListener("abort", () => reject(init.signal?.reason));
+          });
+        });
+
+        const pending = openRouterAdapter.collect(context(fetch));
+        await vi.advanceTimersByTimeAsync(5_000);
+
+        await expect(pending).resolves.toMatchObject({
+          ok: true,
+          snapshot: { metrics: [{ id: "balance" }] },
+        });
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    test.each([
+      ["a different signed-in account", () => rscPage("user_someoneElse02", [grant])],
+      ["no active grants", () => rscPage(OWNER, [])],
+    ])("hides promotional credits for %s, even with an earlier reading", async (_name, page) => {
+      const fetch = promoFetch(page());
+
+      const result = await openRouterAdapter.collect(
+        context(fetch, { previousSnapshot: previousWithPromo(NOW - 60_000) }),
+      );
+
+      if (result.ok) expect(result.snapshot.metrics.map((metric) => metric.id)).toEqual(["balance"]);
+      else throw new Error("expected success");
+    });
+
+    const unreadable: [string, () => Response | Error][] = [
+      ["a signed-out page", () => new Response("", { status: 401 })],
+      [
+        "an HTML sign-in page",
+        () =>
+          new Response("<html></html>", {
+            status: 200,
+            headers: { "content-type": "text/html" },
+          }),
+      ],
+      ["a redirect to sign-in", () => new TypeError("redirect mode is set to error")],
+      ["a network failure", () => new TypeError("synthetic network failure")],
+    ];
+
+    test.each(unreadable)("hides promotional credits for %s with no earlier reading", async (_name, page) => {
+      const result = await openRouterAdapter.collect(context(promoFetch(page())));
+
+      if (result.ok) expect(result.snapshot.metrics.map((metric) => metric.id)).toEqual(["balance"]);
+      else throw new Error("expected success");
+    });
+
+    test.each(unreadable)("carries the last reading for %s", async (_name, page) => {
+      const observedAt = NOW - 60 * 60 * 1_000;
+      const result = await openRouterAdapter.collect(
+        context(promoFetch(page()), { previousSnapshot: previousWithPromo(observedAt) }),
+      );
+
+      expect(result).toMatchObject({
+        ok: true,
+        snapshot: {
+          metrics: [{ id: "balance" }, { id: "promo-credits", value: 7, observedAt }],
+        },
+      });
+    });
+
+    test("stops carrying a reading after a day", async () => {
+      const result = await openRouterAdapter.collect(
+        context(promoFetch(new Response("", { status: 401 })), {
+          previousSnapshot: previousWithPromo(NOW - 24 * 60 * 60 * 1_000),
+        }),
+      );
+
+      if (result.ok) expect(result.snapshot.metrics.map((metric) => metric.id)).toEqual(["balance"]);
+      else throw new Error("expected success");
+    });
+
+    test.each([
+      ["an organization key", { creator_user_id: OWNER, organization_id: "org_synthetic" }],
+      ["a key without a creator", {}],
+    ])("does not request the Credits page for %s", async (_name, keyData) => {
+      const fetch = promoFetch(rscPage(OWNER, [grant]), keyData);
+
+      await openRouterAdapter.collect(context(fetch));
+
+      expect(fetch).toHaveBeenCalledTimes(2);
+    });
+  });
 });

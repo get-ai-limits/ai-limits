@@ -140,7 +140,10 @@ These origins are requested one provider at a time after the user clicks
   `https://api.deepinfra.com/*`, `https://api.fireworks.ai/*`,
   `https://api.openai.com/*`, `https://api.groq.com/*`,
   `https://openrouter.ai/*`, `https://api.factory.ai/*`, `https://api.z.ai/*`, and `https://app.warp.dev/*`: send the selected provider's saved key only to its
-  fixed read-only balance, usage, metrics, or billing endpoints.
+  fixed read-only balance, usage, metrics, or billing endpoints. For
+  OpenRouter, the extension also reads the signed-in Credits page, without the
+  key, to show promotional credit grants when the signed-in account matches
+  the key's account.
 - `https://*/*`: optional dynamic host capability for New API, LiteLLM,
   ClawRouter, sub2api, and LLM Proxy instances. The extension never requests
   this wildcard at runtime; after URL normalization, Chrome is asked only for
@@ -191,8 +194,9 @@ into an already-open grok.com tab; Cursor scheduled refresh never injects.
 - **Authentication information:** Yes. This includes provider API keys that
   the user creates and AI Limits saves locally after successful
   validation. Browser-session JSON, cookies, and access credentials for the
-  other providers are handled only for the selected collection sequence and
-  are not persisted. API keys are stored in the separate
+  other providers, and the openrouter.ai session cookies Chrome attaches to
+  OpenRouter's promotional-credit page read, are handled only for the selected
+  collection sequence and are not persisted. API keys are stored in the separate
   trusted-context credential record, sent only to the selected provider API,
   and never sent to the developer.
 - **Website content:** Yes. AI Limits handles private provider session, usage,
@@ -200,12 +204,14 @@ into an already-open grok.com tab; Cursor scheduled refresh never injects.
   `access_token` browser-storage entry and Cursor's manual page-context
   dashboard JSON responses (Grok Bot, credit-grant, and aggregated included
   usage), plus Grok page-origin session, usage-pool, subscription, and
-  rate-limit responses. It does not read rendered page text, prompts,
+  rate-limit responses, plus the promotional credit pools in OpenRouter's
+  signed-in Credits page server-component payload. It does not read rendered page text, prompts,
   conversations, or generated responses.
 - **Account identifiers and personally identifiable information:** Yes,
   narrowly handled. A ChatGPT account identifier derived from the access
-  credential and a Claude organization UUID/capabilities are request-local and
-  not persisted. A Claude organization name may be normalized and stored as the
+  credential, a Claude organization UUID/capabilities, and the OpenRouter
+  signed-in user ID and key creator ID (compared to confirm the same account)
+  are request-local and not persisted. A Claude organization name may be normalized and stored as the
   visible plan label. Email-shaped account labels are discarded, and current
   adapters do not query Claude or Cursor email endpoints.
 - **Financial and payment information:** Yes, limited to provider-reported
@@ -370,7 +376,9 @@ The full policy is in [PRIVACY.md](../../PRIVACY.md).
     state.
 21. **OpenRouter:** connect a temporary key, approve only
     `https://openrouter.ai/*`, and confirm credit balance plus key budget when
-    reported.
+    reported. While signed in to openrouter.ai with an active promotional
+    grant, confirm Promotional credits appear; signed in to a different
+    openrouter.ai account, confirm they are hidden.
 22. **Droid:** connect a temporary Factory API key, approve only
     `https://api.factory.ai/*`, and confirm the 5-hour, weekly, and monthly
     Standard limits. When the account reports them, confirm Droid Core windows

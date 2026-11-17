@@ -3,6 +3,7 @@ import type {
   ProviderHealth,
   QuotaMetric,
   UsageMetric,
+  UsageSnapshot,
 } from "../../domain/model";
 import { retryAtFromResponse } from "../retry-after";
 import type {
@@ -15,6 +16,12 @@ import {
   openRouterKeyResponseSchema,
   type OpenRouterKeyData,
 } from "./schema";
+import {
+  CREDITS_PAGE_URL,
+  PROMO_CREDITS_METRIC_ID,
+  parseCreditsPage,
+  promoCreditMetric,
+} from "./grants";
 
 // The upstream reference implementation defaults to
 // https://openrouter.ai/api/v1 and reads GET {base}/credits, then GET
@@ -112,12 +119,89 @@ function creditsBalance(totalCredits: number, totalUsage: number): BalanceMetric
   };
 }
 
-async function collectOpenRouter({
-  credential,
-  fetch,
-  now,
-  signal,
-}: CollectionContext): Promise<CollectionResult> {
+// The Credits page is optional enrichment; it gets its own short budget so a
+// slow page never turns a successful API refresh into a timeout.
+const PAGE_TIMEOUT_MS = 5_000;
+// openrouter.ai sign-in uses short-lived session tokens that are renewed while
+// a site tab is open, so a background read can see a signed-out page in
+// between visits. The last matching reading is carried for a bounded time.
+const PROMO_CARRY_MS = 24 * 60 * 60 * 1_000;
+
+type PromoRead =
+  | { kind: "read"; metric: BalanceMetric | undefined }
+  | { kind: "unavailable" };
+
+async function readPromoCredits(
+  fetch: typeof globalThis.fetch,
+  signal: AbortSignal,
+  now: number,
+  keyOwner: string,
+): Promise<PromoRead> {
+  try {
+    const response = await fetch(CREDITS_PAGE_URL, {
+      method: "GET",
+      credentials: "include",
+      redirect: "error",
+      headers: { RSC: "1" },
+      signal: AbortSignal.any([signal, AbortSignal.timeout(PAGE_TIMEOUT_MS)]),
+    });
+    if (
+      !response.ok ||
+      !response.headers.get("content-type")?.includes("text/x-component")
+    ) {
+      return { kind: "unavailable" };
+    }
+    const page = parseCreditsPage(await response.text());
+    if (!page) return { kind: "unavailable" };
+    // A different signed-in account is a definite answer: show nothing.
+    if (page.userId !== keyOwner) return { kind: "read", metric: undefined };
+    return { kind: "read", metric: promoCreditMetric(page.pools, now) };
+  } catch {
+    return { kind: "unavailable" };
+  }
+}
+
+function carriedPromoCredits(
+  previous: UsageSnapshot | undefined,
+  now: number,
+): BalanceMetric | undefined {
+  if (previous?.providerKind !== "openrouter") return undefined;
+  const metric = previous.metrics.find(
+    (candidate) => candidate.id === PROMO_CREDITS_METRIC_ID,
+  );
+  if (metric?.type !== "balance") return undefined;
+  const observedAt = metric.observedAt ?? previous.fetchedAt;
+  if (!(observedAt <= now && now - observedAt < PROMO_CARRY_MS)) return undefined;
+  return { ...metric, observedAt };
+}
+
+/**
+ * Optional promotional-credit enrichment from the signed-in Credits page.
+ * Shown only when the key is a personal key created by the same account that
+ * is signed in to openrouter.ai. When the page cannot be read, the previous
+ * matching reading is carried for up to a day; otherwise the metric is hidden.
+ */
+async function promoCredits(
+  context: CollectionContext,
+  key: OpenRouterKeyData | undefined,
+): Promise<BalanceMetric | undefined> {
+  const keyOwner = key?.creator_user_id;
+  if (!keyOwner || key.organization_id) return undefined;
+  const read = await readPromoCredits(
+    context.fetch,
+    context.signal,
+    context.now,
+    keyOwner,
+  );
+  return read.kind === "read"
+    ? read.metric
+    : carriedPromoCredits(context.previousSnapshot, context.now);
+}
+
+async function collectOpenRouter(
+  context: CollectionContext,
+): Promise<CollectionResult> {
+  const { credential, fetch, now, signal } = context;
   if (
     credential?.kind !== "api-key" ||
     typeof credential.value !== "string" ||
@@ -158,6 +242,7 @@ async function collectOpenRouter({
     }
 
     const metrics: UsageMetric[] = [balance];
+    let keyData: OpenRouterKeyData | undefined;
 
     try {
       const keyResponse = await fetch(KEY_URL, {
@@ -170,13 +255,17 @@ async function collectOpenRouter({
           await parseJson(keyResponse),
         );
         if (key.success) {
-          const quota = keyBudgetMetric(key.data.data);
+          keyData = key.data.data;
+          const quota = keyBudgetMetric(keyData);
           if (quota) metrics.push(quota);
         }
       }
     } catch {
       // Key enrichment is optional (openrouter.js lines 71-103).
     }
+
+    const promo = await promoCredits(context, keyData);
+    if (promo) metrics.push(promo);
 
     return {
       ok: true,
