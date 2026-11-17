@@ -119,6 +119,7 @@ const KNOWN_METRIC_KEYS: Partial<
   openrouter: {
     balance: "metrics.openrouter.balance",
     "key-budget": "metrics.openrouter.keyBudget",
+    "promo-credits": "metrics.openrouter.promoCredits",
   },
   factory: {
     "standard-five-hour": "metrics.factory.fiveHour",
@@ -225,7 +226,7 @@ const CAPABILITY_IDS: Record<ProviderKind, readonly string[]> = {
   fireworks: ["last30DaysSpend"],
   openai: ["last30DaysSpend", "last30DaysRequests"],
   groqcloud: ["requestsPerMinute", "tokensPerMinute"],
-  openrouter: ["balance", "keyBudget"],
+  openrouter: ["balance", "keyBudget", "promoCredits"],
   factory: ["rateLimits", "extraUsage"],
   zai: ["rateLimits", "mcpTools"],
   warp: ["includedCredits", "addOnCredits"],

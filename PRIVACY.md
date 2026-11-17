@@ -210,6 +210,15 @@ other. The query asks only whether the plan is unlimited, for credit
 counts, refresh timing, add-on credit amounts, types, and expirations, and for
 any error message. Warp API keys cannot be limited to read-only
 access, so AI Limits suggests creating a dedicated key with an expiry.
+OpenRouter's public API does not report promotional credit grants. When the
+key is a personal key and the user is signed in to openrouter.ai in the same
+browser, AI Limits also reads the signed-in `openrouter.ai/settings/credits`
+page payload once per refresh, with no API key attached; Chrome attaches the
+user's existing openrouter.ai cookies, which AI Limits does not read. It shows
+the grants only when the page's signed-in account matches the key's creator
+account, keeps only each grant's amount, used amount, and expiry, and drops the
+account identifier and grant names after the comparison. Without a matching
+signed-in session the promotional-credit metric is simply hidden.
 These
 read-only responses are normalized into balance, quota, counter, or spend
 metrics; raw provider responses are not persisted.

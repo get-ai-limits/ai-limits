@@ -307,4 +307,114 @@ describe("OpenRouter adapter", () => {
       health: { kind: "temporary_error" },
     });
   });
+
+  describe("promotional credits from the signed-in Credits page", () => {
+    const PAGE_URL = "https://openrouter.ai/settings/credits";
+    const OWNER = "user_syntheticOwner01";
+
+    function rscPage(userId: string, pools: unknown[]) {
+      return new Response(
+        `1:["$","$L2",null,{"userId":"${userId}"}]\n3:["$","$L4",null,${JSON.stringify({
+          purchasedBalance: 0,
+          creditPools: pools,
+        })}]\n`,
+        { status: 200, headers: { "content-type": "text/x-component" } },
+      );
+    }
+
+    const grant = {
+      id: "00000000-0000-4000-8000-000000000002",
+      name: "Promo: SYNTHETIC",
+      credit_amount: 25,
+      disabled: false,
+      expires_at: "2031-04-15T12:00:00.000Z",
+      restrictions: null,
+      usedAmount: 5,
+    };
+
+    function promoFetch(
+      page: Response | Error,
+      keyData: Record<string, unknown> = { creator_user_id: OWNER, organization_id: null },
+    ) {
+      return vi.fn<typeof globalThis.fetch>(async (input) => {
+        const url = String(input);
+        if (url === CREDITS_URL) return response(creditsFixture({ total_credits: 0, total_usage: 0 }));
+        if (url === KEY_URL) return response({ data: keyData });
+        if (url === PAGE_URL) {
+          if (page instanceof Error) throw page;
+          return page;
+        }
+        throw new Error(`unexpected url ${url}`);
+      });
+    }
+
+    test("adds the grant as a quota when the session matches the key's account", async () => {
+      const controller = new AbortController();
+      const fetch = promoFetch(rscPage(OWNER, [grant]));
+
+      const result = await openRouterAdapter.collect(
+        context(fetch, { signal: controller.signal }),
+      );
+
+      expect(fetch).toHaveBeenNthCalledWith(3, PAGE_URL, {
+        method: "GET",
+        credentials: "include",
+        redirect: "error",
+        headers: { RSC: "1" },
+        signal: controller.signal,
+      });
+      expect(result).toMatchObject({
+        ok: true,
+        snapshot: {
+          metrics: [
+            { id: "balance", value: 0 },
+            {
+              type: "quota",
+              id: "promo-credits",
+              used: 5,
+              limit: 25,
+              usedRatio: 0.2,
+              unit: "USD",
+              cycle: { resetsAt: Date.parse("2031-04-15T12:00:00.000Z") },
+            },
+          ],
+        },
+      });
+      expect(JSON.stringify(result)).not.toContain(OWNER);
+      expect(JSON.stringify(result)).not.toContain("SYNTHETIC");
+    });
+
+    test.each([
+      ["a different signed-in account", () => rscPage("user_someoneElse02", [grant])],
+      ["no active grants", () => rscPage(OWNER, [])],
+      ["a signed-out page", () => new Response("", { status: 401 })],
+      [
+        "an HTML sign-in page",
+        () =>
+          new Response("<html></html>", {
+            status: 200,
+            headers: { "content-type": "text/html" },
+          }),
+      ],
+      ["a network failure", () => new TypeError("synthetic network failure")],
+    ])("hides promotional credits for %s", async (_name, page) => {
+      const fetch = promoFetch(page());
+
+      const result = await openRouterAdapter.collect(context(fetch));
+
+      expect(result).toMatchObject({ ok: true, snapshot: { metrics: [{ id: "balance" }] } });
+      if (result.ok) expect(result.snapshot.metrics).toHaveLength(1);
+    });
+
+    test.each([
+      ["an organization key", { creator_user_id: OWNER, organization_id: "org_synthetic" }],
+      ["a key without a creator", {}],
+    ])("does not request the Credits page for %s", async (_name, keyData) => {
+      const fetch = promoFetch(rscPage(OWNER, [grant]), keyData);
+
+      await openRouterAdapter.collect(context(fetch));
+
+      expect(fetch).toHaveBeenCalledTimes(2);
+    });
+  });
 });

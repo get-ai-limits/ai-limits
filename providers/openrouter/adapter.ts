@@ -15,6 +15,7 @@ import {
   openRouterKeyResponseSchema,
   type OpenRouterKeyData,
 } from "./schema";
+import { CREDITS_PAGE_URL, parseCreditsPage, promoCreditMetric } from "./grants";
 
 // The upstream reference implementation defaults to
 // https://openrouter.ai/api/v1 and reads GET {base}/credits, then GET
@@ -112,6 +113,39 @@ function creditsBalance(totalCredits: number, totalUsage: number): BalanceMetric
   };
 }
 
+/**
+ * Optional promotional-credit enrichment from the signed-in Credits page.
+ * Shown only when the key is a personal key created by the same account that
+ * is signed in to openrouter.ai; any other outcome hides the metric.
+ */
+async function promoCredits(
+  fetch: typeof globalThis.fetch,
+  signal: AbortSignal,
+  now: number,
+  key: OpenRouterKeyData | undefined,
+): Promise<QuotaMetric | undefined> {
+  const keyOwner = key?.creator_user_id;
+  if (!keyOwner || key.organization_id) return undefined;
+  try {
+    const response = await fetch(CREDITS_PAGE_URL, {
+      method: "GET",
+      credentials: "include",
+      redirect: "error",
+      headers: { RSC: "1" },
+      signal,
+    });
+    if (!response.ok) return undefined;
+    if (!response.headers.get("content-type")?.includes("text/x-component")) {
+      return undefined;
+    }
+    const page = parseCreditsPage(await response.text());
+    if (!page || page.userId !== keyOwner) return undefined;
+    return promoCreditMetric(page.pools, now);
+  } catch {
+    return undefined;
+  }
+}
+
 async function collectOpenRouter({
   credential,
   fetch,
@@ -158,6 +192,7 @@ async function collectOpenRouter({
     }
 
     const metrics: UsageMetric[] = [balance];
+    let keyData: OpenRouterKeyData | undefined;
 
     try {
       const keyResponse = await fetch(KEY_URL, {
@@ -170,13 +205,17 @@ async function collectOpenRouter({
           await parseJson(keyResponse),
         );
         if (key.success) {
-          const quota = keyBudgetMetric(key.data.data);
+          keyData = key.data.data;
+          const quota = keyBudgetMetric(keyData);
           if (quota) metrics.push(quota);
         }
       }
     } catch {
       // Key enrichment is optional (openrouter.js lines 71-103).
     }
+
+    const promo = await promoCredits(fetch, signal, now, keyData);
+    if (promo) metrics.push(promo);
 
     return {
       ok: true,

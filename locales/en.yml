@@ -795,6 +795,7 @@ metrics:
   openrouter:
     balance: Balance
     keyBudget: API key budget
+    promoCredits: Promotional credits
   factory:
     fiveHour: 5-hour
     weekly: Weekly
@@ -984,10 +985,11 @@ providers:
   openrouter:
     name: OpenRouter
     connect: Connect OpenRouter
-    connectionDisclosure: Uses an API key you provide, stores it locally in AI Limits, and refreshes about every 15 minutes.
+    connectionDisclosure: Uses an API key you provide, stores it locally in AI Limits, and refreshes about every 15 minutes. If you are signed in to openrouter.ai, it also reads promotional credits from your Credits page.
     capabilities:
       balance: Balance
       keyBudget: API key budget
+      promoCredits: Promotional credits
   factory:
     name: Droid
     connect: Connect Droid

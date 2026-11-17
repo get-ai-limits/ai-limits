@@ -795,6 +795,7 @@ metrics:
   openrouter:
     balance: 余额
     keyBudget: API 密钥预算
+    promoCredits: 促销赠送额度
   factory:
     fiveHour: 5 小时
     weekly: 每周
@@ -984,10 +985,11 @@ providers:
   openrouter:
     name: OpenRouter
     connect: 连接 OpenRouter
-    connectionDisclosure: 使用你提供的 API 密钥，将其保存在 AI Limits 本地，并大约每 15 分钟刷新一次。
+    connectionDisclosure: 使用你提供的 API 密钥，将其保存在 AI Limits 本地，并大约每 15 分钟刷新一次。如果你已登录 openrouter.ai，还会从 Credits 页面读取促销赠送额度。
     capabilities:
       balance: 余额
       keyBudget: API 密钥预算
+      promoCredits: 促销赠送额度
   factory:
     name: Droid
     connect: 连接 Droid

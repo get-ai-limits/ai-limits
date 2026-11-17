@@ -87,7 +87,7 @@ AI Limits 是 TiantianFlow 独立开发的项目，与任何已连接的服务�
 - `https://admin.mistral.ai/*` 和 `https://console.mistral.ai/*`：从已登录的 Mistral 会话读取本月用量和额度。
 - `https://www.perplexity.ai/*`：从已登录的 Perplexity 会话读取额度池。
 - `https://api.elevenlabs.io/*`：仅在只读订阅请求中，将用户创建的 API 密钥作为 `xi-api-key` 请求头发送，然后标准化每月额度和受支持的语音限制。扩展不会请求 `https://elevenlabs.io/*`；设置页面按普通网页打开，不会获得扩展主机访问权限。
-- `https://api.deepseek.com/*`、`https://api.moonshot.ai/*`、`https://api.deepinfra.com/*`、`https://api.fireworks.ai/*`、`https://api.openai.com/*`、`https://api.groq.com/*`、`https://openrouter.ai/*`、`https://api.factory.ai/*`、`https://api.z.ai/*` 和 `https://app.warp.dev/*`：只会将所选服务已保存的密钥发送到该服务固定的只读余额、用量、指标或账单接口。
+- `https://api.deepseek.com/*`、`https://api.moonshot.ai/*`、`https://api.deepinfra.com/*`、`https://api.fireworks.ai/*`、`https://api.openai.com/*`、`https://api.groq.com/*`、`https://openrouter.ai/*`、`https://api.factory.ai/*`、`https://api.z.ai/*` 和 `https://app.warp.dev/*`：只会将所选服务已保存的密钥发送到该服务固定的只读余额、用量、指标或账单接口。对于 OpenRouter，扩展还会在不附带密钥的情况下读取已登录的 Credits 页面，并且只在已登录账号与密钥所属账号一致时显示促销赠送额度。
 - `https://*/*`：用于 New API、LiteLLM、ClawRouter、sub2api 和 LLM Proxy 实例的可选动态主机能力。扩展在运行时绝不会请求此通配符；在网址标准化后，Chrome 只会被请求该实例的精确 HTTPS 来源。
 - `http://localhost/*` 和 `http://127.0.0.1/*`：用于本地 New API 开发的可选动态能力。运行时权限仍仅限于用户输入的精确 localhost 来源和端口。公共 HTTP 来源会被拒绝。
 
@@ -144,7 +144,7 @@ AI Limits 是 TiantianFlow 独立开发的项目，与任何已连接的服务�
 18. **Fireworks：** 连接恰好可访问一个账户的临时密钥，只批准 `https://api.fireworks.ai/*`，并确认显示最近 30 天已计价支出。
 19. **OpenAI：** 连接临时密钥，只批准 `https://api.openai.com/*`，并确认显示组织支出/补全用量或旧版可用额度回退。记录所需组织或项目范围。
 20. **GroqCloud：** 连接临时密钥，只批准 `https://api.groq.com/*`。具备所需范围时确认显示 Prometheus 速率；标准密钥返回 404 时应显示需要更高范围。
-21. **OpenRouter：** 连接临时密钥，只批准 `https://openrouter.ai/*`，并确认显示额度余额，以及服务报告时的密钥预算。
+21. **OpenRouter：** 连接临时密钥，只批准 `https://openrouter.ai/*`，并确认显示额度余额，以及服务报告时的密钥预算。在已登录 openrouter.ai 且有有效促销额度时，确认显示促销赠送额度；退出登录后，确认其被隐藏。
 22. **Droid：** 连接临时 Factory API 密钥，只批准 `https://api.factory.ai/*`，并确认显示 5 小时、每周和每月 Standard 限制。账户报告时确认 Droid Core 窗口和额外用量余额。不应打开 Factory 标签页。
 23. **GLM：** 连接临时 Z.ai GLM Coding Plan API 密钥，只批准 `https://api.z.ai/*`，并确认显示 Coding Plan 的 5 小时和每周额度，以及服务报告时的 MCP 工具额度。不应打开 Z.ai 标签页。
 24. **Warp：** 连接临时 Warp API 密钥，只批准 `https://app.warp.dev/*`，并确认显示套餐包含的额度及重置时间，以及账户持有附加额度时的附加额度余额。不应打开 Warp 标签页。
