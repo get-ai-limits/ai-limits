@@ -81,9 +81,12 @@ export function createApiKeyConnectionLifecycle(): ApiKeyConnectionLifecycle {
         !controller.signal.aborted &&
         isAllowed();
       try {
+        // A newly entered key may belong to a different account, so a
+        // connect never builds on readings carried from the previous key.
+        const { snapshot: _previousSnapshot, ...withoutSnapshot } = instance;
         const collected = await collectProviderOutcome(
           providerPackage,
-          instance,
+          withoutSnapshot,
           { ...services, signal: controller.signal },
           "connect",
           { kind: "api-key", value: apiKey },

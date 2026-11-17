@@ -377,8 +377,8 @@ The full policy is in [PRIVACY.md](../../PRIVACY.md).
 21. **OpenRouter:** connect a temporary key, approve only
     `https://openrouter.ai/*`, and confirm credit balance plus key budget when
     reported. While signed in to openrouter.ai with an active promotional
-    grant, confirm Promotional credits appear; signed out, confirm they are
-    hidden.
+    grant, confirm Promotional credits appear; signed in to a different
+    openrouter.ai account, confirm they are hidden.
 22. **Droid:** connect a temporary Factory API key, approve only
     `https://api.factory.ai/*`, and confirm the 5-hour, weekly, and monthly
     Standard limits. When the account reports them, confirm Droid Core windows
