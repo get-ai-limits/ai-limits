@@ -125,6 +125,7 @@ export function createApiKeyPackage<Kind extends ApiKeyProviderKind>({
       return adapter.collect({
         ...adapterContext(services),
         credential,
+        ...(instance.snapshot ? { previousSnapshot: instance.snapshot } : {}),
         ...(normalizedConfig.kind === "dynamic-origin"
           ? { baseUrl: normalizedConfig.baseUrl }
           : {}),

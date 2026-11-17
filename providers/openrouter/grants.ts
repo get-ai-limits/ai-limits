@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import type { QuotaMetric } from "../../domain/model";
+import type { BalanceMetric } from "../../domain/model";
 
 // Promotional credit grants are not exposed by OpenRouter's public API:
 // `/api/v1/credits` reports purchased credits only. The signed-in Credits page
@@ -84,48 +84,42 @@ export function parseCreditsPage(payload: string): CreditsPageGrants | undefined
   return pools.success ? { userId, pools: pools.data } : undefined;
 }
 
-function expiryMs(pool: OpenRouterCreditPool): number | undefined {
-  if (pool.expires_at === null || pool.expires_at === undefined) return undefined;
-  const parsed = Date.parse(pool.expires_at);
-  return Number.isFinite(parsed) ? parsed : Number.NaN;
+export const PROMO_CREDITS_METRIC_ID = "promo-credits";
+
+function isActive(pool: OpenRouterCreditPool, now: number): boolean {
+  if (pool.disabled || pool.credit_amount <= 0) return false;
+  if (pool.expires_at === null || pool.expires_at === undefined) return true;
+  const expiresAt = Date.parse(pool.expires_at);
+  return Number.isFinite(expiresAt) && expiresAt > now;
 }
 
 /**
- * One quota across active grants, or undefined when no grant has credit
- * left. Disabled, expired, and fully used grants are left out, so the metric
- * disappears when promotional credit is not available.
+ * Remaining credit across active grants as a balance, or undefined when no
+ * grant has credit left. Disabled, expired, and fully used grants are left
+ * out, so the metric disappears when promotional credit is not available.
+ * Grants expire rather than refill, so expiry is not reported as a reset.
  */
 export function promoCreditMetric(
   pools: readonly OpenRouterCreditPool[],
   now: number,
-): QuotaMetric | undefined {
-  let limit = 0;
-  let used = 0;
-  let earliestExpiry: number | undefined;
+): BalanceMetric | undefined {
+  let granted = 0;
+  let remaining = 0;
   for (const pool of pools) {
-    if (pool.disabled) continue;
-    const expiry = expiryMs(pool);
-    if (Number.isNaN(expiry) || (expiry !== undefined && expiry <= now)) continue;
-    if (pool.credit_amount <= 0) continue;
-    const poolUsed = Math.min(pool.credit_amount, Math.max(0, pool.usedAmount));
-    if (poolUsed >= pool.credit_amount) continue;
-    limit += pool.credit_amount;
-    used += poolUsed;
-    if (expiry !== undefined) {
-      earliestExpiry =
-        earliestExpiry === undefined ? expiry : Math.min(earliestExpiry, expiry);
-    }
+    if (!isActive(pool, now)) continue;
+    const used = Math.min(pool.credit_amount, Math.max(0, pool.usedAmount));
+    if (used >= pool.credit_amount) continue;
+    granted += pool.credit_amount;
+    remaining += pool.credit_amount - used;
   }
-  if (limit <= 0) return undefined;
+  if (remaining <= 0) return undefined;
   return {
-    type: "quota",
-    id: "promo-credits",
+    type: "balance",
+    id: PROMO_CREDITS_METRIC_ID,
     label: "Promotional credits",
     scope: "product",
-    usedRatio: Math.min(1, used / limit),
-    used,
-    limit,
+    value: remaining,
     unit: "USD",
-    ...(earliestExpiry === undefined ? {} : { cycle: { resetsAt: earliestExpiry } }),
+    initialLimit: granted,
   };
 }

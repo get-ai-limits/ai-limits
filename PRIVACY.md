@@ -30,14 +30,16 @@ extension reads and normalizes:
 The extension also handles provider session, usage, subscription, and
 organization-response JSON in memory. A ChatGPT account identifier derived
 from its access credential and the selected Claude organization UUID and
-capabilities are request-local and are not persisted. A Claude organization
+capabilities are request-local and are not persisted, as are the OpenRouter
+signed-in user ID and key creator ID compared for promotional credits. A Claude organization
 name may be normalized and stored as the visible plan label. The extension
 discards email-shaped account labels and does not query the current Claude or
 Cursor email endpoints. For ElevenLabs, the extension retains only normalized
 monthly credit and voice-capacity fields from the subscription response; it
 does not retain invoices, payment attempts, coupons, payment identifiers, or
 currency overage fields. It does not read prompts, conversations, generated
-responses, or rendered provider page content.
+responses, or rendered provider page content, apart from the promotional
+credit pools in OpenRouter's Credits page payload described below.
 
 For each New API instance, the extension retains an opaque instance ID, the
 normalized base URL, optional user label, relay-key name, instance display
@@ -52,7 +54,9 @@ data, or other relay keys.
 ChatGPT, Claude, Kimi, Cursor, Grok, Mistral, and Perplexity use signed-in
 browser sessions. AI Limits sends read-only requests to those providers' own
 web-session services, and browser cookies may accompany requests to the same
-provider origin. Requests normally run directly from the extension; the Cursor
+provider origin. OpenRouter is an API-key provider, but its
+promotional-credit read also uses the signed-in openrouter.ai session, as
+described below. Requests normally run directly from the extension; the Cursor
 and Grok page-origin reads described below run in an already-open exact-origin
 page or, if none is open during Connect or manual Refresh, in one inactive tab
 created for that attempt. ChatGPT
@@ -216,9 +220,12 @@ browser, AI Limits also reads the signed-in `openrouter.ai/settings/credits`
 page payload once per refresh, with no API key attached; Chrome attaches the
 user's existing openrouter.ai cookies, which AI Limits does not read. It shows
 the grants only when the page's signed-in account matches the key's creator
-account, keeps only each grant's amount, used amount, and expiry, and drops the
-account identifier and grant names after the comparison. Without a matching
-signed-in session the promotional-credit metric is simply hidden.
+account, keeps only the combined remaining and granted amounts of active
+grants, and drops the account identifier and grant names after the comparison.
+openrouter.ai sign-in tokens are short-lived and renewed while a site tab is
+open, so when the page cannot be read, the last matching reading stays visible
+for up to 24 hours; after that, or when another account is signed in, the
+promotional-credit metric is hidden.
 These
 read-only responses are normalized into balance, quota, counter, or spend
 metrics; raw provider responses are not persisted.

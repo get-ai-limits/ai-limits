@@ -54,30 +54,21 @@ describe("parseCreditsPage", () => {
 });
 
 describe("promoCreditMetric", () => {
-  test("sums active grants and reports the earliest expiry", () => {
+  test("sums the remaining credit of active grants as a balance", () => {
     expect(
       promoCreditMetric(
-        [
-          pool(),
-          pool({ credit_amount: 100, usedAmount: 0, expires_at: "2030-06-01T00:00:00.000Z" }),
-        ],
+        [pool(), pool({ credit_amount: 100, usedAmount: 0, expires_at: null })],
         NOW,
       ),
     ).toEqual({
-      type: "quota",
+      type: "balance",
       id: "promo-credits",
       label: "Promotional credits",
       scope: "product",
-      usedRatio: 10 / 150,
-      used: 10,
-      limit: 150,
+      value: 140,
       unit: "USD",
-      cycle: { resetsAt: Date.parse("2030-06-01T00:00:00.000Z") },
+      initialLimit: 150,
     });
-  });
-
-  test("omits the cycle for grants without an expiry", () => {
-    expect(promoCreditMetric([pool({ expires_at: null })], NOW)).not.toHaveProperty("cycle");
   });
 
   test.each([
@@ -94,6 +85,6 @@ describe("promoCreditMetric", () => {
   test("ignores unavailable grants next to an active one", () => {
     expect(
       promoCreditMetric([pool({ disabled: true }), pool({ usedAmount: -5 })], NOW),
-    ).toMatchObject({ used: 0, limit: 50, usedRatio: 0 });
+    ).toMatchObject({ value: 50, initialLimit: 50 });
   });
 });

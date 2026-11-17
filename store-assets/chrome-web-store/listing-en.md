@@ -194,8 +194,9 @@ into an already-open grok.com tab; Cursor scheduled refresh never injects.
 - **Authentication information:** Yes. This includes provider API keys that
   the user creates and AI Limits saves locally after successful
   validation. Browser-session JSON, cookies, and access credentials for the
-  other providers are handled only for the selected collection sequence and
-  are not persisted. API keys are stored in the separate
+  other providers, and the openrouter.ai session cookies Chrome attaches to
+  OpenRouter's promotional-credit page read, are handled only for the selected
+  collection sequence and are not persisted. API keys are stored in the separate
   trusted-context credential record, sent only to the selected provider API,
   and never sent to the developer.
 - **Website content:** Yes. AI Limits handles private provider session, usage,
@@ -203,12 +204,14 @@ into an already-open grok.com tab; Cursor scheduled refresh never injects.
   `access_token` browser-storage entry and Cursor's manual page-context
   dashboard JSON responses (Grok Bot, credit-grant, and aggregated included
   usage), plus Grok page-origin session, usage-pool, subscription, and
-  rate-limit responses. It does not read rendered page text, prompts,
+  rate-limit responses, plus the promotional credit pools in OpenRouter's
+  signed-in Credits page server-component payload. It does not read rendered page text, prompts,
   conversations, or generated responses.
 - **Account identifiers and personally identifiable information:** Yes,
   narrowly handled. A ChatGPT account identifier derived from the access
-  credential and a Claude organization UUID/capabilities are request-local and
-  not persisted. A Claude organization name may be normalized and stored as the
+  credential, a Claude organization UUID/capabilities, and the OpenRouter
+  signed-in user ID and key creator ID (compared to confirm the same account)
+  are request-local and not persisted. A Claude organization name may be normalized and stored as the
   visible plan label. Email-shaped account labels are discarded, and current
   adapters do not query Claude or Cursor email endpoints.
 - **Financial and payment information:** Yes, limited to provider-reported
