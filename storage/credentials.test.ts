@@ -60,6 +60,27 @@ describe("instance credential vault V2", () => {
     await expect(browser.storage.local.get(null)).resolves.toEqual({});
   });
 
+  test("Chromium builds require trusted-context isolation by default", async () => {
+    setAccessLevel.mockRejectedValueOnce(new Error("unavailable"));
+
+    await expect(
+      vault.initializeCredentialVault({ requireTrustedContexts: true }),
+    ).rejects.toThrow("unavailable");
+  });
+
+  test("the Firefox build opens the vault without setAccessLevel", async () => {
+    Object.assign(browser.storage.local, { setAccessLevel: undefined });
+
+    await vault.initializeCredentialVault({ requireTrustedContexts: false });
+    await expect(
+      vault.saveApiKeyIfCurrent(
+        "elevenlabs:default",
+        "synthetic-key",
+        () => true,
+      ),
+    ).resolves.toMatchObject({ saved: true });
+  });
+
   test("trims bounded keys and never stores a base URL in credentials", async () => {
     await vault.initializeCredentialVault();
     await vault.saveApiKeyIfCurrent(

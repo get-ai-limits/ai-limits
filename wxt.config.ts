@@ -3,8 +3,23 @@ import { providerDefinitions } from "./providers/definitions";
 
 const providers = Object.values(providerDefinitions);
 
+// Permanent Firefox add-on ID. AMO ties the listing and every future update
+// to it, so it must never change once published.
+const FIREFOX_ADDON_ID = "ai-limits@get-ai-limits.com";
+// 140 is the first Firefox ESR with built-in data collection consent, and it
+// covers every API the extension uses (MV3 DNR session rules, storage.session,
+// optional_host_permissions).
+const FIREFOX_MIN_VERSION = "140.0";
+const FIREFOX_REQUIRED_DATA_COLLECTION = ["authenticationInfo"] as const;
+
 export default defineConfig({
   modules: ["@wxt-dev/module-react", "@wxt-dev/i18n/module"],
+  zip: {
+    // The Firefox sources archive (AMO review) must hold only committed
+    // files, so skip the gitignored output folders (dotfiles and tests are
+    // already excluded by WXT). `pnpm verify:targets` enforces this.
+    excludeSources: ["dist/**", "coverage/**", "artifacts/**"],
+  },
   hooks: {
     "entrypoints:found": (_wxt, entrypoints) => {
       const productionEntrypoints = entrypoints.filter(
@@ -13,15 +28,40 @@ export default defineConfig({
       entrypoints.splice(0, entrypoints.length, ...productionEntrypoints);
     },
   },
-  manifest: {
+  manifest: ({ browser }) => ({
     name: "__MSG_manifest_name__",
-    description: "__MSG_manifest_description__",
+    // The Chrome description names Chrome's side panel; the other stores get
+    // their own browser's name so the listing summary is accurate.
+    description:
+      browser === "firefox"
+        ? "__MSG_manifest_descriptionFirefox__"
+        : browser === "edge"
+          ? "__MSG_manifest_descriptionEdge__"
+          : "__MSG_manifest_description__",
     default_locale: "en",
-    minimum_chrome_version: "116",
+    ...(browser === "firefox"
+      ? {
+          browser_specific_settings: {
+            gecko: {
+              id: FIREFOX_ADDON_ID,
+              strict_min_version: FIREFOX_MIN_VERSION,
+              // Mozilla counts any data handled outside the browser, not only
+              // data sent to the developer. Provider API keys and session
+              // credentials go to the provider the user connects, which is
+              // authentication information. Nothing goes to the developer;
+              // see PRIVACY.md and the Chrome Web Store disclosure.
+              data_collection_permissions: {
+                required: [...FIREFOX_REQUIRED_DATA_COLLECTION],
+              },
+            },
+          },
+        }
+      : { minimum_chrome_version: "116" }),
     permissions: [
       "storage",
       "alarms",
-      "sidePanel",
+      // Firefox has no sidePanel API; WXT emits sidebar_action instead.
+      ...(browser === "firefox" ? [] : ["sidePanel"]),
       "declarativeNetRequestWithHostAccess",
     ],
     optional_host_permissions: [
@@ -47,5 +87,5 @@ export default defineConfig({
         128: "icons/128.png",
       },
     },
-  },
+  }),
 });

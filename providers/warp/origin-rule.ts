@@ -1,5 +1,6 @@
 // Warp's app server answers 403 to any request carrying an Origin header,
-// and Chrome stamps extension fetches with `Origin: chrome-extension://<id>`.
+// and browsers stamp extension fetches with the extension origin
+// (`chrome-extension://<id>` in Chromium, `moz-extension://<uuid>` in Firefox).
 // This session rule removes that header from AI Limits' own usage request and
 // nothing else: one exact URL, POST only, from this extension's service worker.
 // It takes effect only while the optional app.warp.dev host access is granted.
@@ -13,8 +14,17 @@ type SessionRulesApi = Pick<
   "updateSessionRules"
 >;
 
+// The initiator is matched by the extension origin's host. In Chromium that
+// host is the extension ID; in Firefox it is a per-install UUID that differs
+// from the add-on ID, so it is read from the extension's own URL.
+export function extensionOriginHost(
+  getURL: (path: "/") => string = (path) => browser.runtime.getURL(path),
+): string {
+  return new URL(getURL("/")).hostname;
+}
+
 export function warpOriginRule(
-  extensionId: string,
+  extensionHost: string,
 ): Browser.declarativeNetRequest.Rule {
   return {
     id: WARP_ORIGIN_RULE_ID,
@@ -27,7 +37,7 @@ export function warpOriginRule(
       urlFilter: `|${WARP_USAGE_URL}|`,
       requestMethods: ["post"],
       resourceTypes: ["xmlhttprequest"],
-      initiatorDomains: [extensionId],
+      initiatorDomains: [extensionHost],
       // Service-worker requests have no tab.
       tabIds: [-1],
     },
@@ -36,10 +46,10 @@ export function warpOriginRule(
 
 export async function installWarpOriginRule(
   api: SessionRulesApi = browser.declarativeNetRequest,
-  extensionId: string = browser.runtime.id,
+  extensionHost: string = extensionOriginHost(),
 ): Promise<void> {
   await api.updateSessionRules({
     removeRuleIds: [WARP_ORIGIN_RULE_ID],
-    addRules: [warpOriginRule(extensionId)],
+    addRules: [warpOriginRule(extensionHost)],
   });
 }

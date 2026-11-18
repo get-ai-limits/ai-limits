@@ -152,6 +152,24 @@ pnpm verify:zip
 该命令会重新构建扩展，创建 `.output/ai-limits-0.5.6-chrome.zip`，打开压缩包，
 并验证清单、入口文件、权限和禁止包含的文件规则。
 
+## 构建 Edge 和 Firefox 版本
+
+同一份源码可以构建 Microsoft Edge 和 Firefox 商店包：
+
+```bash
+pnpm verify:zip       # 先构建 Chrome 版本，供下面的比对使用
+pnpm verify:targets
+```
+
+该命令会生成 `.output/ai-limits-<version>-edge.zip`、
+`.output/ai-limits-<version>-firefox.zip` 和
+`.output/ai-limits-<version>-sources.zip`，并检查 Edge 清单与 Chrome 一致、
+Firefox 清单声明了附加组件 ID 和数据收集设置，以及源码包只包含已提交的文件。
+在 Firefox 中，点击工具栏按钮会以侧边栏形式打开面板。
+
+如需从源码包复现 Firefox 构建（供附加组件审核），请使用 Node 24 并运行
+`pnpm install --frozen-lockfile && pnpm zip:firefox`，输出位于 `.output/firefox-mv3`。
+
 ## 服务兼容性
 
 使用浏览器会话的服务依赖未公开且不受支持的会话和用量接口。API 密钥服务使用

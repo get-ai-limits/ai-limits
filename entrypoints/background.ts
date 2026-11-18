@@ -17,6 +17,7 @@ import type { ProviderPackage } from "../providers/types";
 import { initializeCredentialVault } from "../storage/credentials";
 import { migrateLegacyStorageInPlace } from "../storage/migration";
 import { PERMISSION_INTENT_SWEEP_ALARM } from "../background/permission-intents";
+import { registerToolbarPanel } from "../background/toolbar-panel";
 
 const REFRESH_ALARM = "refresh-connected";
 const REFRESH_PERIOD_MINUTES = 15;
@@ -221,11 +222,7 @@ export interface BackgroundEventRegistration {
 export function registerBackgroundEventCapture(
   options: BackgroundInitializationOptions = productionOptions,
 ): BackgroundEventRegistration {
-  void browser.sidePanel
-    .setPanelBehavior({ openPanelOnActionClick: true })
-    .catch((error) => {
-      console.error("Unable to enable toolbar side-panel behavior.", error);
-    });
+  registerToolbarPanel();
 
   let wakeEventQueue: Promise<void> = Promise.resolve();
   const activation = Promise.resolve().then(() => activateBackground(options));
