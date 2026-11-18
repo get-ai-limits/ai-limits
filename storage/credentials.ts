@@ -117,11 +117,26 @@ async function writeCredentialState(state: CredentialStateV2): Promise<void> {
   });
 }
 
-export async function initializeCredentialVault(): Promise<void> {
+export interface CredentialVaultOptions {
+  // Chromium restricts storage.local to trusted extension contexts through
+  // setAccessLevel, and the vault stays closed if that fails. Firefox has no
+  // setAccessLevel (bug 1724754). There the extension declares no content
+  // scripts, so the only untrusted-context code that could reach
+  // storage.local is the extension's own injected page readers, which run in
+  // an isolated world the page cannot touch. The Firefox build therefore
+  // opens the vault without the call; every other build still requires it.
+  readonly requireTrustedContexts?: boolean;
+}
+
+export async function initializeCredentialVault({
+  requireTrustedContexts = !import.meta.env.FIREFOX,
+}: CredentialVaultOptions = {}): Promise<void> {
   credentialStorageInitialized = false;
-  await browser.storage.local.setAccessLevel({
-    accessLevel: "TRUSTED_CONTEXTS",
-  });
+  if (requireTrustedContexts) {
+    await browser.storage.local.setAccessLevel({
+      accessLevel: "TRUSTED_CONTEXTS",
+    });
+  }
   credentialStorageInitialized = true;
 }
 

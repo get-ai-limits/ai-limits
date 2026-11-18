@@ -15,8 +15,9 @@ export default defineConfig({
   modules: ["@wxt-dev/module-react", "@wxt-dev/i18n/module"],
   zip: {
     // The Firefox sources archive (AMO review) must hold only committed
-    // files; `dist/` is the staged unpacked Chrome build.
-    excludeSources: ["dist/**"],
+    // files, so skip the gitignored output folders (dotfiles and tests are
+    // already excluded by WXT). `pnpm verify:targets` enforces this.
+    excludeSources: ["dist/**", "coverage/**", "artifacts/**"],
   },
   hooks: {
     "entrypoints:found": (_wxt, entrypoints) => {
