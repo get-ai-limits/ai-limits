@@ -10,7 +10,7 @@ import { strFromU8 } from "fflate";
 import {
   readReleaseDirectoryEntries,
   readValidatedReleaseZipEntries,
-  validateBuildManifest,
+  validateEdgeManifest,
   validateFirefoxManifest,
   validateReleaseEntryNames,
   validateSidePanelAssetText,
@@ -70,13 +70,8 @@ await verifyTarget({
   label: "Edge",
   directory: ".output/edge-mv3",
   zipSuffix: "edge",
-  validateManifest: (manifest) => {
-    const errors = validateBuildManifest(manifest, packageJson.version);
-    if (JSON.stringify(manifest) !== JSON.stringify(chromeManifest)) {
-      errors.push("Expected the Edge manifest to match the Chrome manifest.");
-    }
-    return errors;
-  },
+  validateManifest: (manifest) =>
+    validateEdgeManifest(manifest, chromeManifest, packageJson.version),
 });
 
 await verifyTarget({
@@ -101,6 +96,17 @@ const sourceErrors = validateReleaseEntryNames(sourceNames);
 for (const name of sourceNames) {
   if (!tracked.has(name)) {
     sourceErrors.push(`Sources ZIP contains an untracked file: ${name}.`);
+    continue;
+  }
+  // A tracked file with uncommitted edits would ship code that is not in the
+  // repository, so each archived file must match its committed version.
+  const committed = execFileSync("git", ["show", `HEAD:${name}`], {
+    maxBuffer: 64 * 1024 * 1024,
+  });
+  if (!Buffer.from(sources[name]).equals(committed)) {
+    sourceErrors.push(
+      `Sources ZIP has uncommitted changes in ${name}; commit them first.`,
+    );
   }
 }
 for (const required of ["package.json", "pnpm-lock.yaml", "wxt.config.ts"]) {

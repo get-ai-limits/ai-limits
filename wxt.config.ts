@@ -29,7 +29,14 @@ export default defineConfig({
   },
   manifest: ({ browser }) => ({
     name: "__MSG_manifest_name__",
-    description: "__MSG_manifest_description__",
+    // The Chrome description names Chrome's side panel; the other stores get
+    // their own browser's name so the listing summary is accurate.
+    description:
+      browser === "firefox"
+        ? "__MSG_manifest_descriptionFirefox__"
+        : browser === "edge"
+          ? "__MSG_manifest_descriptionEdge__"
+          : "__MSG_manifest_description__",
     default_locale: "en",
     ...(browser === "firefox"
       ? {

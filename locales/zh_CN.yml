@@ -6,6 +6,8 @@ meta:
 manifest:
   name: AI Limits
   description: 在同一个 Chrome 侧边栏中跟踪已连接 AI 服务的用量、重置时间、消耗节奏和本地历史。
+  descriptionEdge: 在同一个 Edge 侧边栏中跟踪已连接 AI 服务的用量、重置时间、消耗节奏和本地历史。
+  descriptionFirefox: 在同一个 Firefox 侧边栏中跟踪已连接 AI 服务的用量、重置时间、消耗节奏和本地历史。
   actionTitle: 打开 AI Limits
 
 common:

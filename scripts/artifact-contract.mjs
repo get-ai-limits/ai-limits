@@ -240,8 +240,15 @@ export function validateFirefoxManifest(manifest, packageVersion) {
     errors.push("Expected exactly one Firefox background script.");
   }
 
+  if (manifest.description !== "__MSG_manifest_descriptionFirefox__") {
+    errors.push(
+      'Expected the Firefox description to be "__MSG_manifest_descriptionFirefox__".',
+    );
+  }
+
   const chromiumEquivalent = {
     ...manifest,
+    description: "__MSG_manifest_description__",
     side_panel: { default_path: manifest.sidebar_action?.default_panel },
     permissions: [...(manifest.permissions ?? []), "sidePanel"],
     minimum_chrome_version: "116",
@@ -730,6 +737,27 @@ function compareReleaseEntries(reference, candidate, candidateLabel) {
         `${candidateLabel} has unexpected file ${name} compared with WXT output.`,
       );
     }
+  }
+  return errors;
+}
+
+// Edge ships the Chrome manifest except for its own store description.
+export function validateEdgeManifest(manifest, chromeManifest, packageVersion) {
+  const errors = [];
+  if (manifest.description !== "__MSG_manifest_descriptionEdge__") {
+    errors.push(
+      'Expected the Edge description to be "__MSG_manifest_descriptionEdge__".',
+    );
+  }
+  const chromeEquivalent = {
+    ...manifest,
+    description: "__MSG_manifest_description__",
+  };
+  errors.push(...validateBuildManifest(chromeEquivalent, packageVersion));
+  if (JSON.stringify(chromeEquivalent) !== JSON.stringify(chromeManifest)) {
+    errors.push(
+      "Expected the Edge manifest to match the Chrome manifest apart from its description.",
+    );
   }
   return errors;
 }

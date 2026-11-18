@@ -6,6 +6,8 @@ meta:
 manifest:
   name: AI Limits
   description: Track subscription usage, resets, pace, and local history for your connected AI providers in one Chrome side panel.
+  descriptionEdge: Track subscription usage, resets, pace, and local history for your connected AI providers in one Edge side panel.
+  descriptionFirefox: Track subscription usage, resets, pace, and local history for your connected AI providers in one Firefox sidebar.
   actionTitle: Open AI Limits
 
 common:

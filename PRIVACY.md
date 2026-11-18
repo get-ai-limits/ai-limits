@@ -253,7 +253,7 @@ In the Microsoft Edge build the same Chromium access level applies. Firefox does
 not offer that access-level setting, so in the Firefox build the record is kept
 in Firefox's extension storage without it. AI Limits declares no content
 scripts; the only page-context code it runs is its own short readers on the
-provider pages you connect, which run isolated from the page's own scripts.
+provider pages you connect, and that code has no access to extension storage.
 
 Disconnect, Delete all local data, uninstall, or clearing extension storage
 deletes the saved API key. If Chrome cannot revoke a final-owner host

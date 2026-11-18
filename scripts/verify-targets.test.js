@@ -14,7 +14,7 @@ function firefoxManifest() {
   return {
     manifest_version: 3,
     name: "__MSG_manifest_name__",
-    description: "__MSG_manifest_description__",
+    description: "__MSG_manifest_descriptionFirefox__",
     version,
     default_locale: "en",
     icons: {
