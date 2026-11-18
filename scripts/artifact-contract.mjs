@@ -194,6 +194,63 @@ export function validateBuildManifest(manifest, packageVersion) {
   return errors;
 }
 
+export const FIREFOX_ADDON_ID = "ai-limits@get-ai-limits.com";
+export const FIREFOX_MIN_VERSION = "140.0";
+
+// The Firefox build shares every Chromium invariant except how the panel and
+// background are declared. Map those back to their Chromium form, run the
+// shared checks, then check the Firefox-only keys.
+export function validateFirefoxManifest(manifest, packageVersion) {
+  const errors = [];
+  const gecko = manifest.browser_specific_settings?.gecko;
+  const scripts = manifest.background?.scripts;
+
+  if (manifest.side_panel !== undefined) {
+    errors.push("Expected no side_panel in the Firefox manifest.");
+  }
+  if (manifest.permissions?.includes("sidePanel")) {
+    errors.push("Expected no sidePanel permission in the Firefox manifest.");
+  }
+  if (manifest.minimum_chrome_version !== undefined) {
+    errors.push("Expected no minimum_chrome_version in the Firefox manifest.");
+  }
+  if (manifest.background?.service_worker !== undefined) {
+    errors.push("Expected a Firefox background script, not a service worker.");
+  }
+  if (manifest.sidebar_action?.default_panel !== "sidepanel.html") {
+    errors.push('Expected sidebar_action.default_panel to be "sidepanel.html".');
+  }
+  if (gecko?.id !== FIREFOX_ADDON_ID) {
+    errors.push(`Expected the Firefox add-on ID to be ${FIREFOX_ADDON_ID}.`);
+  }
+  if (gecko?.strict_min_version !== FIREFOX_MIN_VERSION) {
+    errors.push(
+      `Expected Firefox strict_min_version to be ${FIREFOX_MIN_VERSION}.`,
+    );
+  }
+  if (
+    JSON.stringify(gecko?.data_collection_permissions) !==
+    JSON.stringify({ required: ["none"] })
+  ) {
+    errors.push(
+      'Expected Firefox data_collection_permissions to declare required ["none"].',
+    );
+  }
+  if (!Array.isArray(scripts) || scripts.length !== 1) {
+    errors.push("Expected exactly one Firefox background script.");
+  }
+
+  const chromiumEquivalent = {
+    ...manifest,
+    side_panel: { default_path: manifest.sidebar_action?.default_panel },
+    permissions: [...(manifest.permissions ?? []), "sidePanel"],
+    minimum_chrome_version: "116",
+    background: { service_worker: scripts?.[0] },
+  };
+  errors.push(...validateBuildManifest(chromiumEquivalent, packageVersion));
+  return errors;
+}
+
 export function validateSidePanelAssetText(text) {
   const errors = [];
   for (const boundary of SIDE_PANEL_CREDENTIAL_BOUNDARIES) {
@@ -674,6 +731,16 @@ function compareReleaseEntries(reference, candidate, candidateLabel) {
       );
     }
   }
+  return errors;
+}
+
+export function validateTargetArtifactParity({ zip, output }) {
+  const errors = [];
+  for (const entries of [zip, output]) {
+    errors.push(...validateReleaseEntryNames(Object.keys(entries)));
+    errors.push(...validateReleaseArtifactContents(entries));
+  }
+  errors.push(...compareReleaseEntries(output, zip, "ZIP"));
   return errors;
 }
 

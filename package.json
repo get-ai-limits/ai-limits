@@ -8,6 +8,8 @@
     "assets:store": "node scripts/capture-store-assets.mjs",
     "dev": "wxt",
     "build": "wxt build && node scripts/stage-unpacked.mjs && node scripts/publish-dev-build.mjs",
+    "build:edge": "wxt build -b edge",
+    "build:firefox": "wxt build -b firefox --mv3",
     "build:site": "node scripts/build-site.mjs",
     "postinstall": "wxt prepare",
     "test": "vitest",
@@ -19,7 +21,10 @@
     "verify:store-assets": "node scripts/verify-store-assets.mjs",
     "verify": "pnpm verify:tracked-files && pnpm test:run && pnpm typecheck && pnpm build && node scripts/verify-build.mjs && pnpm verify:publication && pnpm verify:store-assets",
     "zip": "wxt zip && node scripts/publish-dev-build.mjs",
-    "verify:zip": "pnpm build && pnpm zip && node scripts/verify-zip.mjs"
+    "zip:edge": "wxt zip -b edge",
+    "zip:firefox": "wxt zip -b firefox --mv3",
+    "verify:zip": "pnpm build && pnpm zip && node scripts/verify-zip.mjs",
+    "verify:targets": "pnpm zip:edge && pnpm zip:firefox && node scripts/verify-targets.mjs"
   },
   "engines": {
     "node": "24.x"

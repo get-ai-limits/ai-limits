@@ -1,5 +1,6 @@
 import { describe, expect, test, vi } from "vitest";
 import {
+  extensionOriginHost,
   installWarpOriginRule,
   WARP_ORIGIN_RULE_ID,
   WARP_USAGE_URL,
@@ -35,5 +36,16 @@ describe("Warp origin rule", () => {
     expect(WARP_USAGE_URL).toBe(
       "https://app.warp.dev/graphql/v2?op=GetRequestLimitInfo",
     );
+  });
+
+  test("matches the initiator by the extension origin host on every browser", () => {
+    expect(
+      extensionOriginHost(() => "chrome-extension://abcdefghijklmnop/"),
+    ).toBe("abcdefghijklmnop");
+    expect(
+      extensionOriginHost(
+        () => "moz-extension://0d5c7a61-3b2e-4f7a-9c1e-2b8f6d4e9a10/",
+      ),
+    ).toBe("0d5c7a61-3b2e-4f7a-9c1e-2b8f6d4e9a10");
   });
 });

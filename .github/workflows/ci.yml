@@ -32,3 +32,4 @@ jobs:
       - run: gitleaks version
       - run: pnpm verify
       - run: pnpm verify:zip
+      - run: pnpm verify:targets

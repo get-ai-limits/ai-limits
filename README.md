@@ -184,6 +184,26 @@ The command rebuilds the extension, creates
 `.output/ai-limits-0.5.6-chrome.zip`, opens the archive, and verifies its
 manifest, entrypoints, permissions, and forbidden-file rules.
 
+## Build for Edge and Firefox
+
+The same source builds the Microsoft Edge and Firefox store packages:
+
+```bash
+pnpm verify:zip       # Chrome build, needed for the comparison below
+pnpm verify:targets
+```
+
+This writes `.output/ai-limits-<version>-edge.zip`,
+`.output/ai-limits-<version>-firefox.zip`, and
+`.output/ai-limits-<version>-sources.zip`, then checks that the Edge manifest
+matches Chrome's, that the Firefox manifest declares its add-on ID and
+data-collection setting, and that the sources archive holds only committed
+files. In Firefox the panel opens as a sidebar from the toolbar button.
+
+To reproduce the Firefox build from the sources archive (for add-on review),
+use Node 24 and run `pnpm install --frozen-lockfile && pnpm zip:firefox`; the
+output is `.output/firefox-mv3`.
+
 ## Provider compatibility
 
 The browser-session providers use private, unsupported session and usage
