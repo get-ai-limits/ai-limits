@@ -196,6 +196,7 @@ export function validateBuildManifest(manifest, packageVersion) {
 
 export const FIREFOX_ADDON_ID = "ai-limits@get-ai-limits.com";
 export const FIREFOX_MIN_VERSION = "140.0";
+export const FIREFOX_REQUIRED_DATA_COLLECTION = ["authenticationInfo"];
 
 // The Firefox build shares every Chromium invariant except how the panel and
 // background are declared. Map those back to their Chromium form, run the
@@ -230,10 +231,10 @@ export function validateFirefoxManifest(manifest, packageVersion) {
   }
   if (
     JSON.stringify(gecko?.data_collection_permissions) !==
-    JSON.stringify({ required: ["none"] })
+    JSON.stringify({ required: FIREFOX_REQUIRED_DATA_COLLECTION })
   ) {
     errors.push(
-      'Expected Firefox data_collection_permissions to declare required ["none"].',
+      `Expected Firefox data_collection_permissions to declare required ${JSON.stringify(FIREFOX_REQUIRED_DATA_COLLECTION)}.`,
     );
   }
   if (!Array.isArray(scripts) || scripts.length !== 1) {

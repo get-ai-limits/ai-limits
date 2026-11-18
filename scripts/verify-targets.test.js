@@ -5,6 +5,7 @@ import {
   EXPECTED_OPTIONAL_ORIGINS,
   FIREFOX_ADDON_ID,
   FIREFOX_MIN_VERSION,
+  FIREFOX_REQUIRED_DATA_COLLECTION,
   validateFirefoxManifest,
 } from "./artifact-contract.mjs";
 
@@ -27,7 +28,9 @@ function firefoxManifest() {
       gecko: {
         id: FIREFOX_ADDON_ID,
         strict_min_version: FIREFOX_MIN_VERSION,
-        data_collection_permissions: { required: ["none"] },
+        data_collection_permissions: {
+          required: [...FIREFOX_REQUIRED_DATA_COLLECTION],
+        },
       },
     },
     permissions: ["storage", "alarms", "declarativeNetRequestWithHostAccess"],
@@ -51,10 +54,10 @@ describe("Firefox manifest contract", () => {
 
     const collecting = firefoxManifest();
     collecting.browser_specific_settings.gecko.data_collection_permissions = {
-      required: ["browsingActivity"],
+      required: ["none"],
     };
     expect(validateFirefoxManifest(collecting, version)).toContain(
-      'Expected Firefox data_collection_permissions to declare required ["none"].',
+      `Expected Firefox data_collection_permissions to declare required ${JSON.stringify(FIREFOX_REQUIRED_DATA_COLLECTION)}.`,
     );
 
     const renamed = firefoxManifest();

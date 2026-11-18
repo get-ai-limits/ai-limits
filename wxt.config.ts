@@ -10,6 +10,7 @@ const FIREFOX_ADDON_ID = "ai-limits@get-ai-limits.com";
 // covers every API the extension uses (MV3 DNR session rules, storage.session,
 // optional_host_permissions).
 const FIREFOX_MIN_VERSION = "140.0";
+const FIREFOX_REQUIRED_DATA_COLLECTION = ["authenticationInfo"] as const;
 
 export default defineConfig({
   modules: ["@wxt-dev/module-react", "@wxt-dev/i18n/module"],
@@ -44,8 +45,14 @@ export default defineConfig({
             gecko: {
               id: FIREFOX_ADDON_ID,
               strict_min_version: FIREFOX_MIN_VERSION,
-              // AI Limits sends nothing to its developers; see PRIVACY.md.
-              data_collection_permissions: { required: ["none"] },
+              // Mozilla counts any data handled outside the browser, not only
+              // data sent to the developer. Provider API keys and session
+              // credentials go to the provider the user connects, which is
+              // authentication information. Nothing goes to the developer;
+              // see PRIVACY.md and the Chrome Web Store disclosure.
+              data_collection_permissions: {
+                required: [...FIREFOX_REQUIRED_DATA_COLLECTION],
+              },
             },
           },
         }
