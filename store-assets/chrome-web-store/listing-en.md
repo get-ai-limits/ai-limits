@@ -90,8 +90,9 @@ AI Limits is an independent project by TiantianFlow. It is not affiliated with, 
   normalized quota/counter/balance snapshots, up to 30 days of typed
   per-instance History, and sanitized refresh status in
   `chrome.storage.local`. It also holds temporary Kimi, Cursor, and Grok tab-cleanup
-  lease metadata in `chrome.storage.session`, plus the Kimi refresh token and
-  latest Kimi access token, which the browser clears when it exits. Otherwise,
+  lease metadata in `chrome.storage.session`, plus the Kimi refresh tokens (current
+  and the one read from the page) and latest Kimi access token, which the
+  browser clears when it exits. Otherwise,
   browser-session cookies and access credentials are not stored. After validation, each user-created provider API
   key is persisted in a separate `chrome.storage.local` credential record whose
   Chrome storage access level is restricted to trusted extension contexts. It
@@ -202,9 +203,11 @@ into an already-open grok.com tab; Cursor scheduled refresh never injects.
   other providers, and the openrouter.ai session cookies Chrome attaches to
   OpenRouter's promotional-credit page read, are handled only for the selected
   collection sequence and are not persisted. The exception is Kimi: its
-  refresh token and latest access token are held in memory-backed
+  refresh tokens (current and the one read from the page) and latest access
+  token are held in memory-backed
   `chrome.storage.session` across scheduled refreshes until the browser exits,
-  Kimi rejects them, or the user disconnects Kimi or deletes all local data.
+  Kimi rejects them, the Kimi page shows a sign-out, or the user removes Kimi
+  access or deletes all local data.
   The refresh token is sent only to Kimi's sign-in service at `auth.kimi.com`.
   API keys are stored in the separate
   trusted-context credential record, sent only to the selected provider API,

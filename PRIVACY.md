@@ -1,6 +1,6 @@
 # Privacy Policy
 
-Last updated: November 17, 2026
+Last updated: November 19, 2026
 
 AI Limits is a locally running Chrome extension by TiantianFlow. This policy
 describes version 0.5.6.
@@ -70,39 +70,45 @@ stored as the visible plan label.
 
 For Kimi, AI Limits checks the exact legacy `kimi-auth` cookie first, then the
 exact `access_token` entry from an already-open matching Kimi page. When it
-reads that page, it also reads the exact `refresh_token` entry. It does not
+reads that page, it also reads the exact `refresh_token` entry. After a
+successful cookie-based refresh, if no Kimi session is held yet, it may read
+those two entries from an already-open Kimi page in the same way. It does not
 read other Kimi browser-storage entries. During an interactive Connect or
 Refresh, either a missing credential or a credential rejected by Kimi may
 cause AI Limits to create one inactive Kimi homepage tab. Recovery reads
-`access_token` and `refresh_token` only after that page sets `window.__kimiAppMounted`, the flag
-Kimi sets when its client app mounts. It then keeps the owned tab open so Kimi
-can replace an expired token. Recovery has a 30-second deadline for obtaining
-a credential. When recovery finishes or times out, the extension attempts
-best-effort cleanup of only the tab and lease it owns; browser shutdown or API
-errors can delay or prevent cleanup. Scheduled refresh never creates a Kimi
-tab.
+`access_token` and `refresh_token` only after that page sets
+`window.__kimiAppMounted`, the flag Kimi sets when its client app mounts. It
+then keeps the owned tab open so Kimi can replace an expired token. Recovery
+has a 30-second deadline for obtaining a credential. When recovery finishes or
+times out, the extension attempts best-effort cleanup of only the tab and
+lease it owns; browser shutdown or API errors can delay or prevent cleanup.
+Scheduled refresh never creates a Kimi tab.
 
-Kimi access tokens last about 15 minutes, and the Kimi page renews them only
-while a Kimi tab is open. So scheduled refresh can keep working after the tab
-closes, AI Limits holds the Kimi refresh token, and the most recent access
-token with its expiry time, in `chrome.storage.session`. That storage is
-memory-backed: the browser clears it when it exits, and it is never
-written to disk or included in saved refresh results. When the access token
-is missing or expired, the background worker sends the refresh token, and
-nothing else, to Kimi's own sign-in service at
-`https://auth.kimi.com/api/account.gateway.v1.AuthService/RefreshToken`,
-without cookies. It keeps the new pair Kimi returns and never opens a tab to
-do so. A refresh token Kimi rejects is dropped. Disconnecting Kimi or deleting
-all local data also drops it. After a browser restart, Kimi needs one open Kimi
-tab or one manual Connect or Refresh before scheduled refresh can renew on its
-own again.
-
-While that recovery is active, the extension stores only a generated lease
-identifier with the temporary tab ID and creation timestamp in
+While interactive Kimi recovery is active, its cleanup lease stores only a
+generated lease identifier with the temporary tab ID and creation timestamp in
 `chrome.storage.session`. This transient metadata supports cleanup if the
 background worker is interrupted. AI Limits attempts to remove it when
 recovery finishes and also performs best-effort abandoned-lease cleanup when
 the background worker starts.
+
+Kimi access tokens last about 15 minutes, and the Kimi page renews them only
+while a Kimi tab is open. So scheduled refresh can keep working after the tab
+closes, AI Limits holds a Kimi session in `chrome.storage.session`: the
+current Kimi refresh token, the most recent access token with its expiry time,
+and the page refresh token the session was taken from (kept only to tell when
+the page has signed in again). That storage is memory-backed: the browser
+clears it when it exits or when the extension is reloaded or updated, and it
+is never written to disk or included in saved refresh results. When the
+access token is missing, expired, or rejected by Kimi, the background worker
+sends the current refresh token, and nothing else, to Kimi's own sign-in
+service at
+`https://auth.kimi.com/api/account.gateway.v1.AuthService/RefreshToken`,
+without cookies. It keeps the new pair Kimi returns and never opens a tab to
+do so. The held session is dropped when Kimi rejects the refresh token, when a
+Kimi page shows the user is signed out, when Kimi access is disconnected or
+its permission is removed, and when all local data is deleted. After a browser
+restart, Kimi needs one open Kimi tab or one manual Connect or Refresh before
+scheduled refresh can renew on its own again.
 
 For Grok, grok.com rejects extension-background session and usage requests
 when the Origin is not `https://grok.com`. AI Limits therefore does not fetch

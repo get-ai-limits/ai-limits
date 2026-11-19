@@ -1,4 +1,4 @@
-const KIMI_ORIGIN = "https://www.kimi.com";
+export const KIMI_ORIGIN = "https://www.kimi.com";
 
 interface StorageReader {
   getItem(key: string): string | null;

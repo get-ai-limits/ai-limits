@@ -168,11 +168,18 @@ export interface KimiSessionHolder {
     rejectedToken: string | undefined,
     signal: AbortSignal,
   ): Promise<string | undefined>;
-  /** Holds the tokens just read from a Kimi page. */
-  rememberPageSession(session: {
-    accessToken?: string;
-    refreshToken?: string;
-  }): Promise<void>;
+  /** Marks the start of a page read; pass the result to rememberPageSession. */
+  beginPageRead(): number;
+  /**
+   * Holds the tokens read from a Kimi page whose read began at `startedIn`.
+   * A mounted page with neither token is signed out, so the held session is
+   * dropped too.
+   */
+  rememberPageSession(
+    session: { accessToken?: string; refreshToken?: string },
+    startedIn: number,
+  ): Promise<void>;
+  hasSession(): Promise<boolean>;
   /** Drops the held session; writes still in flight are discarded. */
   forget(): Promise<void>;
 }
@@ -259,10 +266,23 @@ export function createKimiSessionHolder({
       }
     },
 
-    async rememberPageSession({ accessToken, refreshToken }) {
+    beginPageRead: () => generation,
+
+    async hasSession() {
+      return (await readKimiStoredSession(storage)) !== undefined;
+    },
+
+    async rememberPageSession({ accessToken, refreshToken }, startedIn) {
+      if (startedIn !== generation) return;
       const pageRefreshToken = refreshToken?.trim();
-      if (!pageRefreshToken) return;
-      const startedIn = generation;
+      if (!pageRefreshToken) {
+        if (!accessToken?.trim()) {
+          // Kimi has mounted without any session: the user signed out.
+          generation += 1;
+          await clearKimiStoredSession(storage);
+        }
+        return;
+      }
       const current = await readKimiStoredSession(storage);
       // The page still holds the token this chain started from; the held
       // chain may already be newer, so leave it alone.

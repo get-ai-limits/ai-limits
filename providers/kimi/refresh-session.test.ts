@@ -355,7 +355,7 @@ describe("Kimi session holder lifecycle", () => {
       return originalGet(key);
     });
 
-    await holder.rememberPageSession({ refreshToken: "page-r" });
+    await holder.rememberPageSession({ refreshToken: "page-r" }, holder.beginPageRead());
     expect(storage.items).not.toHaveProperty(KIMI_REFRESH_SESSION_KEY);
   });
 
@@ -369,17 +369,45 @@ describe("Kimi session holder lifecycle", () => {
       now: () => NOW,
     });
 
-    await holder.rememberPageSession({ accessToken: "a1", refreshToken: "r1" });
+    await holder.rememberPageSession({ accessToken: "a1", refreshToken: "r1" }, holder.beginPageRead());
     expect(storage.items[KIMI_REFRESH_SESSION_KEY]).toEqual({
       refreshToken: "r2",
       pageRefreshToken: "r1",
     });
 
-    await holder.rememberPageSession({ refreshToken: "page-r3" });
+    await holder.rememberPageSession({ refreshToken: "page-r3" }, holder.beginPageRead());
     expect(storage.items[KIMI_REFRESH_SESSION_KEY]).toEqual({
       refreshToken: "page-r3",
       pageRefreshToken: "page-r3",
     });
+  });
+
+  test("discards a page read that began before forget", async () => {
+    const storage = memoryStorage();
+    const holder = createKimiSessionHolder({
+      storage,
+      fetch: vi.fn(),
+      now: () => NOW,
+    });
+
+    const startedIn = holder.beginPageRead();
+    await holder.forget();
+    await holder.rememberPageSession({ refreshToken: "page-r" }, startedIn);
+    expect(storage.set).not.toHaveBeenCalled();
+  });
+
+  test("drops the held session when a mounted page has no session", async () => {
+    const storage = memoryStorage({
+      [KIMI_REFRESH_SESSION_KEY]: { refreshToken: "r2", pageRefreshToken: "r1" },
+    });
+    const holder = createKimiSessionHolder({
+      storage,
+      fetch: vi.fn(),
+      now: () => NOW,
+    });
+
+    await holder.rememberPageSession({}, holder.beginPageRead());
+    expect(storage.items).not.toHaveProperty(KIMI_REFRESH_SESSION_KEY);
   });
 
   test("ignores a page without a refresh token", async () => {
@@ -390,7 +418,7 @@ describe("Kimi session holder lifecycle", () => {
       now: () => NOW,
     });
 
-    await holder.rememberPageSession({ accessToken: "a1" });
+    await holder.rememberPageSession({ accessToken: "a1" }, holder.beginPageRead());
     expect(storage.set).not.toHaveBeenCalled();
   });
 });

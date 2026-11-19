@@ -795,6 +795,7 @@ export function createProviderService(
           apiKeyConnections.invalidateInstance(instance.id);
           try {
             await connectionRepository.setAccess(instance.id, "required");
+            await forgetPackageSession(instance.providerKind);
           } finally {
             if (cleanup) lanes.endCleanup(cleanup);
           }

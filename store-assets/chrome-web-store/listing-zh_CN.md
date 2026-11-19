@@ -70,7 +70,7 @@ AI Limits 是 TiantianFlow 独立开发的项目，与任何已连接的服务�
 
 ### 必需权限
 
-- `storage`：在 `chrome.storage.local` 中保存显示、语言和刷新偏好、服务顺序与总览可见性、服务访问状态、标准化后的配额/计数/余额快照、最多 30 天的按类型分实例 History，以及经过清理的刷新状态。它还会在 `chrome.storage.session` 中保存临时的 Kimi、Cursor 和 Grok 标签页清理租约元数据，以及 Kimi 刷新令牌和最新的 Kimi 访问令牌；浏览器退出时会清除这些数据。除此之外，浏览器会话 cookie 和访问凭据不会被保存。验证通过后，用户创建的服务商 API 密钥会保存在单独的 `chrome.storage.local` 凭据记录中，其 Chrome 存储访问级别仅限于受信任的扩展上下文。该记录不受操作系统钥匙串加密保护，因此从已解锁的 Chrome 配置文件、扩展 DevTools 或配置文件文件中仍可能被检查到。
+- `storage`：在 `chrome.storage.local` 中保存显示、语言和刷新偏好、服务顺序与总览可见性、服务访问状态、标准化后的配额/计数/余额快照、最多 30 天的按类型分实例 History，以及经过清理的刷新状态。它还会在 `chrome.storage.session` 中保存临时的 Kimi、Cursor 和 Grok 标签页清理租约元数据，以及 Kimi 刷新令牌（当前令牌及从页面读取的令牌）和最新的 Kimi 访问令牌；浏览器退出时会清除这些数据。除此之外，浏览器会话 cookie 和访问凭据不会被保存。验证通过后，用户创建的服务商 API 密钥会保存在单独的 `chrome.storage.local` 凭据记录中，其 Chrome 存储访问级别仅限于受信任的扩展上下文。该记录不受操作系统钥匙串加密保护，因此从已解锁的 Chrome 配置文件、扩展 DevTools 或配置文件文件中仍可能被检查到。
 - `alarms`：仅在启用自动刷新且至少有一个服务已连接时，安排大约每 15 分钟一次的刷新周期。
 - `sidePanel`：在 Chrome 侧边栏中显示本扩展的唯一应用界面。
 - `declarativeNetRequestWithHostAccess`：从本扩展发往 `https://app.warp.dev/graphql/v2?op=GetRequestLimitInfo` 的 POST 请求中移除 `Origin` 请求头，因为 Warp 服务器会拒绝带有扩展来源的请求。这条会话规则只匹配该 URL 和本扩展 Service Worker 发出的请求，并且只有在用户授予可选的 `https://app.warp.dev/*` 主机权限后才会生效。不会修改任何其他请求。
@@ -100,7 +100,7 @@ AI Limits 是 TiantianFlow 独立开发的项目，与任何已连接的服务�
 
 ## 数据披露答案
 
-- **身份验证信息：** 是。这包括用户创建、并在验证成功后由 AI Limits 保存在本地的服务商 API 密钥。其他服务的浏览器会话 JSON、cookie 和访问凭据，以及 Chrome 为 OpenRouter 促销额度页面读取附带的 openrouter.ai 会话 cookie，仅在所选采集序列期间使用，不会被持久化。Kimi 是例外：Kimi 刷新令牌和最新的 Kimi 访问令牌会保存在基于内存的 `chrome.storage.session` 中，在多次定时刷新之间保留，直到浏览器退出、Kimi 拒绝该令牌，或用户断开 Kimi 或删除所有本地数据。刷新令牌只会发送到 Kimi 登录服务 `auth.kimi.com`。API 密钥保存在单独的受信任上下文凭据记录中，只发送到所选服务的 API，绝不会发送给开发者。
+- **身份验证信息：** 是。这包括用户创建、并在验证成功后由 AI Limits 保存在本地的服务商 API 密钥。其他服务的浏览器会话 JSON、cookie 和访问凭据，以及 Chrome 为 OpenRouter 促销额度页面读取附带的 openrouter.ai 会话 cookie，仅在所选采集序列期间使用，不会被持久化。Kimi 是例外：Kimi 刷新令牌（当前令牌及从页面读取的令牌）和最新的 Kimi 访问令牌会保存在基于内存的 `chrome.storage.session` 中，在多次定时刷新之间保留，直到浏览器退出、Kimi 拒绝该令牌、Kimi 页面显示已退出登录，或用户移除 Kimi 访问权限或删除所有本地数据。刷新令牌只会发送到 Kimi 登录服务 `auth.kimi.com`。API 密钥保存在单独的受信任上下文凭据记录中，只发送到所选服务的 API，绝不会发送给开发者。
 - **网站内容：** 是。AI Limits 会处理私有的服务会话、用量、订阅和组织响应 JSON，以及 Kimi 精确的 `access_token` 和 `refresh_token` 浏览器存储条目、Cursor 的手动页面上下文仪表板 JSON 响应（Grok Bot、额度授予和汇总包含用量），以及 Grok 页面来源的会话、用量池、订阅和速率限制响应，还有 OpenRouter 已登录 Credits 页面服务端组件载荷中的促销额度池。它不会读取已渲染的页面文本、提示词、对话或生成的回复。
 - **账户标识符和个人身份信息：** 是，但处理范围很窄。从访问凭据派生的 ChatGPT 账户标识，Claude 的组织 UUID/能力信息，以及 OpenRouter 已登录用户 ID 和密钥创建者 ID（用于确认是同一账号），仅在请求期间使用，不会被持久化。Claude 的组织名称可能会被标准化并存储为可见的套餐标签。类似电子邮件形态的账户标签会被丢弃，当前适配器不会查询 Claude 或 Cursor 的电子邮件端点。
 - **财务和支付信息：** 是，仅限于用量响应中包含的、由服务商报告的用量额度余额、额外用量金额或限额，以及按需支出数值/限额。这些标准化计数和余额可能会保留在本地的分实例 History 中。不会访问或保留支付卡、银行信息、原始服务响应或交易历史。

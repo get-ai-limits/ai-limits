@@ -14,7 +14,11 @@ import {
   kimiAdapter,
   retryKimiAdapterAfterChangedToken,
 } from "./adapter";
-import { readKimiPageSession } from "./page-session";
+import {
+  KIMI_ORIGIN,
+  parseKimiPageSession,
+  readKimiPageSessionAtExpectedOrigin,
+} from "./page-session";
 import { createKimiSessionHolder } from "./refresh-session";
 import {
   cleanupAbandonedKimiRecoveryTab,
@@ -50,6 +54,11 @@ interface KimiPackageDependencies {
     signal: AbortSignal,
   ): Promise<string | undefined>;
   forgetSession?(): Promise<void>;
+  /**
+   * Reads an already-open Kimi page only to hold its refresh token, when no
+   * session is held yet. Never opens a tab.
+   */
+  captureOpenPageSession?(): Promise<void>;
 }
 
 function normalizedToken(value: string | undefined): string | undefined {
@@ -166,6 +175,7 @@ export function createKimiPackage(
       }
 
       let token = await safelyResolveToken(() => dependencies.getCookieToken());
+      const tokenFromCookie = token !== undefined;
       if (!token) {
         token = await safelyResolveToken(() =>
           dependencies.findPageAccessToken(),
@@ -201,7 +211,18 @@ export function createKimiPackage(
         signal: services.signal,
         accessToken: token,
       });
-      if (!requiresSession(firstResult)) return firstResult;
+      if (!requiresSession(firstResult)) {
+        if (tokenFromCookie && firstResult.ok) {
+          // The cookie path never reads a page, so hold an open page's
+          // refresh token now for when the cookie token expires.
+          try {
+            await dependencies.captureOpenPageSession?.();
+          } catch {
+            // Best effort; the collection already succeeded.
+          }
+        }
+        return firstResult;
+      }
 
       let changedToken = await safelyResolveToken(
         () => dependencies.findPageAccessToken(),
@@ -211,6 +232,8 @@ export function createKimiPackage(
         changedToken = await storedSessionToken(token, services.signal);
         if (changedToken === token) changedToken = undefined;
       }
+      // From an open page or the held session; either allows one more
+      // interactive recovery if this token is rejected too.
       const changedTokenFromPage = changedToken !== undefined;
       if (!changedToken && services.interaction === "allowed") {
         changedToken = normalizedToken(
@@ -278,12 +301,23 @@ function productionDependencies(): KimiPackageDependencies {
     fetch: (input, init) => globalThis.fetch(input, init),
   });
   const readPageToken = async (tabId: number) => {
-    const session = await readKimiPageSession(tabId, (details) =>
-      browser.scripting.executeScript(details),
-    );
+    // Taken before the read, so a disconnect during a slow read still wins.
+    const startedIn = sessionHolder.beginPageRead();
+    const injected = await browser.scripting.executeScript({
+      target: { tabId },
+      world: "MAIN",
+      func: readKimiPageSessionAtExpectedOrigin,
+      args: [KIMI_ORIGIN],
+    });
+    const result = injected[0]?.result;
+    // Before Kimi mounts the read returns nothing; that is not a sign-out.
+    if (result === undefined || result === null) return undefined;
+    const session = parseKimiPageSession(result);
     // Keep the page's refresh token in memory-backed session storage so a
     // later scheduled refresh can renew access without a Kimi tab.
-    await sessionHolder.rememberPageSession(session).catch(() => undefined);
+    await sessionHolder
+      .rememberPageSession(session, startedIn)
+      .catch(() => undefined);
     return session.accessToken;
   };
 
@@ -335,6 +369,13 @@ function productionDependencies(): KimiPackageDependencies {
     storedSessionToken: (rejectedToken, signal) =>
       sessionHolder.tokenFor(rejectedToken, signal),
     forgetSession: () => sessionHolder.forget(),
+    async captureOpenPageSession() {
+      if (await sessionHolder.hasSession()) return;
+      await findKimiPageAccessToken({
+        queryTabs: () => browser.tabs.query({ url: KIMI_ORIGIN_PATTERN }),
+        readAccessToken: readPageToken,
+      });
+    },
   };
 }
 

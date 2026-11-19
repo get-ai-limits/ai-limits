@@ -137,6 +137,42 @@ describe("Kimi provider package", () => {
     expect(JSON.stringify(result)).not.toContain("held-secret");
   });
 
+  test("a cookie-backed success holds an open page's session for later", async () => {
+    const captureOpenPageSession = vi.fn().mockResolvedValue(undefined);
+    const findPageAccessToken = vi.fn();
+    const providerPackage = createKimiPackage({
+      adapter: adapterResult(vi.fn().mockResolvedValue(successfulCollection())),
+      getCookieToken: vi.fn().mockResolvedValue("cookie-access"),
+      findPageAccessToken,
+      recoverAccessToken: vi.fn(),
+      cleanupAbandonedRecovery: vi.fn().mockResolvedValue(undefined),
+      announceRecovery: vi.fn(),
+      captureOpenPageSession,
+    });
+
+    await expect(
+      providerPackage.collect(instance, services("forbidden")),
+    ).resolves.toEqual(successfulCollection());
+    expect(captureOpenPageSession).toHaveBeenCalledOnce();
+    expect(findPageAccessToken).not.toHaveBeenCalled();
+  });
+
+  test("a failed page capture never affects a cookie-backed success", async () => {
+    const providerPackage = createKimiPackage({
+      adapter: adapterResult(vi.fn().mockResolvedValue(successfulCollection())),
+      getCookieToken: vi.fn().mockResolvedValue("cookie-access"),
+      findPageAccessToken: vi.fn(),
+      recoverAccessToken: vi.fn(),
+      cleanupAbandonedRecovery: vi.fn().mockResolvedValue(undefined),
+      announceRecovery: vi.fn(),
+      captureOpenPageSession: vi.fn().mockRejectedValue(new Error("gone")),
+    });
+
+    await expect(
+      providerPackage.collect(instance, services("forbidden")),
+    ).resolves.toEqual(successfulCollection());
+  });
+
   test("forgets the held session on request", async () => {
     const forgetSession = vi.fn().mockResolvedValue(undefined);
     const providerPackage = createKimiPackage({
