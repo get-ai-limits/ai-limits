@@ -32,7 +32,8 @@ flow; read "Chrome side panel" there as "Firefox sidebar". The writing rules in
 - Add-on URL: https://addons.mozilla.org/firefox/addon/ai-limits/
 - Categories: Alerts & Updates. Pick a second category only if one fits
   better in the current AMO list.
-- Tags: productivity, usage, quota, api, ai
+- Tags: AMO offers only a fixed list. Pick productivity, plus any other
+  listed tag that fits.
 - Support website: https://get-ai-limits.com/support/
 - Homepage: https://get-ai-limits.com/
 - Support email: leave empty
