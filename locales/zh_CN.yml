@@ -690,7 +690,7 @@ metrics:
       many: "另有 {count} 行未显示"
       other: "另有 {count} 行未显示"
     carried: "包含的用量来自更早的页面刷新。{reason}"
-    scheduled: 打开 cursor.com 标签页时，或在连接或刷新时，包含的用量会更新。
+    scheduled: 已打开 cursor.com 标签页时，或在连接或刷新时，包含的用量会更新。
     noTab: 请打开 cursor.com，然后点击刷新，以更新包含的用量。
     permission: 缺少 Cursor 页面访问权限。请重新连接 Cursor 以更新包含的用量。
     tabAsleep: cursor.com 标签页处于休眠状态。请点击该标签页使其加载，然后按刷新。
@@ -734,7 +734,7 @@ metrics:
     onDemandSpend: 按需花费
     extraUsageCredits: 额外用量额度
     pageCarried: "部分 Cursor 页面数据来自更早的刷新。{reason}"
-    pageScheduled: 打开 cursor.com 标签页时，或在连接或刷新时，Grok Bot 会更新。
+    pageScheduled: 已打开 cursor.com 标签页时，或在连接或刷新时，Grok Bot 会更新。
     pageNoTab: 请打开 cursor.com，然后点击刷新，以更新 Grok Bot。
     pagePermission: 缺少 Cursor 页面访问权限。请重新连接 Cursor 以更新 Grok Bot。
     pageTabAsleep: cursor.com 标签页处于休眠状态。请点击该标签页使其加载，然后按刷新。

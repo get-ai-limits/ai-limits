@@ -45,11 +45,10 @@ permission and session remain valid, and for API-key providers while the saved
 key and host permission remain active.
 However, manual refresh bypasses scheduled backoff, while automatic refresh
 respects it. Kimi manual refresh may additionally perform interactive session
-recovery. Cursor manual refresh may additionally request Grok Bot and
-extra-credit JSON through an already-open Cursor page, or by briefly opening
-one inactive spending tab when none is open. Automatic refresh may read the
-same JSON from an already-open Cursor tab and never opens one. Without an open
-tab, scheduled refresh keeps last-good page values until Grok Bot's weekly
+recovery. Any Cursor refresh may request Grok Bot and extra-credit JSON
+through an already-open Cursor page; only manual refresh may briefly open one
+inactive spending tab when none is open. If no tab is open or the read does
+not finish, scheduled refresh keeps last-good page values until Grok Bot's weekly
 reset and explains when they could not be refreshed. Grok
 Connect or manual Refresh read grok.com from a page because extension-background
 requests are rejected; they prefer an already-open grok.com tab and may briefly

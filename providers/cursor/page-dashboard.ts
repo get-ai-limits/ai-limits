@@ -55,6 +55,14 @@ interface CursorDashboardBridge {
   now?(): number;
   delay?(ms: number): Promise<void>;
   openOwnedTab?(): Promise<{ tabId: number; release: () => void } | undefined>;
+  /**
+   * Whether a failed direct read may retry through the page-global stash.
+   * Defaults to true; scheduled reads turn it off so an abandoned read can
+   * never touch a stash another read is using.
+   */
+  stashFallback?: boolean;
+  /** Stops trying further tabs once aborted. */
+  signal?: AbortSignal;
 }
 
 const EXPECTED_ORIGIN = "https://cursor.com";
@@ -411,6 +419,8 @@ async function injectIntoTabIds(
   executeScript: CursorDashboardBridge["executeScript"],
   now: () => number,
   delay: (ms: number) => Promise<void>,
+  stashFallback = true,
+  signal?: AbortSignal,
 ): Promise<{
   probe?: CursorDashboardProbe;
   lastWrongOrigin?: { kind: "wrong_origin"; origin: string };
@@ -419,6 +429,7 @@ async function injectIntoTabIds(
   let lastWrongOrigin: { kind: "wrong_origin"; origin: string } | undefined;
   let firstFailure: InjectFailure | undefined;
   for (const tabId of tabIds) {
+    if (signal?.aborted) break;
     const direct = await runInjected(
       executeScript,
       tabId,
@@ -445,6 +456,7 @@ async function injectIntoTabIds(
       firstFailure ??= direct;
     }
 
+    if (!stashFallback || signal?.aborted) continue;
     const fallback = await readStashFallback(executeScript, tabId, now, delay);
     if (fallback.kind === "read") return { probe: fallback };
     if (fallback.kind === "wrong_origin") {
@@ -466,6 +478,8 @@ export async function findCursorDashboardJson({
   now = Date.now,
   delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
   openOwnedTab,
+  stashFallback = true,
+  signal,
 }: CursorDashboardBridge): Promise<CursorDashboardProbe> {
   try {
     if (!(await hasPagePermission())) return { kind: "permission_missing" };
@@ -497,6 +511,8 @@ export async function findCursorDashboardJson({
       executeScript,
       now,
       delay,
+      stashFallback,
+      signal,
     );
     if (existing.probe) return existing.probe;
     if (existing.lastWrongOrigin) return existing.lastWrongOrigin;

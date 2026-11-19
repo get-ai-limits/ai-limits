@@ -157,7 +157,7 @@ does not read rendered page content, local or session storage, or cookie
 values directly. Chrome does attach the signed-in Cursor cookies to these
 fixed same-origin requests. AI Limits never activates a Cursor tab. Scheduled
 refresh may run the same function in an already-open `cursor.com` tab and never
-opens a new one. Without an open tab, page-only Grok Bot and extra-credit
+opens a new one. If no tab is open or the read does not finish, page-only Grok Bot and extra-credit
 metrics are refreshed only by Connect or manual Refresh; last-good normalized
 values may remain visible until Grok Bot's weekly reset. Raw dashboard JSON is request-local and is not persisted.
 

@@ -117,7 +117,9 @@ describe("Cursor provider package", () => {
     const result = await providerPackage.collect(instance, services("forbidden"));
 
     // Scheduled refresh may use an already-open tab but never opens one.
-    expect(findDashboardJson).toHaveBeenCalledWith({ allowOwnedTab: false });
+    expect(findDashboardJson).toHaveBeenCalledWith(
+      expect.objectContaining({ allowOwnedTab: false, signal: expect.any(AbortSignal) }),
+    );
     expect(collect).toHaveBeenCalledWith(
       expect.objectContaining({ now: NOW }),
       {},
@@ -188,7 +190,9 @@ describe("Cursor provider package", () => {
 
     const result = await providerPackage.collect(instance, services("forbidden"));
 
-    expect(findDashboardJson).toHaveBeenCalledWith({ allowOwnedTab: false });
+    expect(findDashboardJson).toHaveBeenCalledWith(
+      expect.objectContaining({ allowOwnedTab: false, signal: expect.any(AbortSignal) }),
+    );
     expect(collect).toHaveBeenCalledWith(
       expect.objectContaining({ now: NOW }),
       dashboard,
@@ -215,6 +219,35 @@ describe("Cursor provider package", () => {
         ],
       },
     });
+  });
+
+  test("an abandoned scheduled page read is told to stop", async () => {
+    let readSignal: AbortSignal | undefined;
+    const providerPackage = createCursorPackage({
+      collect: vi.fn<CursorCollect>().mockResolvedValue(baseCollection()),
+      findDashboardJson: vi.fn(({ signal }: { signal?: AbortSignal }) => {
+        readSignal = signal;
+        return new Promise<CursorDashboardProbe>(() => undefined);
+      }),
+      scheduledProbeBudgetMs: 5,
+    });
+
+    await providerPackage.collect(instance, services("forbidden"));
+    expect(readSignal?.aborted).toBe(true);
+  });
+
+  test("a scheduled page read that throws synchronously keeps base usage", async () => {
+    const collect = vi.fn<CursorCollect>().mockResolvedValue(baseCollection());
+    const providerPackage = createCursorPackage({
+      collect,
+      findDashboardJson: vi.fn(() => {
+        throw new Error("private sync failure");
+      }),
+    });
+
+    const result = await providerPackage.collect(instance, services("forbidden"));
+    expect(collect).toHaveBeenCalledWith(expect.any(Object), {});
+    expect(JSON.stringify(result)).not.toContain("private sync failure");
   });
 
   test("an aborted scheduled collection stops waiting for the page read", async () => {
@@ -345,7 +378,9 @@ describe("Cursor provider package", () => {
       services("forbidden"),
     );
 
-    expect(findDashboardJson).toHaveBeenCalledWith({ allowOwnedTab: false });
+    expect(findDashboardJson).toHaveBeenCalledWith(
+      expect.objectContaining({ allowOwnedTab: false, signal: expect.any(AbortSignal) }),
+    );
     expect(result).toMatchObject({
       ok: true,
       snapshot: {

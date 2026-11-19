@@ -602,6 +602,44 @@ describe("Cursor page dashboard bridge", () => {
     ]);
   });
 
+  test("skips the page-global stash when stash fallback is off", async () => {
+    const executeScript = vi.fn().mockResolvedValue([{}]);
+    const probe = await findCursorDashboardJson({
+      hasPagePermission: granted,
+      queryTabs: vi.fn().mockResolvedValue([
+        { id: 7, url: "https://cursor.com/dashboard/spending", status: "complete" },
+      ]),
+      executeScript,
+      delay: async () => undefined,
+      stashFallback: false,
+    });
+
+    expect(probe.kind).toBe("inject_empty");
+    expect(
+      executeScript.mock.calls.map(([details]) => details.func),
+    ).toEqual([readCursorDashboardJsonAtExpectedOrigin]);
+  });
+
+  test("stops trying further tabs once aborted", async () => {
+    const controller = new AbortController();
+    const executeScript = vi.fn().mockImplementation(async () => {
+      controller.abort();
+      return [{}];
+    });
+    await findCursorDashboardJson({
+      hasPagePermission: granted,
+      queryTabs: vi.fn().mockResolvedValue([
+        { id: 7, url: "https://cursor.com/dashboard/spending", status: "complete" },
+        { id: 8, url: "https://cursor.com/dashboard", status: "complete" },
+      ]),
+      executeScript,
+      delay: async () => undefined,
+      signal: controller.signal,
+    });
+
+    expect(executeScript).toHaveBeenCalledOnce();
+  });
+
   test("times the two-step stash out instead of hanging", async () => {
     let clock = 0;
     const executeScript = vi.fn().mockImplementation(async ({ func }) => {

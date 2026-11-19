@@ -39,6 +39,8 @@ interface CursorPackageDependencies {
    */
   findDashboardJson(options: {
     allowOwnedTab: boolean;
+    /** Set on scheduled reads; aborts when the read is abandoned. */
+    signal?: AbortSignal;
   }): Promise<CursorDashboardProbe>;
   cleanupAbandonedOwnedTab?(): Promise<void>;
   /** How long scheduled refresh waits for a page read; tests shorten it. */
@@ -125,9 +127,14 @@ export function createCursorPackage(
           probe = { kind: "inject_threw", detail: "findDashboardJson threw" };
         }
       } else if (!interactive && !services.signal.aborted) {
+        // Stops the read itself, not just the wait, once it is abandoned.
+        const abandon = new AbortController();
         let started: Promise<CursorDashboardProbe>;
         try {
-          started = dependencies.findDashboardJson({ allowOwnedTab: false });
+          started = dependencies.findDashboardJson({
+            allowOwnedTab: false,
+            signal: abandon.signal,
+          });
         } catch {
           started = Promise.reject(new Error("findDashboardJson threw"));
         }
@@ -137,6 +144,7 @@ export function createCursorPackage(
             CURSOR_SCHEDULED_PROBE_BUDGET_MS,
           services.signal,
         );
+        abandon.abort();
       }
       // Scheduled refresh only uses an already-open cursor.com tab, within a
       // short budget. Without a usable read it keeps the scheduled wording
@@ -178,7 +186,7 @@ function cursorOwnedTabBrowser() {
 
 export const cursorPackage = createCursorPackage({
   collect: collectCursor,
-  findDashboardJson: ({ allowOwnedTab }) => {
+  findDashboardJson: ({ allowOwnedTab, signal }) => {
     const tabs = cursorOwnedTabBrowser();
     return findCursorDashboardJson({
       hasPagePermission: async () => {
@@ -195,6 +203,9 @@ export const cursorPackage = createCursorPackage({
       },
       queryTabs: (details) => browser.tabs.query(details),
       executeScript: (details) => browser.scripting.executeScript(details),
+      // Scheduled reads use only the direct read: no page-global stash.
+      stashFallback: allowOwnedTab,
+      signal,
       openOwnedTab: allowOwnedTab ? async () => {
         const owned = await openOwnedBackgroundTab({
           url: CURSOR_OWNED_TAB_URL,
