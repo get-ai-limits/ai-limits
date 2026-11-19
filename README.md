@@ -41,9 +41,10 @@ its affiliates.
   browser session. The extension sends low-frequency, read-only requests to
   their own web-session usage services and does not scrape rendered page
   content. Cursor's base
-  usage refresh remains a background request; Connect or manual Refresh may
-  additionally run bundled read-only code in one already-open `cursor.com`
-  page, or briefly open one inactive spending tab if none is open, to request
+  usage refresh remains a background request. Refresh may additionally run
+  bundled read-only code in one already-open `cursor.com` page, and only
+  Connect or manual Refresh may briefly open one inactive spending tab if none
+  is open, to request
   Grok Bot, extra-credit, and per-model included-usage JSON.
 - ElevenLabs, DeepSeek, Moonshot, DeepInfra, Fireworks, OpenAI, GroqCloud,
   OpenRouter, Droid, GLM, and Warp use user-created API keys against their fixed provider APIs. GLM

@@ -41,6 +41,36 @@ interface CursorPackageDependencies {
     allowOwnedTab: boolean;
   }): Promise<CursorDashboardProbe>;
   cleanupAbandonedOwnedTab?(): Promise<void>;
+  /** How long scheduled refresh waits for a page read; tests shorten it. */
+  scheduledProbeBudgetMs?: number;
+}
+
+// Scheduled refresh shares the provider's collection deadline with the base
+// usage request, so its optional page read gets a short budget of its own.
+export const CURSOR_SCHEDULED_PROBE_BUDGET_MS = 8_000;
+
+type ProbeOrSkipped = CursorDashboardProbe | { kind: "skipped" };
+
+/** Resolves to `skipped` once the budget runs out or the signal aborts. */
+function withinBudget(
+  probe: Promise<CursorDashboardProbe>,
+  budgetMs: number,
+  signal: AbortSignal,
+): Promise<ProbeOrSkipped> {
+  return new Promise((resolve) => {
+    const finish = (value: ProbeOrSkipped) => {
+      clearTimeout(timer);
+      signal.removeEventListener("abort", onAbort);
+      resolve(value);
+    };
+    const onAbort = () => finish({ kind: "skipped" });
+    const timer = setTimeout(() => finish({ kind: "skipped" }), budgetMs);
+    signal.addEventListener("abort", onAbort, { once: true });
+    if (signal.aborted) onAbort();
+    probe.then(finish, () =>
+      finish({ kind: "inject_threw", detail: "findDashboardJson threw" }),
+    );
+  });
 }
 
 function adapterContext(services: ProviderRuntimeServices): CollectionContext {
@@ -87,18 +117,30 @@ export function createCursorPackage(
       }
 
       const interactive = services.interaction === "allowed";
-      let probe: CursorDashboardProbe | { kind: "skipped" } = { kind: "skipped" };
-      if (!services.signal.aborted) {
+      let probe: ProbeOrSkipped = { kind: "skipped" };
+      if (interactive && !services.signal.aborted) {
         try {
-          probe = await dependencies.findDashboardJson({
-            allowOwnedTab: interactive,
-          });
+          probe = await dependencies.findDashboardJson({ allowOwnedTab: true });
         } catch {
           probe = { kind: "inject_threw", detail: "findDashboardJson threw" };
         }
+      } else if (!interactive && !services.signal.aborted) {
+        let started: Promise<CursorDashboardProbe>;
+        try {
+          started = dependencies.findDashboardJson({ allowOwnedTab: false });
+        } catch {
+          started = Promise.reject(new Error("findDashboardJson threw"));
+        }
+        probe = await withinBudget(
+          started,
+          dependencies.scheduledProbeBudgetMs ??
+            CURSOR_SCHEDULED_PROBE_BUDGET_MS,
+          services.signal,
+        );
       }
-      // Scheduled refresh only uses an already-open cursor.com tab. Without a
-      // usable read it keeps the scheduled wording and last-good page values.
+      // Scheduled refresh only uses an already-open cursor.com tab, within a
+      // short budget. Without a usable read it keeps the scheduled wording
+      // (no tab hints) and last-good page values.
       if (!interactive && probe.kind !== "read") probe = { kind: "skipped" };
       const dashboard =
         probe.kind === "skipped" ? {} : dashboardJsonFromProbe(probe);

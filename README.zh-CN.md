@@ -34,9 +34,9 @@ AI Limits 是 TiantianFlow 开发的独立项目，与任何受支持的服务�
 - 每个服务都需要单独启用。Chrome 只会请求该服务的精确主机访问权限。
 - ChatGPT、Claude、Kimi、Cursor、Grok、Mistral 和 Perplexity 使用浏览器中已
   登录的会话。扩展以较低频率向这些服务自己的网站会话用量接口发送只读请求，
-  不会抓取页面中渲染的内容。Cursor 的基础用量仍由后台请求刷新；Connect 或手动 Refresh 还可能在
-  一个已经打开的 `cursor.com` 页面中运行扩展自带的只读代码；如果当前没有打开
-  的标签页，可能会短暂打开一个非活动用量页，以请求 Grok Bot、额外 Credits
+  不会抓取页面中渲染的内容。Cursor 的基础用量仍由后台请求刷新；刷新（包括定时刷新）还可能在
+  一个已经打开的 `cursor.com` 页面中运行扩展自带的只读代码；只有 Connect 或手动
+  Refresh 会在没有打开的标签页时短暂打开一个非活动用量页，以请求 Grok Bot、额外 Credits
   和按模型包含用量 JSON。
 - ElevenLabs、DeepSeek、Moonshot、DeepInfra、Fireworks、OpenAI、GroqCloud、
   OpenRouter、Droid、GLM 和 Warp 使用用户创建的 API 密钥访问各自固定的服务商 API。GLM

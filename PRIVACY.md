@@ -141,10 +141,10 @@ owned tab is released and also performs best-effort abandoned-lease cleanup
 when the background worker starts.
 
 For Cursor, the base monthly and on-demand request runs from the extension.
-During Connect or an explicit manual Refresh only, AI Limits checks for one
-already-open tab matching `https://cursor.com/*`. If one exists, it uses the
-optional `scripting` permission to run a bundled function in that page's main
-JavaScript world. If none exists, the same interactive path may create one
+During collection, AI Limits checks for one already-open tab matching
+`https://cursor.com/*`. If one exists, it uses the optional `scripting`
+permission to run a bundled function in that page's main JavaScript world. If
+none exists, only Connect or an explicit manual Refresh may create one
 inactive `https://cursor.com/dashboard/spending` tab. That create-wait-read
 path has a 10-second deadline. When it finishes or times out, the extension
 attempts best-effort cleanup of only the tab and lease it owns; browser

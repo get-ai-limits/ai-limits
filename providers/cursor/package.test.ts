@@ -196,6 +196,77 @@ describe("Cursor provider package", () => {
     expect(JSON.stringify(result)).not.toContain("cursor:scheduled");
   });
 
+  test("a slow scheduled page read is abandoned within its budget", async () => {
+    const collect = vi.fn<CursorCollect>().mockResolvedValue(baseCollection());
+    const providerPackage = createCursorPackage({
+      collect,
+      findDashboardJson: vi.fn(() => new Promise<CursorDashboardProbe>(() => undefined)),
+      scheduledProbeBudgetMs: 5,
+    });
+
+    const result = await providerPackage.collect(instance, services("forbidden"));
+
+    expect(collect).toHaveBeenCalledWith(expect.any(Object), {});
+    expect(result).toMatchObject({
+      ok: true,
+      snapshot: {
+        usageGroups: [
+          expect.objectContaining({ description: "cursor:scheduled" }),
+        ],
+      },
+    });
+  });
+
+  test("an aborted scheduled collection stops waiting for the page read", async () => {
+    const controller = new AbortController();
+    const collect = vi.fn<CursorCollect>().mockResolvedValue(baseCollection());
+    const providerPackage = createCursorPackage({
+      collect,
+      findDashboardJson: vi.fn(() => {
+        controller.abort();
+        return new Promise<CursorDashboardProbe>(() => undefined);
+      }),
+      scheduledProbeBudgetMs: 60_000,
+    });
+
+    await providerPackage.collect(instance, {
+      ...services("forbidden"),
+      signal: controller.signal,
+    });
+    expect(collect).toHaveBeenCalledWith(expect.any(Object), {});
+  });
+
+  test("a partial scheduled read refreshes credits and carries last-good Grok Bot", async () => {
+    const probe: CursorDashboardProbe = {
+      kind: "read",
+      grok: { ok: false, status: 500 },
+      credits: { ok: true, value: { total_cents: 1_250, used_cents: 200 } },
+      aggregated: { ok: false },
+    };
+    const collect = vi.fn<CursorCollect>().mockResolvedValue(baseCollection());
+    const providerPackage = createCursorPackage({
+      collect,
+      findDashboardJson: vi.fn().mockResolvedValue(probe),
+    });
+
+    const result = await providerPackage.collect(
+      { ...instance, snapshot: previousSnapshot() },
+      services("forbidden"),
+    );
+
+    expect(collect).toHaveBeenCalledWith(expect.any(Object), {
+      credits: { total_cents: 1_250, used_cents: 200 },
+    });
+    expect(result).toMatchObject({
+      ok: true,
+      snapshot: {
+        metrics: expect.arrayContaining([
+          expect.objectContaining({ id: "grok-bot-weekly", usedRatio: 0.92 }),
+        ]),
+      },
+    });
+  });
+
   test("scheduled page failure keeps the scheduled wording without leaking details", async () => {
     const collect = vi.fn<CursorCollect>().mockResolvedValue(baseCollection());
     const providerPackage = createCursorPackage({
