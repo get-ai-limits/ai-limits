@@ -652,6 +652,16 @@ describe("provider registry", () => {
         services,
         credential,
       );
+      if (kind === "kimi") {
+        // The page read stays bound to Kimi's own origin in the main world.
+        expect(pageSpies[1]).toHaveBeenCalledWith(
+          expect.objectContaining({
+            target: { tabId: 7 },
+            world: "MAIN",
+            args: ["https://www.kimi.com"],
+          }),
+        );
+      }
       for (const spy of pageSpies) spy.mockRestore();
       if (kind !== "cursor" && kind !== "grok") {
         expect(adapterSpies[kind]).toHaveBeenCalledTimes(1);

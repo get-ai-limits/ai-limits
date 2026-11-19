@@ -55,7 +55,8 @@ data, or other relay keys.
 ChatGPT, Claude, Kimi, Cursor, Grok, Mistral, and Perplexity use signed-in
 browser sessions. AI Limits sends read-only requests to those providers' own
 web-session services, plus the Kimi token-renewal call described below, and
-browser cookies may accompany requests to the same provider origin. OpenRouter is an API-key provider, but its
+browser cookies may accompany requests to the same provider origin (Kimi usage
+requests carry only the access token, without cookies). OpenRouter is an API-key provider, but its
 promotional-credit read also uses the signed-in openrouter.ai session, as
 described below. Requests normally run directly from the extension; the Cursor
 and Grok page-origin reads described below run in an already-open exact-origin

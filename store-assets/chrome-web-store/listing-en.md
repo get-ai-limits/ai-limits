@@ -123,7 +123,7 @@ These origins are requested one provider at a time after the user clicks
   access token calls Kimi's sign-in service at `auth.kimi.com` with only the
   refresh token and no cookies, and does not request an additional host
   permission. If Kimi stops accepting that request, refresh falls back to the
-  page and tab paths above.
+  page and tab paths described under `scripting` below.
 - `https://cursor.com/*`: reads the signed-in user's base Cursor usage. During
   Connect or manual Refresh only, it can also run bundled read-only code in one
   already-open exact-origin page, or briefly open one inactive spending tab if

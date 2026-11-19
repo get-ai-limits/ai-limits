@@ -86,7 +86,8 @@ may open at most one inactive temporary Kimi tab, waits up to 30 seconds for
 recovery, and closes only the tab it created. Recovery waits until Kimi finishes
 loading the page, then keeps the tab open long enough for Kimi to replace an
 expired session token. The extension reads the exact `access_token` entry in an
-already-open Kimi page and does not read Kimi cookies. Browser shutdown or API errors can delay or prevent best-effort cleanup.
+already-open Kimi page and does not read Kimi cookies. Browser shutdown or API
+errors can delay or prevent best-effort cleanup.
 Whenever it reads a Kimi page, it also keeps that page's `refresh_token` in
 memory-backed `chrome.storage.session`, which the browser clears when it
 exits. Scheduled refresh uses it to renew Kimi's short-lived access token

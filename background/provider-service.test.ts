@@ -255,7 +255,7 @@ describe("generic provider instance service", () => {
     });
   });
 
-  test("prepares exact Kimi origin, cookie, and scripting permission ownership", async () => {
+  test("prepares exact Kimi origin and scripting permission ownership", async () => {
     const service = createProviderService({
       clock: () => NOW,
       randomUUID: () => "550e8400-e29b-41d4-a716-446655440099",
