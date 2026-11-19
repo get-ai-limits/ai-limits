@@ -124,19 +124,11 @@ These origins are requested one provider at a time after the user clicks
   refresh token and no cookies, and does not request an additional host
   permission. If Kimi stops accepting that request, refresh falls back to the
   page and tab paths described under `scripting` below.
-<<<<<<< HEAD
 - `https://cursor.com/*`: reads the signed-in user's base Cursor usage. It can
   also run bundled read-only code in one already-open exact-origin page to
   request Grok Bot, credit-grant, and aggregated included-usage JSON. Only
   during Connect or manual Refresh, if none is open, it may briefly open one
   inactive spending tab.
-=======
-- `https://cursor.com/*`: reads the signed-in user's base Cursor usage. During
-  Connect or manual Refresh only, it can also run bundled read-only code in one
-  already-open exact-origin page, or briefly open one inactive spending tab if
-  none is open, to request Grok Bot, credit-grant, and aggregated included-usage
-  JSON.
->>>>>>> 7886ff932070b6f1d0a6aa32e1ec4291379ebdc2
 - `https://grok.com/*`: reads the signed-in user's Grok session, usage-pool,
   rate-limit, and subscription responses from an already-open grok.com page.
   During Connect or manual Refresh, if none is open, it may briefly open one
