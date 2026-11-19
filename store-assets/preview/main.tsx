@@ -8,8 +8,9 @@ import {
   FIDELITY_FIXED_CLOCK,
   createFidelityScenario,
   parseFidelityRequest,
+  parsePreviewBrowser,
   parsePreviewLanguage,
-  previewContent,
+  previewContentFor,
   type FidelityRequest,
   type FidelityScenario,
   type PreviewView,
@@ -149,7 +150,7 @@ function Preview() {
   const language = parsePreviewLanguage(parameters);
   const panelWidth = parsePanelWidth(parameters);
   const state = createStorePreviewState(parameters, now);
-  const content = previewContent[language];
+  const content = previewContentFor(language, parsePreviewBrowser(parameters));
   const copy = content[view];
 
   return (

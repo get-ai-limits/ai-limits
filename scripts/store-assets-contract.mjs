@@ -516,11 +516,50 @@ export const STORE_ASSET_CAPTURES = [
   fixedClock: FIDELITY_FIXED_CLOCK,
 }));
 
+const SCREENSHOT_VIEWS = ["overview", "pacing", "history", "privacy"];
+
+// Edge Add-ons and Firefox Add-ons get the same English screenshots as the
+// Chrome Web Store, with the browser's own panel name in the artwork. Edge
+// also takes the small promotional tile and a square store logo.
+export const OTHER_STORE_ASSET_CAPTURES = [
+  ...SCREENSHOT_VIEWS.map((view) => ({
+    browser: "edge",
+    locale: "en",
+    view,
+    relativePath: `edge-add-ons/screenshot-${view}-1280x800.png`,
+    viewport: { width: 1280, height: 800 },
+  })),
+  {
+    browser: "edge",
+    locale: "en",
+    view: "promo",
+    relativePath: "edge-add-ons/small-promo-440x280.png",
+    viewport: { width: 440, height: 280 },
+  },
+  {
+    kind: "logo",
+    relativePath: "edge-add-ons/store-logo-300x300.png",
+    viewport: { width: 300, height: 300 },
+  },
+  ...SCREENSHOT_VIEWS.map((view) => ({
+    browser: "firefox",
+    locale: "en",
+    view,
+    relativePath: `firefox-add-ons/screenshot-${view}-1280x800.png`,
+    viewport: { width: 1280, height: 800 },
+  })),
+].map((capture) => ({
+  ...capture,
+  dataSource: "fixture",
+  fixedClock: FIDELITY_FIXED_CLOCK,
+}));
+
 export const MARKETING_ASSET_CAPTURES = [
   ...STORE_ASSET_CAPTURES.map((capture) => ({
     ...capture,
     relativePath: `chrome-web-store/${capture.relativePath}`,
   })),
+  ...OTHER_STORE_ASSET_CAPTURES,
   {
     locale: "en",
     view: "social",
@@ -1097,6 +1136,12 @@ export const REQUIRED_STORE_ASSET_DIMENSIONS = {
   "chrome-web-store/zh_CN/screenshot-history-1280x800.png": [1280, 800],
   "chrome-web-store/zh_CN/screenshot-privacy-1280x800.png": [1280, 800],
   "github/social-preview-1280x640.png": [1280, 640],
+  ...Object.fromEntries(
+    OTHER_STORE_ASSET_CAPTURES.map(({ relativePath, viewport }) => [
+      relativePath,
+      [viewport.width, viewport.height],
+    ]),
+  ),
 };
 
 const MAX_MARKETING_ASSET_BYTES = {

@@ -100,9 +100,16 @@ for (const name of sourceNames) {
   }
   // A tracked file with uncommitted edits would ship code that is not in the
   // repository, so each archived file must match its committed version.
-  const committed = execFileSync("git", ["show", `HEAD:${name}`], {
-    maxBuffer: 64 * 1024 * 1024,
-  });
+  let committed;
+  try {
+    committed = execFileSync("git", ["show", `HEAD:${name}`], {
+      maxBuffer: 64 * 1024 * 1024,
+      stdio: ["ignore", "pipe", "ignore"],
+    });
+  } catch {
+    sourceErrors.push(`Sources ZIP contains ${name}, which is not committed yet.`);
+    continue;
+  }
   if (!Buffer.from(sources[name]).equals(committed)) {
     sourceErrors.push(
       `Sources ZIP has uncommitted changes in ${name}; commit them first.`,
