@@ -81,7 +81,7 @@ AI Limits 是 TiantianFlow 独立开发的项目，与任何已连接的服务�
 
 - `https://chatgpt.com/*`：读取已登录用户的 ChatGPT 会话和用量响应。
 - `https://claude.ai/*`：读取已登录用户的 Claude 组织用量响应。
-- `https://www.kimi.com/*`：读取 Kimi 用量/订阅响应，并支持有边界的交互式会话访问与恢复流程。续期 Kimi 访问令牌时，会只携带刷新令牌、不带 cookie 调用 Kimi 登录服务 `auth.kimi.com`；不会申请额外的主机权限。如果 Kimi 不再接受此请求，刷新会回退到上述页面和标签页路径。
+- `https://www.kimi.com/*`：读取 Kimi 用量/订阅响应，并支持有边界的交互式会话访问与恢复流程。续期 Kimi 访问令牌时，会只携带刷新令牌、不带 cookie 调用 Kimi 登录服务 `auth.kimi.com`；不会申请额外的主机权限。如果 Kimi 不再接受此请求，刷新会回退到下方 `scripting` 中所述的页面和标签页路径。
 - `https://cursor.com/*`：读取已登录用户的 Cursor 基础用量。仅在 **连接** 或手动 **刷新** 期间，还可以在一个已经打开的精确来源页面中运行捆绑的只读代码；如果当前没有打开的标签页，可能会短暂打开一个非活动用量页，以请求 Grok Bot、额度授予和汇总包含用量 JSON。
 - `https://grok.com/*`：从已经打开的 grok.com 页面读取已登录用户的 Grok 会话、用量池、速率限制和订阅响应。仅在 **连接** 或手动 **刷新** 期间，如果当前没有打开的标签页，可能会短暂打开一个非活动 grok.com 标签页。这是 grok.com 上的消费者版 Grok，不是 Cursor 的 Grok Bot。
 - `https://admin.mistral.ai/*` 和 `https://console.mistral.ai/*`：从已登录的 Mistral 会话读取本月用量和额度。

@@ -647,22 +647,25 @@ describe("provider registry", () => {
               ] as never),
             ]
           : [];
-      await providerRegistry[kind].collect(
-        instance(kind, config),
-        services,
-        credential,
-      );
-      if (kind === "kimi") {
-        // The page read stays bound to Kimi's own origin in the main world.
-        expect(pageSpies[1]).toHaveBeenCalledWith(
-          expect.objectContaining({
-            target: { tabId: 7 },
-            world: "MAIN",
-            args: ["https://www.kimi.com"],
-          }),
+      try {
+        await providerRegistry[kind].collect(
+          instance(kind, config),
+          services,
+          credential,
         );
+        if (kind === "kimi") {
+          // The page read stays bound to Kimi's own origin in the main world.
+          expect(pageSpies[1]).toHaveBeenCalledWith(
+            expect.objectContaining({
+              target: { tabId: 7 },
+              world: "MAIN",
+              args: ["https://www.kimi.com"],
+            }),
+          );
+        }
+      } finally {
+        for (const spy of pageSpies) spy.mockRestore();
       }
-      for (const spy of pageSpies) spy.mockRestore();
       if (kind !== "cursor" && kind !== "grok") {
         expect(adapterSpies[kind]).toHaveBeenCalledTimes(1);
       }
