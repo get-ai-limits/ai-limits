@@ -4,19 +4,6 @@ interface StorageReader {
   getItem(key: string): string | null;
 }
 
-interface ScriptResult {
-  result?: unknown;
-}
-
-interface ExecuteScript {
-  (details: {
-    target: { tabId: number };
-    world: "MAIN";
-    func: typeof readKimiPageSessionAtExpectedOrigin;
-    args: [string];
-  }): Promise<ScriptResult[]>;
-}
-
 export interface KimiPageSession {
   accessToken?: string;
   refreshToken?: string;
@@ -66,17 +53,4 @@ export function parseKimiPageSession(value: unknown): KimiPageSession {
     ...(accessToken === undefined ? {} : { accessToken }),
     ...(refreshToken === undefined ? {} : { refreshToken }),
   };
-}
-
-export async function readKimiPageSession(
-  tabId: number,
-  executeScript: ExecuteScript,
-): Promise<KimiPageSession> {
-  const [injection] = await executeScript({
-    target: { tabId },
-    world: "MAIN",
-    func: readKimiPageSessionAtExpectedOrigin,
-    args: [KIMI_ORIGIN],
-  });
-  return parseKimiPageSession(injection?.result);
 }

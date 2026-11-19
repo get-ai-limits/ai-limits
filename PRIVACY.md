@@ -69,12 +69,12 @@ refresh results. The Kimi session held in memory-backed session storage is
 described below. The selected Claude organization name may separately be
 stored as the visible plan label.
 
-For Kimi, AI Limits checks the exact legacy `kimi-auth` cookie first, then the
-exact `access_token` entry from an already-open matching Kimi page. When it
-reads that page, it also reads the exact `refresh_token` entry. After a
-successful cookie-based refresh, if no Kimi session is held yet, it may read
-those two entries from an already-open Kimi page in the same way. It does not
-read other Kimi browser-storage entries. During an interactive Connect or
+For Kimi, AI Limits reads the exact `access_token` entry from an already-open
+matching Kimi page, and, when no page is open, uses the Kimi session it holds
+(described below). When it reads that page, it also reads the exact
+`refresh_token` entry. It does not read Kimi cookies or other Kimi
+browser-storage entries, and its Kimi usage requests carry only the access
+token, without cookies. During an interactive Connect or
 Refresh, either a missing credential or a credential rejected by Kimi may
 cause AI Limits to create one inactive Kimi homepage tab. Recovery reads
 `access_token` and `refresh_token` only after that page sets

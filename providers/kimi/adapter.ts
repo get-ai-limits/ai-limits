@@ -19,7 +19,6 @@ import {
   type KimiUsageLimit,
 } from "./schema";
 
-const KIMI_URL = "https://www.kimi.com/";
 const SUBSCRIPTION_STATS_ENDPOINT =
   "https://www.kimi.com/apiv2/kimi.gateway.membership.v2.MembershipService/GetSubscriptionStats";
 const SUBSCRIPTION_ENDPOINT =
@@ -319,7 +318,8 @@ function kimiRequest(
 ): Promise<Response> {
   return injectedFetch(endpoint, {
     method: "POST",
-    credentials: "include",
+    // The bearer token alone authenticates; Kimi's cookies are not needed.
+    credentials: "omit",
     headers: {
       Authorization: `Bearer ${accessToken}`,
       "Content-Type": "application/json",

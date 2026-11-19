@@ -270,7 +270,7 @@ describe("generic provider instance service", () => {
       instanceId: "kimi:default",
       permissions: {
         origins: ["https://www.kimi.com/*"],
-        permissions: ["cookies", "scripting"],
+        permissions: ["scripting"],
       },
     });
   });
@@ -302,7 +302,7 @@ describe("generic provider instance service", () => {
 
     expect(remove).toHaveBeenCalledWith({
       origins: ["https://www.kimi.com/*"],
-      permissions: ["cookies", "scripting"],
+      permissions: ["scripting"],
     });
     expect(JSON.stringify(await browser.storage.local.get(null))).not.toContain(
       "kimi:default",
@@ -1540,7 +1540,7 @@ describe("generic provider instance service", () => {
 
     expect(remove).toHaveBeenCalledWith({
       origins: ["https://relay.example/*", "https://www.kimi.com/*"],
-      permissions: ["cookies", "scripting"],
+      permissions: ["scripting"],
     });
     await expect(browser.storage.local.get("unrelated")).resolves.toEqual({
       unrelated: "keep",

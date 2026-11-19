@@ -50,7 +50,6 @@ describe("Kimi provider package", () => {
     const storedSessionToken = vi.fn().mockResolvedValue("held-access");
     const providerPackage = createKimiPackage({
       adapter: adapterResult(collect),
-      getCookieToken: vi.fn().mockResolvedValue(undefined),
       findPageAccessToken: vi.fn().mockResolvedValue(undefined),
       recoverAccessToken,
       cleanupAbandonedRecovery: vi.fn().mockResolvedValue(undefined),
@@ -80,7 +79,6 @@ describe("Kimi provider package", () => {
       .mockResolvedValueOnce("renewed-access");
     const providerPackage = createKimiPackage({
       adapter: adapterResult(collect),
-      getCookieToken: vi.fn().mockResolvedValue(undefined),
       findPageAccessToken: vi.fn().mockResolvedValue(undefined),
       recoverAccessToken: vi.fn(),
       cleanupAbandonedRecovery: vi.fn().mockResolvedValue(undefined),
@@ -105,7 +103,6 @@ describe("Kimi provider package", () => {
     const storedSessionToken = vi.fn();
     const providerPackage = createKimiPackage({
       adapter: adapterResult(collect),
-      getCookieToken: vi.fn().mockResolvedValue(undefined),
       findPageAccessToken: vi.fn().mockResolvedValue("page-access"),
       recoverAccessToken: vi.fn(),
       cleanupAbandonedRecovery: vi.fn().mockResolvedValue(undefined),
@@ -123,7 +120,6 @@ describe("Kimi provider package", () => {
     const recoverAccessToken = vi.fn().mockResolvedValue("fresh-token");
     const providerPackage = createKimiPackage({
       adapter: adapterResult(collect),
-      getCookieToken: vi.fn().mockResolvedValue(undefined),
       findPageAccessToken: vi.fn().mockResolvedValue(undefined),
       recoverAccessToken,
       cleanupAbandonedRecovery: vi.fn().mockResolvedValue(undefined),
@@ -137,70 +133,10 @@ describe("Kimi provider package", () => {
     expect(JSON.stringify(result)).not.toContain("held-secret");
   });
 
-  test("a cookie-backed success holds an open page's session for later", async () => {
-    const captureOpenPageSession = vi.fn().mockResolvedValue(undefined);
-    const findPageAccessToken = vi.fn();
-    const providerPackage = createKimiPackage({
-      adapter: adapterResult(vi.fn().mockResolvedValue(successfulCollection())),
-      getCookieToken: vi.fn().mockResolvedValue("cookie-access"),
-      findPageAccessToken,
-      recoverAccessToken: vi.fn(),
-      cleanupAbandonedRecovery: vi.fn().mockResolvedValue(undefined),
-      announceRecovery: vi.fn(),
-      captureOpenPageSession,
-    });
-
-    await expect(
-      providerPackage.collect(instance, services("forbidden")),
-    ).resolves.toEqual(successfulCollection());
-    expect(captureOpenPageSession).toHaveBeenCalledOnce();
-    expect(findPageAccessToken).not.toHaveBeenCalled();
-  });
-
-  test("an aborted collection never captures a page session", async () => {
-    const controller = new AbortController();
-    const captureOpenPageSession = vi.fn();
-    const providerPackage = createKimiPackage({
-      adapter: adapterResult(async () => {
-        controller.abort();
-        return successfulCollection();
-      }),
-      getCookieToken: vi.fn().mockResolvedValue("cookie-access"),
-      findPageAccessToken: vi.fn(),
-      recoverAccessToken: vi.fn(),
-      cleanupAbandonedRecovery: vi.fn().mockResolvedValue(undefined),
-      announceRecovery: vi.fn(),
-      captureOpenPageSession,
-    });
-
-    await providerPackage.collect(instance, {
-      ...services("forbidden"),
-      signal: controller.signal,
-    });
-    expect(captureOpenPageSession).not.toHaveBeenCalled();
-  });
-
-  test("a failed page capture never affects a cookie-backed success", async () => {
-    const providerPackage = createKimiPackage({
-      adapter: adapterResult(vi.fn().mockResolvedValue(successfulCollection())),
-      getCookieToken: vi.fn().mockResolvedValue("cookie-access"),
-      findPageAccessToken: vi.fn(),
-      recoverAccessToken: vi.fn(),
-      cleanupAbandonedRecovery: vi.fn().mockResolvedValue(undefined),
-      announceRecovery: vi.fn(),
-      captureOpenPageSession: vi.fn().mockRejectedValue(new Error("gone")),
-    });
-
-    await expect(
-      providerPackage.collect(instance, services("forbidden")),
-    ).resolves.toEqual(successfulCollection());
-  });
-
   test("forgets the held session on request", async () => {
     const forgetSession = vi.fn().mockResolvedValue(undefined);
     const providerPackage = createKimiPackage({
       adapter: adapterResult(vi.fn()),
-      getCookieToken: vi.fn(),
       findPageAccessToken: vi.fn(),
       recoverAccessToken: vi.fn(),
       cleanupAbandonedRecovery: vi.fn().mockResolvedValue(undefined),
@@ -216,7 +152,6 @@ describe("Kimi provider package", () => {
     const recoverAccessToken = vi.fn();
     const providerPackage = createKimiPackage({
       adapter: adapterResult(vi.fn()),
-      getCookieToken: vi.fn().mockResolvedValue(undefined),
       findPageAccessToken: vi.fn().mockResolvedValue(undefined),
       recoverAccessToken,
       cleanupAbandonedRecovery: vi.fn().mockResolvedValue(undefined),
@@ -232,22 +167,15 @@ describe("Kimi provider package", () => {
     expect(recoverAccessToken).not.toHaveBeenCalled();
   });
 
-  test.each(["cookie", "page"] as const)(
-    "scheduled collection isolates a rejected %s token resolver without recovery",
-    async (rejectedResolver) => {
-      const rawError = `${rejectedResolver}-resolver-secret`;
+  test(
+    "scheduled collection isolates a rejected page token resolver without recovery",
+    async () => {
+      const rawError = "page-resolver-secret";
       const recoverAccessToken = vi.fn();
       const announceRecovery = vi.fn();
       const providerPackage = createKimiPackage({
         adapter: adapterResult(vi.fn()),
-        getCookieToken:
-          rejectedResolver === "cookie"
-            ? vi.fn().mockRejectedValue(new Error(rawError))
-            : vi.fn().mockResolvedValue(undefined),
-        findPageAccessToken:
-          rejectedResolver === "page"
-            ? vi.fn().mockRejectedValue(new Error(rawError))
-            : vi.fn().mockResolvedValue(undefined),
+        findPageAccessToken: vi.fn().mockRejectedValue(new Error(rawError)),
         recoverAccessToken,
         cleanupAbandonedRecovery: vi.fn().mockResolvedValue(undefined),
         announceRecovery,
@@ -268,23 +196,16 @@ describe("Kimi provider package", () => {
     },
   );
 
-  test.each(["cookie", "page"] as const)(
-    "interactive collection isolates a rejected %s token resolver and performs one bounded recovery",
-    async (rejectedResolver) => {
-      const rawError = `${rejectedResolver}-resolver-secret`;
+  test(
+    "interactive collection isolates a rejected page token resolver and performs one bounded recovery",
+    async () => {
+      const rawError = "page-resolver-secret";
       const collect = vi.fn().mockResolvedValue(successfulCollection());
       const recoverAccessToken = vi.fn().mockResolvedValue("fresh-token");
       const announceRecovery = vi.fn();
       const providerPackage = createKimiPackage({
         adapter: adapterResult(collect),
-        getCookieToken:
-          rejectedResolver === "cookie"
-            ? vi.fn().mockRejectedValue(new Error(rawError))
-            : vi.fn().mockResolvedValue(undefined),
-        findPageAccessToken:
-          rejectedResolver === "page"
-            ? vi.fn().mockRejectedValue(new Error(rawError))
-            : vi.fn().mockResolvedValue(undefined),
+        findPageAccessToken: vi.fn().mockRejectedValue(new Error(rawError)),
         recoverAccessToken,
         cleanupAbandonedRecovery: vi.fn().mockResolvedValue(undefined),
         announceRecovery,
@@ -321,10 +242,7 @@ describe("Kimi provider package", () => {
       const recoverAccessToken = vi.fn().mockResolvedValue("fresh-token");
       const providerPackage = createKimiPackage({
         adapter: adapterResult(collect),
-        getCookieToken: vi.fn().mockResolvedValue("stale-token"),
-        findPageAccessToken: vi
-          .fn()
-          .mockRejectedValue(new Error(rawError)),
+        findPageAccessToken: vi.fn().mockResolvedValueOnce("stale-token").mockRejectedValue(new Error(rawError)),
         recoverAccessToken,
         cleanupAbandonedRecovery: vi.fn().mockResolvedValue(undefined),
         announceRecovery: vi.fn(),
@@ -369,7 +287,6 @@ describe("Kimi provider package", () => {
     });
     const providerPackage = createKimiPackage({
       adapter: adapterResult(collect),
-      getCookieToken: vi.fn().mockResolvedValue(undefined),
       findPageAccessToken: vi.fn().mockResolvedValue(undefined),
       recoverAccessToken,
       cleanupAbandonedRecovery: vi.fn(() => cleanup),
@@ -396,7 +313,6 @@ describe("Kimi provider package", () => {
     const announceRecovery = vi.fn();
     const providerPackage = createKimiPackage({
       adapter: adapterResult(vi.fn()),
-      getCookieToken: vi.fn().mockResolvedValue(undefined),
       findPageAccessToken: vi.fn().mockResolvedValue(undefined),
       recoverAccessToken,
       cleanupAbandonedRecovery: vi.fn(() => cleanup),
@@ -425,7 +341,6 @@ describe("Kimi provider package", () => {
     const announceRecovery = vi.fn();
     const providerPackage = createKimiPackage({
       adapter: adapterResult(vi.fn()),
-      getCookieToken: vi.fn().mockResolvedValue(undefined),
       findPageAccessToken: vi.fn().mockResolvedValue(undefined),
       recoverAccessToken,
       cleanupAbandonedRecovery: vi
@@ -463,8 +378,7 @@ describe("Kimi provider package", () => {
       });
     const providerPackage = createKimiPackage({
       adapter: adapterResult(collect),
-      getCookieToken: vi.fn().mockResolvedValue("stale-token"),
-      findPageAccessToken: vi.fn().mockResolvedValue("fresh-token"),
+      findPageAccessToken: vi.fn().mockResolvedValueOnce("stale-token").mockResolvedValue("fresh-token"),
       recoverAccessToken: vi.fn(),
       cleanupAbandonedRecovery: vi.fn().mockResolvedValue(undefined),
       announceRecovery: vi.fn(),
@@ -493,8 +407,7 @@ describe("Kimi provider package", () => {
     const recoverAccessToken = vi.fn().mockResolvedValue("recovered-token");
     const providerPackage = createKimiPackage({
       adapter: adapterResult(collect),
-      getCookieToken: vi.fn().mockResolvedValue("stale-token"),
-      findPageAccessToken: vi.fn().mockResolvedValue(undefined),
+      findPageAccessToken: vi.fn().mockResolvedValueOnce("stale-token").mockResolvedValue(undefined),
       recoverAccessToken,
       cleanupAbandonedRecovery: vi.fn().mockResolvedValue(undefined),
       announceRecovery: vi.fn(),
@@ -533,8 +446,7 @@ describe("Kimi provider package", () => {
     const recoverAccessToken = vi.fn().mockResolvedValue("recovered-token");
     const providerPackage = createKimiPackage({
       adapter: adapterResult(collect),
-      getCookieToken: vi.fn().mockResolvedValue("stale-token"),
-      findPageAccessToken: vi.fn().mockResolvedValue("page-token"),
+      findPageAccessToken: vi.fn().mockResolvedValueOnce("stale-token").mockResolvedValue("page-token"),
       recoverAccessToken,
       cleanupAbandonedRecovery: vi.fn().mockResolvedValue(undefined),
       announceRecovery: vi.fn(),
@@ -583,8 +495,7 @@ describe("Kimi provider package", () => {
       .mockResolvedValueOnce(successfulCollection());
     const providerPackage = createKimiPackage({
       adapter: adapterResult(collect),
-      getCookieToken: vi.fn().mockResolvedValue("stale-token"),
-      findPageAccessToken: vi.fn().mockResolvedValue("page-token"),
+      findPageAccessToken: vi.fn().mockResolvedValueOnce("stale-token").mockResolvedValue("page-token"),
       recoverAccessToken: vi.fn().mockResolvedValue("recovered-token"),
       cleanupAbandonedRecovery: vi.fn().mockResolvedValue(undefined),
       announceRecovery: vi.fn(),
@@ -618,8 +529,7 @@ describe("Kimi provider package", () => {
     const recoverAccessToken = vi.fn().mockResolvedValue("same-token");
     const providerPackage = createKimiPackage({
       adapter: adapterResult(collect),
-      getCookieToken: vi.fn().mockResolvedValue("same-token"),
-      findPageAccessToken: vi.fn().mockResolvedValue(undefined),
+      findPageAccessToken: vi.fn().mockResolvedValueOnce("same-token").mockResolvedValue(undefined),
       recoverAccessToken,
       cleanupAbandonedRecovery: vi.fn().mockResolvedValue(undefined),
       announceRecovery: vi.fn(),

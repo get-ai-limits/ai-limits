@@ -179,7 +179,6 @@ export interface KimiSessionHolder {
     session: { accessToken?: string; refreshToken?: string },
     startedIn: number,
   ): Promise<void>;
-  hasSession(): Promise<boolean>;
   /** Drops the held session; writes still in flight are discarded. */
   forget(): Promise<void>;
 }
@@ -269,10 +268,6 @@ export function createKimiSessionHolder({
     },
 
     beginPageRead: () => generation,
-
-    async hasSession() {
-      return (await readKimiStoredSession(storage)) !== undefined;
-    },
 
     async rememberPageSession({ accessToken, refreshToken }, startedIn) {
       if (startedIn !== generation) return;

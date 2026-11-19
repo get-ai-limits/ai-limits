@@ -87,14 +87,14 @@ function subscriptionFixture(title = "Kimi Coding Ultra") {
 
 function context(
   fetch: typeof globalThis.fetch,
-  _getCookie = vi.fn(),
+  _getInitialToken = vi.fn(),
   _findAvailableAccessToken = vi.fn(),
   _recoverAccessToken = vi.fn(),
   _interaction: "allowed" | "forbidden" = "allowed",
 ) {
   return {
     fetch,
-    getCookie: _getCookie,
+    getInitialToken: _getInitialToken,
     interaction: _interaction,
     findAvailableAccessToken: _findAvailableAccessToken,
     recoverAccessToken: _recoverAccessToken,
@@ -114,14 +114,17 @@ const kimiInstance = {
 
 const kimiAdapter = {
   async collect(testContext: ReturnType<typeof context>) {
+    let initialRead = true;
     const providerPackage = createKimiPackage({
       adapter: rawKimiAdapter,
-      getCookieToken: async () =>
-        (await testContext.getCookie({
-          url: "https://www.kimi.com/",
-          name: "kimi-auth",
-        }))?.value,
-      findPageAccessToken: testContext.findAvailableAccessToken,
+      // The first page read supplies the initial token when the test gives
+      // one; later reads see whatever the page holds after a rejection.
+      findPageAccessToken: async () => {
+        if (!initialRead) return testContext.findAvailableAccessToken();
+        initialRead = false;
+        const initial = (await testContext.getInitialToken())?.value;
+        return initial ?? testContext.findAvailableAccessToken();
+      },
       recoverAccessToken: testContext.recoverAccessToken,
       cleanupAbandonedRecovery: async () => undefined,
       announceRecovery: () => undefined,
@@ -180,12 +183,12 @@ describe("Kimi adapter", () => {
   });
 
   test("normalizes current monthly, five-hour, and weekly usage stats", async () => {
-    const getCookie = vi.fn().mockResolvedValue({ value: "secret-cookie" });
+    const getInitialToken = vi.fn().mockResolvedValue({ value: "secret-token" });
     const fetch = vi.fn<typeof globalThis.fetch>().mockResolvedValue(
       response(statsFixture()),
     );
 
-    const result = await kimiAdapter.collect(context(fetch, getCookie));
+    const result = await kimiAdapter.collect(context(fetch, getInitialToken));
 
     expect(result).toEqual({
       ok: true,
@@ -228,17 +231,13 @@ describe("Kimi adapter", () => {
         ],
       },
     });
-    expect(getCookie).toHaveBeenCalledWith({
-      url: "https://www.kimi.com/",
-      name: "kimi-auth",
-    });
     expect(fetch).toHaveBeenCalledWith(
       "https://www.kimi.com/apiv2/kimi.gateway.membership.v2.MembershipService/GetSubscriptionStats",
       expect.objectContaining({
         method: "POST",
-        credentials: "include",
+        credentials: "omit",
         headers: {
-          Authorization: "Bearer secret-cookie",
+          Authorization: "Bearer secret-token",
           "Content-Type": "application/json",
           "Connect-Protocol-Version": "1",
           "X-Language": "en-US",
@@ -247,11 +246,11 @@ describe("Kimi adapter", () => {
         body: JSON.stringify({}),
       }),
     );
-    expect(JSON.stringify(result)).not.toContain("secret-cookie");
+    expect(JSON.stringify(result)).not.toContain("secret-token");
   });
 
   test("preserves Kimi monthly code segments as quota segments", async () => {
-    const getCookie = vi.fn().mockResolvedValue({ value: "secret-cookie" });
+    const getInitialToken = vi.fn().mockResolvedValue({ value: "secret-token" });
     const fetch = vi.fn<typeof globalThis.fetch>().mockResolvedValue(
       response(statsFixture({
         subscriptionBalance: {
@@ -262,7 +261,7 @@ describe("Kimi adapter", () => {
       })),
     );
 
-    const result = await kimiAdapter.collect(context(fetch, getCookie));
+    const result = await kimiAdapter.collect(context(fetch, getInitialToken));
 
     expect(result).toMatchObject({
       ok: true,
@@ -295,7 +294,7 @@ describe("Kimi adapter", () => {
             }),
           ),
         ),
-        vi.fn().mockResolvedValue({ value: "secret-cookie" }),
+        vi.fn().mockResolvedValue({ value: "secret-token" }),
       ),
     );
 
@@ -343,7 +342,7 @@ describe("Kimi adapter", () => {
         vi.fn<typeof globalThis.fetch>().mockResolvedValue(
           response(statsFixture({ subscriptionBalance })),
         ),
-        vi.fn().mockResolvedValue({ value: "secret-cookie" }),
+        vi.fn().mockResolvedValue({ value: "secret-token" }),
       ),
     );
 
@@ -373,7 +372,7 @@ describe("Kimi adapter", () => {
             }),
           ),
         ),
-        vi.fn().mockResolvedValue({ value: "secret-cookie" }),
+        vi.fn().mockResolvedValue({ value: "secret-token" }),
       ),
     );
 
@@ -407,7 +406,7 @@ describe("Kimi adapter", () => {
             }),
           ),
         ),
-        vi.fn().mockResolvedValue({ value: "secret-cookie" }),
+        vi.fn().mockResolvedValue({ value: "secret-token" }),
       ),
     );
 
@@ -440,7 +439,7 @@ describe("Kimi adapter", () => {
             }),
           ),
         ),
-        vi.fn().mockResolvedValue({ value: "secret-cookie" }),
+        vi.fn().mockResolvedValue({ value: "secret-token" }),
       ),
     );
 
@@ -476,7 +475,7 @@ describe("Kimi adapter", () => {
             }),
           ),
         ),
-        vi.fn().mockResolvedValue({ value: "secret-cookie" }),
+        vi.fn().mockResolvedValue({ value: "secret-token" }),
       ),
     );
 
@@ -500,7 +499,7 @@ describe("Kimi adapter", () => {
     );
 
     const result = await kimiAdapter.collect(
-      context(fetch, vi.fn().mockResolvedValue({ value: "secret-cookie" })),
+      context(fetch, vi.fn().mockResolvedValue({ value: "secret-token" })),
     );
 
     expect(result).toMatchObject({ ok: true });
@@ -521,7 +520,7 @@ describe("Kimi adapter", () => {
       .mockResolvedValueOnce(response(subscriptionFixture("Kimi Coding Ultra")));
 
     const result = await kimiAdapter.collect(
-      context(fetch, vi.fn().mockResolvedValue({ value: "secret-cookie" })),
+      context(fetch, vi.fn().mockResolvedValue({ value: "secret-token" })),
     );
 
     expect(result).toMatchObject({
@@ -546,7 +545,7 @@ describe("Kimi adapter", () => {
       .mockResolvedValueOnce(response({ subscription: { goods: { title: 42 } } }));
 
     const result = await kimiAdapter.collect(
-      context(fetch, vi.fn().mockResolvedValue({ value: "secret-cookie" })),
+      context(fetch, vi.fn().mockResolvedValue({ value: "secret-token" })),
     );
 
     expect(result).toMatchObject({
@@ -563,7 +562,7 @@ describe("Kimi adapter", () => {
     }
   });
 
-  test("uses the current page access token when the legacy cookie is absent", async () => {
+  test("uses the current page access token when no initial token is given", async () => {
     const findAvailableAccessToken = vi.fn().mockResolvedValue("page-token");
     const fetch = vi.fn<typeof globalThis.fetch>().mockResolvedValue(
       response(statsFixture()),
@@ -825,7 +824,7 @@ describe("Kimi adapter", () => {
     const result = await kimiAdapter.collect(
       context(
         fetch,
-        vi.fn().mockResolvedValue({ value: "valid-cookie" }),
+        vi.fn().mockResolvedValue({ value: "valid-token" }),
         vi.fn().mockResolvedValue(undefined),
         recoverAccessToken,
       ),
@@ -843,7 +842,7 @@ describe("Kimi adapter", () => {
     expect(recoverAccessToken).not.toHaveBeenCalled();
   });
 
-  test("retries once with the current page token when a stale cookie is rejected", async () => {
+  test("retries once with the current page token when a stale token is rejected", async () => {
     const findAvailableAccessToken = vi.fn().mockResolvedValue("page-token");
     const fetch = vi
       .fn<typeof globalThis.fetch>()
@@ -853,7 +852,7 @@ describe("Kimi adapter", () => {
     const result = await kimiAdapter.collect(
       context(
         fetch,
-        vi.fn().mockResolvedValue({ value: "stale-cookie" }),
+        vi.fn().mockResolvedValue({ value: "stale-token" }),
         findAvailableAccessToken,
       ),
     );
@@ -868,7 +867,7 @@ describe("Kimi adapter", () => {
       1,
       expect.any(String),
       expect.objectContaining({
-        headers: expect.objectContaining({ Authorization: "Bearer stale-cookie" }),
+        headers: expect.objectContaining({ Authorization: "Bearer stale-token" }),
       }),
     );
     expect(fetch).toHaveBeenNthCalledWith(
@@ -878,7 +877,7 @@ describe("Kimi adapter", () => {
         headers: expect.objectContaining({ Authorization: "Bearer page-token" }),
       }),
     );
-    expect(JSON.stringify(result)).not.toContain("stale-cookie");
+    expect(JSON.stringify(result)).not.toContain("stale-token");
     expect(JSON.stringify(result)).not.toContain("page-token");
   });
 
@@ -889,7 +888,7 @@ describe("Kimi adapter", () => {
       .mockResolvedValueOnce(response(fixture()));
 
     const result = await kimiAdapter.collect(
-      context(fetch, vi.fn().mockResolvedValue({ value: "secret-cookie" })),
+      context(fetch, vi.fn().mockResolvedValue({ value: "secret-token" })),
     );
 
     expect(result).toMatchObject({
@@ -913,7 +912,7 @@ describe("Kimi adapter", () => {
   test("defers a scheduled legacy-endpoint 401 after a passive page-token reread", async () => {
     const findAvailableAccessToken = vi
       .fn()
-      .mockResolvedValue("stale-cookie");
+      .mockResolvedValue("stale-token");
     const recoverAccessToken = vi.fn().mockResolvedValue("fresh-token");
     const fetch = vi
       .fn<typeof globalThis.fetch>()
@@ -923,7 +922,7 @@ describe("Kimi adapter", () => {
     const result = await kimiAdapter.collect(
       context(
         fetch,
-        vi.fn().mockResolvedValue({ value: "stale-cookie" }),
+        vi.fn().mockResolvedValue({ value: "stale-token" }),
         findAvailableAccessToken,
         recoverAccessToken,
         "forbidden",
@@ -944,7 +943,7 @@ describe("Kimi adapter", () => {
   test("recovers a manual legacy-endpoint 401 and retries that endpoint once", async () => {
     const findAvailableAccessToken = vi
       .fn()
-      .mockResolvedValue("stale-cookie");
+      .mockResolvedValue("stale-token");
     const recoverAccessToken = vi.fn().mockResolvedValue("fresh-token");
     const fetch = vi
       .fn<typeof globalThis.fetch>()
@@ -955,7 +954,7 @@ describe("Kimi adapter", () => {
     const result = await kimiAdapter.collect(
       context(
         fetch,
-        vi.fn().mockResolvedValue({ value: "stale-cookie" }),
+        vi.fn().mockResolvedValue({ value: "stale-token" }),
         findAvailableAccessToken,
         recoverAccessToken,
       ),
@@ -973,7 +972,7 @@ describe("Kimi adapter", () => {
     expect(findAvailableAccessToken).toHaveBeenCalledOnce();
     expect(recoverAccessToken).toHaveBeenCalledOnce();
     expect(recoverAccessToken).toHaveBeenCalledWith(
-      "stale-cookie",
+      "stale-token",
       expect.any(AbortSignal),
     );
     expect(fetch).toHaveBeenNthCalledWith(
@@ -998,7 +997,7 @@ describe("Kimi adapter", () => {
             }),
           ),
         ),
-        vi.fn().mockResolvedValue({ value: "secret-cookie" }),
+        vi.fn().mockResolvedValue({ value: "secret-token" }),
       ),
     );
 
@@ -1038,7 +1037,7 @@ describe("Kimi adapter", () => {
     const result = await kimiAdapter.collect(
       context(
         vi.fn<typeof globalThis.fetch>().mockResolvedValue(response({}, status)),
-        vi.fn().mockResolvedValue({ value: "secret-cookie" }),
+        vi.fn().mockResolvedValue({ value: "secret-token" }),
       ),
     );
 
@@ -1075,7 +1074,7 @@ describe("Kimi adapter", () => {
     const result = await kimiAdapter.collect(
       context(
         vi.fn<typeof globalThis.fetch>().mockResolvedValue(response(body)),
-        vi.fn().mockResolvedValue({ value: "secret-cookie" }),
+        vi.fn().mockResolvedValue({ value: "secret-token" }),
       ),
     );
 

@@ -85,9 +85,8 @@ Kimi scheduled refresh never opens a tab. An interactive Connect or Refresh
 may open at most one inactive temporary Kimi tab, waits up to 30 seconds for
 recovery, and closes only the tab it created. Recovery waits until Kimi finishes
 loading the page, then keeps the tab open long enough for Kimi to replace an
-expired session token. The extension checks the legacy
-Kimi cookie first, then the exact `access_token` entry in an already-open Kimi
-page. Browser shutdown or API errors can delay or prevent best-effort cleanup.
+expired session token. The extension reads the exact `access_token` entry in an
+already-open Kimi page and does not read Kimi cookies. Browser shutdown or API errors can delay or prevent best-effort cleanup.
 Whenever it reads a Kimi page, it also keeps that page's `refresh_token` in
 memory-backed `chrome.storage.session`, which the browser clears when it
 exits. Scheduled refresh uses it to renew Kimi's short-lived access token
@@ -138,7 +137,7 @@ optional host capability because they can use configurable origins, but Chrome
 is asked only for the exact instance origin entered in onboarding. Same-origin
 instances share that browser-global grant only; their credentials, labels,
 usage, and History remain independent. The optional
-`cookies` is requested only for Kimi session access. `scripting` is requested
+`scripting` permission is requested
 for Kimi interactive recovery, Cursor's manual/connect-only page enrichment,
 and Grok page-origin session and usage reads. Fixed API-key providers receive only optional access to their own
 API origins. Public setup pages are opened normally and do not receive

@@ -188,7 +188,7 @@ describe("provider registry", () => {
         rejected: undefined,
         permissions: {
           origins: ["https://www.kimi.com/*"],
-          permissions: ["cookies", "scripting"],
+          permissions: ["scripting"],
         },
       },
       {
@@ -427,7 +427,7 @@ describe("provider registry", () => {
         credentialKind: "none",
         configKind: "fixed",
         optionalOrigins: ["https://www.kimi.com/*"],
-        optionalPermissions: ["cookies", "scripting"],
+        optionalPermissions: ["scripting"],
       },
       cursor: {
         cardinality: "single",
@@ -629,21 +629,30 @@ describe("provider registry", () => {
         }),
       ]),
     );
-    vi.spyOn(browser.cookies, "get").mockResolvedValue({
-      value: "browser-token",
-    } as never);
-
     for (const kind of providerKinds) {
       const config =
         providerRegistry[kind].configKind === "dynamic-origin" ? dynamic : fixed;
       const credential = providerRegistry[kind].credentialKind === "api-key"
         ? apiKey
         : undefined;
+      // Kimi reads its access token from an open Kimi page.
+      const pageSpies =
+        kind === "kimi"
+          ? [
+              vi.spyOn(browser.tabs, "query").mockResolvedValue([
+                { id: 7 },
+              ] as never),
+              vi.spyOn(browser.scripting, "executeScript").mockResolvedValue([
+                { result: { accessToken: "browser-token" } },
+              ] as never),
+            ]
+          : [];
       await providerRegistry[kind].collect(
         instance(kind, config),
         services,
         credential,
       );
+      for (const spy of pageSpies) spy.mockRestore();
       if (kind !== "cursor" && kind !== "grok") {
         expect(adapterSpies[kind]).toHaveBeenCalledTimes(1);
       }
