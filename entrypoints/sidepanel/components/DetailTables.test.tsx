@@ -85,7 +85,7 @@ describe("DetailTables", () => {
     expect(screen.getByText("Captured 1 minute ago")).toBeInTheDocument();
     expect(
       screen.getByText(
-        "Included usage updates on Connect or Refresh with an open cursor.com tab.",
+        "Included usage updates while a cursor.com tab is open, or on Connect or Refresh.",
       ),
     ).toBeInTheDocument();
     expect(screen.queryByRole("table")).not.toBeInTheDocument();

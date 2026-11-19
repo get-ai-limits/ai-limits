@@ -47,9 +47,10 @@ However, manual refresh bypasses scheduled backoff, while automatic refresh
 respects it. Kimi manual refresh may additionally perform interactive session
 recovery. Cursor manual refresh may additionally request Grok Bot and
 extra-credit JSON through an already-open Cursor page, or by briefly opening
-one inactive spending tab when none is open; automatic refresh never opens or
-injects into a page. Scheduled refresh keeps last-good page values until Grok
-Bot's weekly reset and explains when they could not be refreshed. Grok
+one inactive spending tab when none is open. Automatic refresh may read the
+same JSON from an already-open Cursor tab and never opens one. Without an open
+tab, scheduled refresh keeps last-good page values until Grok Bot's weekly
+reset and explains when they could not be refreshed. Grok
 Connect or manual Refresh read grok.com from a page because extension-background
 requests are rejected; they prefer an already-open grok.com tab and may briefly
 open one inactive tab if none is open. Scheduled Grok refresh may inject into
@@ -57,20 +58,21 @@ an already-open grok.com tab and never opens a new one.
 
 Kimi has an additional limitation described below.
 
-## Why can Cursor Grok Bot or extra credits appear only after manual refresh?
+## Why do Cursor Grok Bot or extra credits sometimes update only after manual refresh?
 
 Cursor's base monthly and on-demand usage refreshes in the background. Its
 Grok Bot and extra-credit dashboard endpoints reject cross-origin POSTs
-(`Invalid origin for state-changing request`), so AI Limits reads them only
-during Connect or an explicit manual Refresh. It prefers an already-open
-`cursor.com` tab. If none is open, it may briefly create one inactive spending
-tab, wait up to 10 seconds, and close only the tab it created. The extension
+(`Invalid origin for state-changing request`), so AI Limits reads them through
+a `cursor.com` page. Scheduled refresh uses one only if it is already open.
+Connect or an explicit manual Refresh prefer an already-open tab too; if none
+is open, they may briefly create one inactive spending tab, wait up to 10
+seconds, and close only the tab they created. The extension
 runs a bundled exact-origin function that sends three fixed read-only dashboard
 requests and returns their JSON for schema validation in the extension. It
 does not inspect rendered content, browser storage, or cookie values directly;
 Chrome attaches the signed-in Cursor cookies to those fixed same-origin
 requests. It never activates a Cursor tab, and scheduled refresh never opens
-or injects into a Cursor page. Last-good Grok Bot and extra-credit values stay
+one. Last-good Grok Bot and extra-credit values stay
 on the card until Grok Bot's weekly reset; the card says why they could not be
 refreshed.
 

@@ -33,17 +33,18 @@ not keys, labels, usage, or History. Background command responses and
 application state never include saved API keys, and AI Limits does not render
 them or copy them into reports, logs, or History.
 
-Cursor Connect or manual Refresh may use `chrome.scripting` to run a bundled
-function in the main JavaScript world of one already-open exact-origin Cursor
-page, or of one inactive spending tab created for that attempt. Main-world
+Cursor refresh may use `chrome.scripting` to run a bundled function in the main
+JavaScript world of one already-open exact-origin Cursor page, or, during
+Connect or manual Refresh only, of one inactive spending tab created for that
+attempt. Main-world
 code can be observed or interfered with by the provider page,
 so the returned dashboard JSON is treated as untrusted and must pass the same
 extension-context schemas and semantic validation as any provider response.
 The function verifies `https://cursor.com`, uses only three fixed `{}`-body POST
 requests, and does not inspect rendered content, browser storage, or cookie
 values directly. Chrome attaches signed-in Cursor cookies to those same-origin
-requests. Scheduled refresh never injects into a Cursor page, and no raw
-dashboard JSON is persisted.
+requests. Scheduled refresh never opens a Cursor tab, and no raw dashboard JSON
+is persisted.
 
 Grok collection may use `chrome.scripting` to run a bundled function in the
 main JavaScript world of one already-open exact-origin grok.com page, or, on

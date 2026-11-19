@@ -107,14 +107,17 @@ describe("Cursor provider package", () => {
     expect(collect).not.toHaveBeenCalled();
   });
 
-  test("scheduled collection never looks for or injects into a Cursor page", async () => {
+  test("scheduled collection without an open Cursor tab keeps the scheduled wording", async () => {
     const collect = vi.fn<CursorCollect>().mockResolvedValue(baseCollection());
-    const findDashboardJson = vi.fn();
+    const findDashboardJson = vi
+      .fn()
+      .mockResolvedValue({ kind: "no_tab" } satisfies CursorDashboardProbe);
     const providerPackage = createCursorPackage({ collect, findDashboardJson });
 
     const result = await providerPackage.collect(instance, services("forbidden"));
 
-    expect(findDashboardJson).not.toHaveBeenCalled();
+    // Scheduled refresh may use an already-open tab but never opens one.
+    expect(findDashboardJson).toHaveBeenCalledWith({ allowOwnedTab: false });
     expect(collect).toHaveBeenCalledWith(
       expect.objectContaining({ now: NOW }),
       {},
@@ -156,6 +159,64 @@ describe("Cursor provider package", () => {
       expect.objectContaining({ now: NOW }),
       dashboard,
     );
+  });
+
+  test("interactive collection may open one owned tab", async () => {
+    const findDashboardJson = vi
+      .fn()
+      .mockResolvedValue({ kind: "no_tab" } satisfies CursorDashboardProbe);
+    const providerPackage = createCursorPackage({
+      collect: vi.fn<CursorCollect>().mockResolvedValue(baseCollection()),
+      findDashboardJson,
+    });
+
+    await providerPackage.collect(instance, services("allowed"));
+    expect(findDashboardJson).toHaveBeenCalledWith({ allowOwnedTab: true });
+  });
+
+  test("scheduled collection reads page JSON from an already-open Cursor tab", async () => {
+    const dashboard = { grok: { usagePercent: 25 } };
+    const probe: CursorDashboardProbe = {
+      kind: "read",
+      grok: { ok: true, value: dashboard.grok },
+      credits: { ok: false, status: 404 },
+      aggregated: { ok: false },
+    };
+    const collect = vi.fn<CursorCollect>().mockResolvedValue(baseCollection());
+    const findDashboardJson = vi.fn().mockResolvedValue(probe);
+    const providerPackage = createCursorPackage({ collect, findDashboardJson });
+
+    const result = await providerPackage.collect(instance, services("forbidden"));
+
+    expect(findDashboardJson).toHaveBeenCalledWith({ allowOwnedTab: false });
+    expect(collect).toHaveBeenCalledWith(
+      expect.objectContaining({ now: NOW }),
+      dashboard,
+    );
+    expect(JSON.stringify(result)).not.toContain("cursor:scheduled");
+  });
+
+  test("scheduled page failure keeps the scheduled wording without leaking details", async () => {
+    const collect = vi.fn<CursorCollect>().mockResolvedValue(baseCollection());
+    const providerPackage = createCursorPackage({
+      collect,
+      findDashboardJson: vi
+        .fn()
+        .mockRejectedValue(new Error("private page failure")),
+    });
+
+    const result = await providerPackage.collect(instance, services("forbidden"));
+
+    expect(collect).toHaveBeenCalledWith(expect.any(Object), {});
+    expect(JSON.stringify(result)).not.toContain("private page failure");
+    expect(result).toMatchObject({
+      ok: true,
+      snapshot: {
+        usageGroups: [
+          expect.objectContaining({ description: "cursor:scheduled" }),
+        ],
+      },
+    });
   });
 
   test("interactive bridge failure preserves base collection", async () => {
@@ -201,9 +262,11 @@ describe("Cursor provider package", () => {
     expect(collect).not.toHaveBeenCalled();
   });
 
-  test("scheduled collection carries last-good Grok Bot without injecting", async () => {
+  test("scheduled collection without an open tab carries last-good Grok Bot", async () => {
     const collect = vi.fn<CursorCollect>().mockResolvedValue(baseCollection());
-    const findDashboardJson = vi.fn();
+    const findDashboardJson = vi
+      .fn()
+      .mockResolvedValue({ kind: "no_tab" } satisfies CursorDashboardProbe);
     const providerPackage = createCursorPackage({ collect, findDashboardJson });
 
     const result = await providerPackage.collect(
@@ -211,7 +274,7 @@ describe("Cursor provider package", () => {
       services("forbidden"),
     );
 
-    expect(findDashboardJson).not.toHaveBeenCalled();
+    expect(findDashboardJson).toHaveBeenCalledWith({ allowOwnedTab: false });
     expect(result).toMatchObject({
       ok: true,
       snapshot: {

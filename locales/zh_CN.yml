@@ -690,7 +690,7 @@ metrics:
       many: "另有 {count} 行未显示"
       other: "另有 {count} 行未显示"
     carried: "包含的用量来自更早的页面刷新。{reason}"
-    scheduled: 在已打开 cursor.com 标签页时连接或刷新，即可更新包含的用量。
+    scheduled: 打开 cursor.com 标签页时，或在连接或刷新时，包含的用量会更新。
     noTab: 请打开 cursor.com，然后点击刷新，以更新包含的用量。
     permission: 缺少 Cursor 页面访问权限。请重新连接 Cursor 以更新包含的用量。
     tabAsleep: cursor.com 标签页处于休眠状态。请点击该标签页使其加载，然后按刷新。
@@ -734,7 +734,7 @@ metrics:
     onDemandSpend: 按需花费
     extraUsageCredits: 额外用量额度
     pageCarried: "部分 Cursor 页面数据来自更早的刷新。{reason}"
-    pageScheduled: 在已打开 cursor.com 标签页时连接或刷新，即可更新 Grok Bot。
+    pageScheduled: 打开 cursor.com 标签页时，或在连接或刷新时，Grok Bot 会更新。
     pageNoTab: 请打开 cursor.com，然后点击刷新，以更新 Grok Bot。
     pagePermission: 缺少 Cursor 页面访问权限。请重新连接 Cursor 以更新 Grok Bot。
     pageTabAsleep: cursor.com 标签页处于休眠状态。请点击该标签页使其加载，然后按刷新。
@@ -861,8 +861,8 @@ providers:
   cursor:
     name: Cursor
     connect: 连接 Cursor
-    connectionDisclosure: 从你已登录的 Cursor 会话读取基础用量，并大约每 15 分钟刷新一次。在连接或手动刷新时，AI Limits 可能在一个已经打开的 cursor.com 页面中运行捆绑的只读代码；如果当前没有打开的标签页，可能会短暂打开一个非活动用量页，以请求 Grok Bot 和额外额度 JSON。它不会直接检查页面内容、浏览器存储或 cookie 值；浏览器会把已登录的 Cursor cookie 附加到这些固定的同源请求。
-    manualRefreshDisclosure: 连接和手动刷新会优先使用已经打开的 Cursor 标签页。如果当前没有打开的标签页，它们可能会短暂打开一个非活动用量页。定时或自动刷新永远不会打开标签页或注入页面。
+    connectionDisclosure: 从你已登录的 Cursor 会话读取基础用量，并大约每 15 分钟刷新一次。为请求 Grok Bot 和额外额度 JSON，AI Limits 可能在一个已经打开的 cursor.com 页面中运行捆绑的只读代码，定时刷新时也是如此。只有连接或手动刷新会在没有打开的标签页时短暂打开一个非活动用量页。它不会直接检查页面内容、浏览器存储或 cookie 值；浏览器会把已登录的 Cursor cookie 附加到这些固定的同源请求。
+    manualRefreshDisclosure: 连接和手动刷新会优先使用已经打开的 Cursor 标签页。如果当前没有打开的标签页，它们可能会短暂打开一个非活动用量页。定时刷新可能读取已经打开的 Cursor 标签页，但永远不会新建标签页。
     capabilities:
       monthlyUsage: 每月用量
       grokBotUsage: Grok Bot 用量

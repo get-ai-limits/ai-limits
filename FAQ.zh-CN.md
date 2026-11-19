@@ -41,7 +41,8 @@ Chrome 完全关闭或设备休眠时，AI Limits 无法刷新。恢复运行后
 定时退避，自动刷新则会遵守退避时间。Kimi 手动刷新还可能执行交互式会话
 恢复。Cursor 手动刷新还可能通过已经打开的 Cursor 页面请求 Grok Bot 和额外
 Credits JSON；如果当前没有打开的标签页，可能会短暂打开一个非活动用量页。自动
-刷新绝不会打开标签页或向页面注入代码。定时刷新会保留上次有效的页面数值，
+刷新可能从已经打开的 Cursor 标签页读取同样的 JSON，但绝不会新建标签页。没有
+打开的标签页时，定时刷新会保留上次有效的页面数值，
 直到 Grok Bot 的每周重置，并说明为何未能刷新。Grok 的 Connect 或手动 Refresh
 会从 grok.com 页面读取用量，因为扩展后台请求会被拒绝；它们会优先使用已经
 打开的 grok.com 标签页，如果没有则可能短暂打开一个非活动标签页。Grok
@@ -49,17 +50,17 @@ Credits JSON；如果当前没有打开的标签页，可能会短暂打开一�
 
 Kimi 还有下述额外限制。
 
-## 为什么 Cursor 的 Grok Bot 或额外 Credits 可能只在手动刷新后出现？
+## 为什么 Cursor 的 Grok Bot 或额外 Credits 有时只在手动刷新后更新？
 
 Cursor 的基础月度和按量用量会在后台刷新。Grok Bot 和额外 Credits Dashboard
 接口会拒绝跨源 POST（`Invalid origin for state-changing request`），因此 AI
-Limits 只会在 Connect 或明确的手动 Refresh 期间尝试请求。它会优先使用已经
-打开的 `cursor.com` 标签页；如果当前没有打开的标签页，可能会短暂创建一个
-非活动用量页，最多等待 10 秒，并且只关闭它自己创建的标签页。扩展自带的函数
+Limits 通过 `cursor.com` 页面读取它们。定时刷新只使用已经打开的标签页。
+Connect 或明确的手动 Refresh 也会优先使用已经打开的标签页；如果当前没有打开的
+标签页，可能会短暂创建一个非活动用量页，最多等待 10 秒，并且只关闭它自己创建的标签页。扩展自带的函数
 会验证精确来源，只发送三个固定的只读 Dashboard 请求，并把 JSON 返回扩展
 上下文进行 Schema 验证。它不会直接检查页面渲染内容、浏览器存储或 Cookie
 值；Chrome 仍会把已登录的 Cursor Cookie 附加到这些固定的同源请求。它不会
-激活 Cursor 标签页，定时刷新也绝不会打开标签页或向 Cursor 页面注入代码。
+激活 Cursor 标签页，定时刷新也绝不会新建标签页。
 上次有效的 Grok Bot 和额外 Credits 会保留在卡片上，直到 Grok Bot 的每周
 重置；卡片会说明为何未能刷新。
 

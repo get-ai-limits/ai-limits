@@ -124,11 +124,11 @@ These origins are requested one provider at a time after the user clicks
   refresh token and no cookies, and does not request an additional host
   permission. If Kimi stops accepting that request, refresh falls back to the
   page and tab paths described under `scripting` below.
-- `https://cursor.com/*`: reads the signed-in user's base Cursor usage. During
-  Connect or manual Refresh only, it can also run bundled read-only code in one
-  already-open exact-origin page, or briefly open one inactive spending tab if
-  none is open, to request Grok Bot, credit-grant, and aggregated included-usage
-  JSON.
+- `https://cursor.com/*`: reads the signed-in user's base Cursor usage. It can
+  also run bundled read-only code in one already-open exact-origin page to
+  request Grok Bot, credit-grant, and aggregated included-usage JSON. Only
+  during Connect or manual Refresh, if none is open, it may briefly open one
+  inactive spending tab.
 - `https://grok.com/*`: reads the signed-in user's Grok session, usage-pool,
   rate-limit, and subscription responses from an already-open grok.com page.
   During Connect or manual Refresh, if none is open, it may briefly open one
@@ -168,17 +168,17 @@ These origins are requested one provider at a time after the user clicks
   waits until Kimi's client app has mounted, stops waiting for a credential
   after 30 seconds, and attempts best-effort cleanup of only its owned tab;
   shutdown or browser API errors can delay or
-  prevent cleanup. For Cursor, Connect or manual Refresh can run a bundled
-  exact-origin function in one already-open `cursor.com` page. If none is open,
-  that interactive path may create one inactive
+  prevent cleanup. For Cursor, refresh can run a bundled exact-origin function
+  in one already-open `cursor.com` page. If none is open, only Connect or
+  manual Refresh may create one inactive
   `https://cursor.com/dashboard/spending` tab, wait up to 10 seconds, and close
   only the tab it created. It never activates a tab and never closes a tab the
   user opened. That function sends POST requests with the fixed `{}` body only
   to the Grok Bot, credit-grant, and aggregated-usage dashboard endpoints,
   returns only their JSON, and does not inspect rendered content, browser
   storage, or cookie values directly. Chrome attaches the signed-in Cursor
-  cookies to those same-origin requests. Scheduled refresh never opens or
-  injects into a Cursor page. For Grok, Connect or manual Refresh can run a
+  cookies to those same-origin requests. Scheduled refresh may inject into an
+  already-open cursor.com tab and never opens a new one. For Grok, Connect or manual Refresh can run a
   bundled exact-origin function in one already-open `grok.com` page. If none is
   open, that interactive path may create one inactive `https://grok.com/` tab,
   wait up to 10 seconds, and close only the tab it created. It never activates
@@ -193,7 +193,7 @@ The manifest does not request the broad `tabs` permission. Scheduled refresh
 does not create or activate provider tabs. Grok scheduled refresh may inject
 into an already-open grok.com tab; Kimi scheduled refresh may read
 `access_token`/`refresh_token` from an already-open Kimi tab; Cursor scheduled
-refresh never injects.
+refresh may inject into an already-open cursor.com tab.
 
 ## Data-disclosure answers
 
@@ -214,7 +214,7 @@ refresh never injects.
   and never sent to the developer.
 - **Website content:** Yes. AI Limits handles private provider session, usage,
   subscription, and organization-response JSON plus Kimi's exact
-  `access_token` and `refresh_token` browser-storage entries and Cursor's manual page-context
+  `access_token` and `refresh_token` browser-storage entries and Cursor's page-context
   dashboard JSON responses (Grok Bot, credit-grant, and aggregated included
   usage), plus Grok page-origin session, usage-pool, subscription, and
   rate-limit responses, plus the promotional credit pools in OpenRouter's
@@ -235,8 +235,8 @@ refresh never injects.
   or retained.
 - **Web history:** Yes, narrowly and conservatively classified. During Kimi
   collection, AI Limits may check for an already-open tab matching the exact
-  Kimi origin. During Cursor Connect or manual Refresh, it may check for one
-  already-open tab matching the exact Cursor origin. During Grok collection, it
+  Kimi origin. During Cursor collection, it may check for one already-open tab
+  matching the exact Cursor origin. During Grok collection, it
   may check for one already-open tab matching the exact Grok origin. This
   reveals only whether that fixed provider-origin tab is currently open, is
   used locally for the requested provider operation, and is never retained,
@@ -315,7 +315,7 @@ The full policy is in [PRIVACY.md](../../PRIVACY.md).
    confirm the existing tab is reused rather than a second tab being created.
    Then close all Cursor tabs and start a **scheduled** cycle (or wait for
    automatic refresh): base monthly/on-demand usage should remain available,
-   no Cursor tab should open, and no page injection should occur. Previously
+   and no Cursor tab should open. Previously
    collected Grok Bot, extra-credit, and detail values may remain visible as
    earlier page values until Grok Bot's weekly reset, and the card should
    explain why they were not refreshed.

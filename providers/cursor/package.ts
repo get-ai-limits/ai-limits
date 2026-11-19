@@ -32,7 +32,14 @@ interface CursorPackageDependencies {
     context: CollectionContext,
     dashboard: CursorDashboardJson,
   ): Promise<CollectionResult>;
-  findDashboardJson(): Promise<CursorDashboardProbe>;
+  /**
+   * Reads the dashboard JSON through a cursor.com page. `allowOwnedTab` lets
+   * it open one inactive tab when none is open; otherwise it only uses a tab
+   * the user already has open.
+   */
+  findDashboardJson(options: {
+    allowOwnedTab: boolean;
+  }): Promise<CursorDashboardProbe>;
   cleanupAbandonedOwnedTab?(): Promise<void>;
 }
 
@@ -79,14 +86,20 @@ export function createCursorPackage(
         return { ok: false, health: { kind: "provider_changed" } };
       }
 
+      const interactive = services.interaction === "allowed";
       let probe: CursorDashboardProbe | { kind: "skipped" } = { kind: "skipped" };
-      if (services.interaction === "allowed" && !services.signal.aborted) {
+      if (!services.signal.aborted) {
         try {
-          probe = await dependencies.findDashboardJson();
+          probe = await dependencies.findDashboardJson({
+            allowOwnedTab: interactive,
+          });
         } catch {
           probe = { kind: "inject_threw", detail: "findDashboardJson threw" };
         }
       }
+      // Scheduled refresh only uses an already-open cursor.com tab. Without a
+      // usable read it keeps the scheduled wording and last-good page values.
+      if (!interactive && probe.kind !== "read") probe = { kind: "skipped" };
       const dashboard =
         probe.kind === "skipped" ? {} : dashboardJsonFromProbe(probe);
       const result = await dependencies.collect(
@@ -123,7 +136,7 @@ function cursorOwnedTabBrowser() {
 
 export const cursorPackage = createCursorPackage({
   collect: collectCursor,
-  findDashboardJson: () => {
+  findDashboardJson: ({ allowOwnedTab }) => {
     const tabs = cursorOwnedTabBrowser();
     return findCursorDashboardJson({
       hasPagePermission: async () => {
@@ -140,7 +153,7 @@ export const cursorPackage = createCursorPackage({
       },
       queryTabs: (details) => browser.tabs.query(details),
       executeScript: (details) => browser.scripting.executeScript(details),
-      openOwnedTab: async () => {
+      openOwnedTab: allowOwnedTab ? async () => {
         const owned = await openOwnedBackgroundTab({
           url: CURSOR_OWNED_TAB_URL,
           leaseKeyPrefix: CURSOR_OWNED_TAB_LEASE_PREFIX,
@@ -158,7 +171,7 @@ export const cursorPackage = createCursorPackage({
               storageSession: tabs.storageSession,
             }),
         };
-      },
+      } : undefined,
     });
   },
   cleanupAbandonedOwnedTab: () => {
