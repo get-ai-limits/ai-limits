@@ -214,8 +214,8 @@ export function createKimiSessionHolder({
   const renew = async (
     session: KimiStoredSession,
     signal: AbortSignal,
+    startedIn: number,
   ): Promise<string | undefined> => {
-    const startedIn = generation;
     const outcome = await exchangeKimiRefreshToken({
       fetch: injectedFetch,
       refreshToken: session.refreshToken,
@@ -243,6 +243,8 @@ export function createKimiSessionHolder({
   return {
     async tokenFor(rejectedToken, signal) {
       if (signal.aborted) return undefined;
+      // Same tick as the abort check: a disconnect aborts before it forgets.
+      const startedIn = generation;
       const session = await readKimiStoredSession(storage);
       if (!session) return undefined;
 
@@ -255,7 +257,7 @@ export function createKimiSessionHolder({
         return session.accessToken;
       }
 
-      inFlight ??= renew(session, signal).finally(() => {
+      inFlight ??= renew(session, signal, startedIn).finally(() => {
         inFlight = undefined;
       });
       try {

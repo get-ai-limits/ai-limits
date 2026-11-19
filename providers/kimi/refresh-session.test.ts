@@ -342,6 +342,28 @@ describe("Kimi session holder lifecycle", () => {
     expect(storage.items).not.toHaveProperty(KIMI_REFRESH_SESSION_KEY);
   });
 
+  test("discards a renewal whose session read began before forget", async () => {
+    const storage = memoryStorage({
+      [KIMI_REFRESH_SESSION_KEY]: { refreshToken: "r1" },
+    });
+    const holder = createKimiSessionHolder({
+      storage,
+      fetch: vi.fn(async () =>
+        jsonResponse(200, { accessToken: "a2", refreshToken: "r2" }),
+      ),
+      now: () => NOW,
+    });
+    const originalGet = storage.get;
+    storage.get = vi.fn(async (key: string | null) => {
+      const items = await originalGet(key);
+      await holder.forget();
+      return items;
+    });
+
+    await expect(holder.tokenFor(undefined, signal())).resolves.toBeUndefined();
+    expect(storage.items).not.toHaveProperty(KIMI_REFRESH_SESSION_KEY);
+  });
+
   test("discards a page save that finishes after forget", async () => {
     const storage = memoryStorage();
     const holder = createKimiSessionHolder({

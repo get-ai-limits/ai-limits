@@ -176,7 +176,7 @@ export function createKimiPackage(
 
       let token = await safelyResolveToken(() => dependencies.getCookieToken());
       const tokenFromCookie = token !== undefined;
-      if (!token) {
+      if (!token && !services.signal.aborted) {
         token = await safelyResolveToken(() =>
           dependencies.findPageAccessToken(),
         );

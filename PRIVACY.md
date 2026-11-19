@@ -96,7 +96,7 @@ while a Kimi tab is open. So scheduled refresh can keep working after the tab
 closes, AI Limits holds a Kimi session in `chrome.storage.session`: the
 current Kimi refresh token, the most recent access token with its expiry time,
 and the page refresh token the session was taken from (kept only to tell when
-the page has signed in again). That storage is memory-backed: the browser
+the page holds a different session). That storage is memory-backed: the browser
 clears it when it exits or when the extension is reloaded or updated, and it
 is never written to disk or included in saved refresh results. When the
 access token is missing, expired, or rejected by Kimi, the background worker
@@ -379,7 +379,8 @@ Optional access lets the extension interact with sensitive signed-in provider
 sessions and with API keys you provide. AI Limits minimizes that access and
 stores normalized results locally, but no browser extension or local profile
 is risk-free. Anyone who can access your unlocked Chrome profile may be able to
-access extension data, including separately saved API keys.
+access extension data, including separately saved API keys and, while the
+browser is running, the Kimi session held in `chrome.storage.session`.
 
 Browser-session provider endpoints are private, unsupported interfaces and may
 change or stop working without notice. API-key providers use documented or
