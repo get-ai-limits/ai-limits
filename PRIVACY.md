@@ -64,11 +64,13 @@ and Kimi access credentials, the derived ChatGPT account identifier, and the
 selected Claude organization UUID and capabilities may be held in memory long
 enough to complete the related collection attempt and request sequence. Those
 values are not written to persistent extension storage or included in saved
-refresh results. The selected Claude organization name may separately be
+refresh results. The Kimi session held in memory-backed session storage is
+described below. The selected Claude organization name may separately be
 stored as the visible plan label.
 
 For Kimi, AI Limits checks the exact legacy `kimi-auth` cookie first, then the
-exact `access_token` entry from an already-open matching Kimi page. It does not
+exact `access_token` entry from an already-open matching Kimi page. When it
+reads that page, it also reads the exact `refresh_token` entry. It does not
 read other Kimi browser-storage entries. During an interactive Connect or
 Refresh, either a missing credential or a credential rejected by Kimi may
 cause AI Limits to create one inactive Kimi homepage tab. Recovery reads
@@ -79,6 +81,21 @@ a credential. When recovery finishes or times out, the extension attempts
 best-effort cleanup of only the tab and lease it owns; browser shutdown or API
 errors can delay or prevent cleanup. Scheduled refresh never creates a Kimi
 tab.
+
+Kimi access tokens last about 15 minutes, and the Kimi page renews them only
+while a Kimi tab is open. So scheduled refresh can keep working after the tab
+closes, AI Limits holds the Kimi refresh token, and the most recent access
+token with its expiry time, in `chrome.storage.session`. That storage is
+memory-backed: Chrome clears it when the browser exits, and it is never
+written to disk or included in saved refresh results. When the access token
+is missing or expired, the background worker sends the refresh token, and
+nothing else, to Kimi's own sign-in service at
+`https://auth.kimi.com/api/account.gateway.v1.AuthService/RefreshToken`,
+without cookies. It keeps the new pair Kimi returns and never opens a tab to
+do so. A refresh token Kimi rejects is dropped. Disconnecting Kimi or deleting
+all local data also drops it. After a browser restart, Kimi needs one open Kimi
+tab or one manual Connect or Refresh before scheduled refresh can renew on its
+own again.
 
 While that recovery is active, the extension stores only a generated lease
 identifier with the temporary tab ID and creation timestamp in

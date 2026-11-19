@@ -1,0 +1,207 @@
+import { z } from "zod";
+
+import type { StorageSessionLike } from "../tab-ensure";
+
+// Kimi's web app keeps a short-lived access token (about 15 minutes) and a
+// long-lived refresh token in page localStorage. The page itself only renews
+// the access token while a Kimi tab is open, so scheduled refresh used to stall
+// once that tab closed. Holding the refresh token in memory-backed
+// chrome.storage.session lets the background worker renew the access token
+// itself until the browser restarts; nothing is written to persistent storage.
+export const KIMI_REFRESH_SESSION_KEY = "kimiRefreshSession";
+export const KIMI_REFRESH_ENDPOINT =
+  "https://auth.kimi.com/api/account.gateway.v1.AuthService/RefreshToken";
+// Treat a cached access token as spent a minute before Kimi does, so a request
+// does not race its expiry.
+export const KIMI_ACCESS_EXPIRY_MARGIN_MS = 60_000;
+
+const nonEmptyToken = z.string().trim().min(1);
+
+const storedSessionSchema = z.object({
+  refreshToken: nonEmptyToken,
+  accessToken: nonEmptyToken.optional(),
+  accessExpiresAt: z.number().finite().positive().optional(),
+});
+
+const refreshResponseSchema = z.object({
+  accessToken: nonEmptyToken,
+  refreshToken: nonEmptyToken,
+});
+
+export type KimiStoredSession = z.infer<typeof storedSessionSchema>;
+
+export type KimiRefreshOutcome =
+  | { kind: "refreshed"; accessToken: string; refreshToken: string }
+  | { kind: "rejected" }
+  | { kind: "unavailable" };
+
+/** Reads the unverified `exp` claim only to decide when to stop reusing it. */
+export function kimiTokenExpiresAt(token: string): number | undefined {
+  const payload = token.split(".")[1];
+  if (!payload) return undefined;
+  try {
+    const base64 = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, "=");
+    const claims: unknown = JSON.parse(atob(padded));
+    const exp =
+      typeof claims === "object" && claims !== null
+        ? (claims as { exp?: unknown }).exp
+        : undefined;
+    return typeof exp === "number" && Number.isFinite(exp) && exp > 0
+      ? exp * 1_000
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+export async function readKimiStoredSession(
+  storage: StorageSessionLike,
+): Promise<KimiStoredSession | undefined> {
+  try {
+    const items = await storage.get(KIMI_REFRESH_SESSION_KEY);
+    const parsed = storedSessionSchema.safeParse(
+      items[KIMI_REFRESH_SESSION_KEY],
+    );
+    return parsed.success ? parsed.data : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+export async function saveKimiStoredSession(
+  storage: StorageSessionLike,
+  session: { refreshToken: string; accessToken?: string },
+): Promise<void> {
+  const refreshToken = session.refreshToken.trim();
+  if (!refreshToken) return;
+  const accessToken = session.accessToken?.trim();
+  const accessExpiresAt = accessToken
+    ? kimiTokenExpiresAt(accessToken)
+    : undefined;
+  const value: KimiStoredSession = {
+    refreshToken,
+    // Cache the access token only when its expiry is readable, so a token of
+    // unknown age is never reused past its life.
+    ...(accessToken && accessExpiresAt !== undefined
+      ? { accessToken, accessExpiresAt }
+      : {}),
+  };
+  await storage.set({ [KIMI_REFRESH_SESSION_KEY]: value });
+}
+
+export async function clearKimiStoredSession(
+  storage: StorageSessionLike,
+): Promise<void> {
+  await storage.remove(KIMI_REFRESH_SESSION_KEY);
+}
+
+export async function exchangeKimiRefreshToken({
+  fetch: injectedFetch,
+  refreshToken,
+  signal,
+}: {
+  fetch: typeof globalThis.fetch;
+  refreshToken: string;
+  signal: AbortSignal;
+}): Promise<KimiRefreshOutcome> {
+  let response: Response;
+  try {
+    // Kimi's refresh call carries the token in the body and needs no cookies.
+    response = await injectedFetch(KIMI_REFRESH_ENDPOINT, {
+      method: "POST",
+      credentials: "omit",
+      headers: {
+        "Content-Type": "application/json",
+        "Connect-Protocol-Version": "1",
+      },
+      body: JSON.stringify({ refreshToken }),
+      signal,
+    });
+  } catch {
+    return { kind: "unavailable" };
+  }
+
+  if (response.status === 401 || response.status === 403) {
+    return { kind: "rejected" };
+  }
+  if (!response.ok) return { kind: "unavailable" };
+
+  let body: unknown;
+  try {
+    body = await response.json();
+  } catch {
+    return { kind: "unavailable" };
+  }
+  const parsed = refreshResponseSchema.safeParse(body);
+  return parsed.success
+    ? { kind: "refreshed", ...parsed.data }
+    : { kind: "unavailable" };
+}
+
+/**
+ * Returns an access token from the in-memory session, renewing it with the
+ * held refresh token when the cached one is missing, expired, or the token the
+ * caller just saw Kimi reject. Concurrent callers share one renewal.
+ */
+export function createKimiStoredSessionTokenSource({
+  storage,
+  fetch: injectedFetch,
+  now = Date.now,
+}: {
+  storage: StorageSessionLike;
+  fetch: typeof globalThis.fetch;
+  now?: () => number;
+}): (
+  rejectedToken: string | undefined,
+  signal: AbortSignal,
+) => Promise<string | undefined> {
+  let inFlight: Promise<string | undefined> | undefined;
+
+  const renew = async (
+    session: KimiStoredSession,
+    signal: AbortSignal,
+  ): Promise<string | undefined> => {
+    const outcome = await exchangeKimiRefreshToken({
+      fetch: injectedFetch,
+      refreshToken: session.refreshToken,
+      signal,
+    });
+    if (outcome.kind === "rejected") {
+      // Only forget the token we tried; a page read may have stored a newer one.
+      const current = await readKimiStoredSession(storage);
+      if (current?.refreshToken === session.refreshToken) {
+        await clearKimiStoredSession(storage).catch(() => undefined);
+      }
+      return undefined;
+    }
+    if (outcome.kind !== "refreshed" || signal.aborted) return undefined;
+    await saveKimiStoredSession(storage, outcome).catch(() => undefined);
+    return outcome.accessToken;
+  };
+
+  return async (rejectedToken, signal) => {
+    if (signal.aborted) return undefined;
+    const session = await readKimiStoredSession(storage);
+    if (!session) return undefined;
+
+    if (
+      session.accessToken !== undefined &&
+      session.accessToken !== rejectedToken &&
+      session.accessExpiresAt !== undefined &&
+      session.accessExpiresAt - KIMI_ACCESS_EXPIRY_MARGIN_MS > now()
+    ) {
+      return session.accessToken;
+    }
+
+    inFlight ??= renew(session, signal).finally(() => {
+      inFlight = undefined;
+    });
+    try {
+      const token = await inFlight;
+      return token === rejectedToken ? undefined : token;
+    } catch {
+      return undefined;
+    }
+  };
+}

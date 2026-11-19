@@ -90,7 +90,8 @@ AI Limits is an independent project by TiantianFlow. It is not affiliated with, 
   normalized quota/counter/balance snapshots, up to 30 days of typed
   per-instance History, and sanitized refresh status in
   `chrome.storage.local`. It also holds temporary Kimi, Cursor, and Grok tab-cleanup
-  lease metadata in `chrome.storage.session`. Browser-session cookies and access
+  lease metadata in `chrome.storage.session`, plus the Kimi refresh token and
+  latest Kimi access token, which Chrome clears when the browser exits. Browser-session cookies and access
   credentials are not persisted. After validation, each user-created provider API
   key is persisted in a separate `chrome.storage.local` credential record whose
   Chrome storage access level is restricted to trusted extension contexts. It
@@ -117,7 +118,10 @@ These origins are requested one provider at a time after the user clicks
 - `https://claude.ai/*`: reads the signed-in user's Claude organization usage
   response.
 - `https://www.kimi.com/*`: reads Kimi usage/subscription responses and supports
-  the bounded interactive session-access and recovery flow.
+  the bounded interactive session-access and recovery flow. Renewing Kimi's
+  access token calls Kimi's sign-in service at `auth.kimi.com` with only the
+  refresh token and no cookies; that service accepts the request without a
+  separate host permission.
 - `https://cursor.com/*`: reads the signed-in user's base Cursor usage. During
   Connect or manual Refresh only, it can also run bundled read-only code in one
   already-open exact-origin page, or briefly open one inactive spending tab if
@@ -158,7 +162,7 @@ These origins are requested one provider at a time after the user clicks
 - `cookies`: requested only with Kimi access; reads only Kimi's exact legacy
   `kimi-auth` cookie when available. This is checked before Kimi page storage.
 - `scripting`: requested with Kimi, Cursor, or Grok access. For Kimi, it reads only
-  the exact `access_token` browser-storage entry from an already-open or
+  the exact `access_token` and `refresh_token` browser-storage entries from an already-open or
   recovery-created matching Kimi page. If a credential is missing or rejected,
   interactive recovery may create one inactive Kimi homepage tab. Recovery
   waits until Kimi's client app has mounted, stops waiting for a credential
@@ -201,7 +205,7 @@ into an already-open grok.com tab; Cursor scheduled refresh never injects.
   and never sent to the developer.
 - **Website content:** Yes. AI Limits handles private provider session, usage,
   subscription, and organization-response JSON plus Kimi's exact
-  `access_token` browser-storage entry and Cursor's manual page-context
+  `access_token` and `refresh_token` browser-storage entries and Cursor's manual page-context
   dashboard JSON responses (Grok Bot, credit-grant, and aggregated included
   usage), plus Grok page-origin session, usage-pool, subscription, and
   rate-limit responses, plus the promotional credit pools in OpenRouter's

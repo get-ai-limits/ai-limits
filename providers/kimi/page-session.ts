@@ -12,17 +12,26 @@ interface ExecuteScript {
   (details: {
     target: { tabId: number };
     world: "MAIN";
-    func: typeof readKimiAccessTokenAtExpectedOrigin;
+    func: typeof readKimiPageSessionAtExpectedOrigin;
     args: [string];
   }): Promise<ScriptResult[]>;
 }
 
-export function readKimiAccessTokenAtExpectedOrigin(
+export interface KimiPageSession {
+  accessToken?: string;
+  refreshToken?: string;
+}
+
+/**
+ * Runs inside a Kimi page. Reads only the exact `access_token` and
+ * `refresh_token` entries, and only once Kimi's own client app has mounted.
+ */
+export function readKimiPageSessionAtExpectedOrigin(
   expectedOrigin: string,
   storage: StorageReader = globalThis.localStorage,
   currentOrigin: string = globalThis.location.origin,
   appMounted?: boolean,
-): string | undefined {
+): KimiPageSession | undefined {
   if (currentOrigin !== expectedOrigin) {
     return undefined;
   }
@@ -35,18 +44,39 @@ export function readKimiAccessTokenAtExpectedOrigin(
     ((globalThis as { __kimiAppMounted?: unknown }).__kimiAppMounted === true);
   if (!mounted) return undefined;
 
-  return storage.getItem("access_token") ?? undefined;
+  return {
+    accessToken: storage.getItem("access_token") ?? undefined,
+    refreshToken: storage.getItem("refresh_token") ?? undefined,
+  };
 }
 
-export async function readKimiPageAccessToken(
+function tokenOrUndefined(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const token = value.trim();
+  return token ? token : undefined;
+}
+
+/** Validates the injected result; page script output is untrusted. */
+export function parseKimiPageSession(value: unknown): KimiPageSession {
+  if (typeof value !== "object" || value === null) return {};
+  const record = value as Record<string, unknown>;
+  const accessToken = tokenOrUndefined(record.accessToken);
+  const refreshToken = tokenOrUndefined(record.refreshToken);
+  return {
+    ...(accessToken === undefined ? {} : { accessToken }),
+    ...(refreshToken === undefined ? {} : { refreshToken }),
+  };
+}
+
+export async function readKimiPageSession(
   tabId: number,
   executeScript: ExecuteScript,
-): Promise<unknown> {
+): Promise<KimiPageSession> {
   const [injection] = await executeScript({
     target: { tabId },
     world: "MAIN",
-    func: readKimiAccessTokenAtExpectedOrigin,
+    func: readKimiPageSessionAtExpectedOrigin,
     args: [KIMI_ORIGIN],
   });
-  return injection?.result;
+  return parseKimiPageSession(injection?.result);
 }

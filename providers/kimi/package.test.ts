@@ -39,6 +39,120 @@ function successfulCollection(): CollectionResult {
 }
 
 describe("Kimi provider package", () => {
+  const sessionRequired: CollectionResult = {
+    ok: false,
+    deferred: { reason: "session_required" },
+  };
+
+  test("scheduled collection without a tab uses the held refresh session", async () => {
+    const collect = vi.fn().mockResolvedValue(successfulCollection());
+    const recoverAccessToken = vi.fn();
+    const storedSessionToken = vi.fn().mockResolvedValue("held-access");
+    const providerPackage = createKimiPackage({
+      adapter: adapterResult(collect),
+      getCookieToken: vi.fn().mockResolvedValue(undefined),
+      findPageAccessToken: vi.fn().mockResolvedValue(undefined),
+      recoverAccessToken,
+      cleanupAbandonedRecovery: vi.fn().mockResolvedValue(undefined),
+      announceRecovery: vi.fn(),
+      storedSessionToken,
+    });
+
+    await expect(
+      providerPackage.collect(instance, services("forbidden")),
+    ).resolves.toEqual(successfulCollection());
+    expect(storedSessionToken).toHaveBeenCalledWith(
+      undefined,
+      expect.any(AbortSignal),
+    );
+    expect(collect.mock.calls[0]?.[0].accessToken).toBe("held-access");
+    expect(recoverAccessToken).not.toHaveBeenCalled();
+  });
+
+  test("scheduled collection renews from the held session after Kimi rejects a token", async () => {
+    const collect = vi
+      .fn<(_context: CollectionContext) => Promise<CollectionResult>>()
+      .mockResolvedValueOnce(sessionRequired)
+      .mockResolvedValueOnce(successfulCollection());
+    const storedSessionToken = vi
+      .fn()
+      .mockResolvedValueOnce("cached-access")
+      .mockResolvedValueOnce("renewed-access");
+    const providerPackage = createKimiPackage({
+      adapter: adapterResult(collect),
+      getCookieToken: vi.fn().mockResolvedValue(undefined),
+      findPageAccessToken: vi.fn().mockResolvedValue(undefined),
+      recoverAccessToken: vi.fn(),
+      cleanupAbandonedRecovery: vi.fn().mockResolvedValue(undefined),
+      announceRecovery: vi.fn(),
+      storedSessionToken,
+    });
+
+    await expect(
+      providerPackage.collect(instance, services("forbidden")),
+    ).resolves.toEqual(successfulCollection());
+    expect(storedSessionToken).toHaveBeenLastCalledWith(
+      "cached-access",
+      expect.any(AbortSignal),
+    );
+    expect(collect.mock.calls.map(([context]) => context.accessToken)).toEqual(
+      ["cached-access", "renewed-access"],
+    );
+  });
+
+  test("prefers an open Kimi page over the held session", async () => {
+    const collect = vi.fn().mockResolvedValue(successfulCollection());
+    const storedSessionToken = vi.fn();
+    const providerPackage = createKimiPackage({
+      adapter: adapterResult(collect),
+      getCookieToken: vi.fn().mockResolvedValue(undefined),
+      findPageAccessToken: vi.fn().mockResolvedValue("page-access"),
+      recoverAccessToken: vi.fn(),
+      cleanupAbandonedRecovery: vi.fn().mockResolvedValue(undefined),
+      announceRecovery: vi.fn(),
+      storedSessionToken,
+    });
+
+    await providerPackage.collect(instance, services("forbidden"));
+    expect(storedSessionToken).not.toHaveBeenCalled();
+    expect(collect.mock.calls[0]?.[0].accessToken).toBe("page-access");
+  });
+
+  test("falls back to tab recovery when the held session cannot renew", async () => {
+    const collect = vi.fn().mockResolvedValue(successfulCollection());
+    const recoverAccessToken = vi.fn().mockResolvedValue("fresh-token");
+    const providerPackage = createKimiPackage({
+      adapter: adapterResult(collect),
+      getCookieToken: vi.fn().mockResolvedValue(undefined),
+      findPageAccessToken: vi.fn().mockResolvedValue(undefined),
+      recoverAccessToken,
+      cleanupAbandonedRecovery: vi.fn().mockResolvedValue(undefined),
+      announceRecovery: vi.fn(),
+      storedSessionToken: vi.fn().mockRejectedValue(new Error("held-secret")),
+    });
+
+    const result = await providerPackage.collect(instance, services("allowed"));
+    expect(result).toEqual(successfulCollection());
+    expect(recoverAccessToken).toHaveBeenCalledOnce();
+    expect(JSON.stringify(result)).not.toContain("held-secret");
+  });
+
+  test("forgets the held session on request", async () => {
+    const forgetSession = vi.fn().mockResolvedValue(undefined);
+    const providerPackage = createKimiPackage({
+      adapter: adapterResult(vi.fn()),
+      getCookieToken: vi.fn(),
+      findPageAccessToken: vi.fn(),
+      recoverAccessToken: vi.fn(),
+      cleanupAbandonedRecovery: vi.fn().mockResolvedValue(undefined),
+      announceRecovery: vi.fn(),
+      forgetSession,
+    });
+
+    await providerPackage.forgetSession?.();
+    expect(forgetSession).toHaveBeenCalledOnce();
+  });
+
   test("scheduled collection without a token never starts interactive recovery", async () => {
     const recoverAccessToken = vi.fn();
     const providerPackage = createKimiPackage({

@@ -65,6 +65,9 @@ Kimi 定时刷新绝不会打开标签页。交互式 Connect 或 Refresh 最多
 恢复会等到 Kimi 页面加载完成，并让标签页继续打开一段时间，以便 Kimi 替换过期
 的会话令牌。扩展会先检查旧版 Kimi Cookie，再读取已打开 Kimi 页面中名称完全匹配的
 `access_token` 项；浏览器关闭或 API 错误可能延迟或阻止尽力清理。
+每次读取 Kimi 页面时，扩展还会把该页面的 `refresh_token` 保存在基于内存的
+`chrome.storage.session` 中，浏览器退出时 Chrome 会清除它。在浏览器重启之前，
+定时刷新会用它直接向 Kimi 续期短效访问令牌，无需打开标签页。
 
 Cursor Connect 或手动 Refresh 会优先使用一个已经打开的 `cursor.com` 标签页。
 如果当前没有打开的标签页，它们可能会短暂打开一个非活动的
