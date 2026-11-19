@@ -38,12 +38,26 @@ const defaultChromePath =
   "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 const chromePath = process.env.AI_LIMITS_CHROME_PATH || defaultChromePath;
 const fidelityMode = process.argv.includes("--fidelity");
-const assets = fidelityMode
-  ? createFidelityCaptureMatrix().map((capture) => ({
-      ...capture,
-      relativePath: `${capture.id}.png`,
-    }))
-  : MARKETING_ASSET_CAPTURES;
+// `--only=edge-add-ons/,firefox-add-ons/` regenerates just the assets whose
+// output path starts with one of the given prefixes.
+const onlyPrefixes = process.argv
+  .find((argument) => argument.startsWith("--only="))
+  ?.slice("--only=".length)
+  .split(",")
+  .filter(Boolean);
+const assets = (
+  fidelityMode
+    ? createFidelityCaptureMatrix().map((capture) => ({
+        ...capture,
+        relativePath: `${capture.id}.png`,
+      }))
+    : MARKETING_ASSET_CAPTURES
+).filter(
+  (asset) =>
+    !onlyPrefixes ||
+    onlyPrefixes.some((prefix) => asset.relativePath.startsWith(prefix)),
+);
+assert(assets.length > 0, "No store assets match the --only filter.");
 const outputDirectory = fidelityMode
   ? fidelityOutputDirectory
   : storeOutputDirectory;
@@ -1325,6 +1339,21 @@ try {
 
     try {
       const page = await context.newPage();
+      if (asset.kind === "logo") {
+        // The square store logo is the extension icon's own SVG, scaled up.
+        const svg = await readFile(
+          path.join(repositoryRoot, "assets", "ai-limits-icon.svg"),
+          "utf8",
+        );
+        await page.setContent(
+          `<!doctype html><html><body style="margin:0">${svg.replace(
+            "<svg ",
+            `<svg width="${asset.viewport.width}" height="${asset.viewport.height}" `,
+          )}</body></html>`,
+        );
+        await page.screenshot({ path: assetPath, omitBackground: true });
+        continue;
+      }
       const pageErrors = [];
       page.on("pageerror", (error) => pageErrors.push(error.message));
       const query = fidelityMode
@@ -1334,6 +1363,7 @@ try {
             locale: asset.locale,
             dataSource: asset.dataSource,
             fixedClock: asset.fixedClock,
+            ...(asset.browser ? { browser: asset.browser } : {}),
           }).toString();
       await page.goto(`${previewUrl}?${query}`, { waitUntil: "networkidle" });
 

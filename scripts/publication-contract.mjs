@@ -765,10 +765,113 @@ export function validatePublicationDocuments(documents, { providerNames } = {}) 
     );
   }
 
+  errors.push(...validateOtherStoreListings(documents, namesProvider, providerNames));
+
   if (!documents.license?.includes("Copyright (c) 2026 TiantianFlow")) {
     errors.push("LICENSE is missing the 2026 TiantianFlow copyright notice.");
   }
 
+  return errors;
+}
+
+// Edge Add-ons and Firefox Add-ons listings reuse the Chrome description with
+// their own browser's name. Each one must carry its browser's manifest
+// description, the counted provider claim, the supported-providers link, and
+// no provider brand names.
+const OTHER_STORE_LISTINGS = [
+  {
+    key: "edgeListing",
+    label: "Edge listing",
+    locale: "localeEn",
+    message: "descriptionEdge",
+    description: ["## Description", "## Search terms"],
+    countPattern: /AI Limits supports (\d+) AI services/i,
+    count: englishCount,
+    providersUrl: supportedProvidersUrl,
+    forbidden: /Chrome/u,
+  },
+  {
+    key: "edgeListingZh",
+    label: "Simplified Chinese Edge listing",
+    locale: "localeZh",
+    message: "descriptionEdge",
+    description: ["## 详细说明", "## 搜索词"],
+    countPattern: /AI Limits 支持\s*(\d+)\s*个 AI 服务/,
+    count: chineseCount,
+    providersUrl: supportedProvidersUrlZh,
+    forbidden: /Chrome/u,
+  },
+  {
+    key: "firefoxListing",
+    label: "Firefox listing",
+    locale: "localeEn",
+    message: "descriptionFirefox",
+    description: ["## Description", "## Screenshots"],
+    countPattern: /AI Limits supports (\d+) AI services/i,
+    count: englishCount,
+    providersUrl: supportedProvidersUrl,
+    forbidden: /Chrome|side panel/iu,
+  },
+  {
+    key: "firefoxListingZh",
+    label: "Simplified Chinese Firefox listing",
+    locale: "localeZh",
+    message: "descriptionFirefox",
+    description: ["## 详细说明", "## 截图说明"],
+    countPattern: /AI Limits 支持\s*(\d+)\s*个 AI 服务/,
+    count: chineseCount,
+    providersUrl: supportedProvidersUrlZh,
+    forbidden: /Chrome/u,
+  },
+];
+
+function manifestMessage(localeSource, name) {
+  const match = String(localeSource ?? "").match(
+    new RegExp(`^  ${name}: (.+)$`, "mu"),
+  );
+  return match?.[1].trim();
+}
+
+function validateOtherStoreListings(documents, namesProvider, providerNames) {
+  const errors = [];
+  for (const listing of OTHER_STORE_LISTINGS) {
+    const source = documents[listing.key] ?? "";
+    const visible = extractQualifyingMarkdownProse(source);
+    const description = extractQualifyingMarkdownProse(
+      extractMarkdownSection(source, ...listing.description),
+    );
+    const expectedSummary = manifestMessage(
+      documents[listing.locale],
+      listing.message,
+    );
+
+    if (!expectedSummary || !visible.includes(expectedSummary)) {
+      errors.push(
+        `${listing.label} must quote the manifest ${listing.message} exactly.`,
+      );
+    }
+    if (!description) {
+      errors.push(`${listing.label} is missing its description section.`);
+      continue;
+    }
+    if (!description.includes(listing.providersUrl)) {
+      errors.push(`${listing.label} description is missing the supported-providers URL.`);
+    }
+    if (namesProvider(description)) {
+      errors.push(`${listing.label} description must not enumerate provider brands.`);
+    }
+    if (listing.forbidden.test(description)) {
+      errors.push(`${listing.label} description names another browser's panel.`);
+    }
+    const claim = description.match(listing.countPattern);
+    if (!claim) {
+      errors.push(`${listing.label} description is missing its provider count.`);
+    } else if (providerNames && listing.count(claim[1]) !== providerNames.length) {
+      errors.push(
+        `${listing.label} says ${claim[1]} providers; the catalog has ${providerNames.length}.`,
+      );
+    }
+  }
   return errors;
 }
 
@@ -784,6 +887,12 @@ export const PUBLICATION_DOCUMENT_PATHS = {
   security: "SECURITY.md",
   listing: "store-assets/chrome-web-store/listing-en.md",
   listingZh: "store-assets/chrome-web-store/listing-zh_CN.md",
+  edgeListing: "store-assets/edge-add-ons/listing-en.md",
+  edgeListingZh: "store-assets/edge-add-ons/listing-zh_CN.md",
+  firefoxListing: "store-assets/firefox-add-ons/listing-en.md",
+  firefoxListingZh: "store-assets/firefox-add-ons/listing-zh_CN.md",
+  localeEn: "locales/en.yml",
+  localeZh: "locales/zh_CN.yml",
   license: "LICENSE",
 };
 

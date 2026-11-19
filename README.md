@@ -22,9 +22,9 @@ consumption with elapsed time to show a pace signal. Cursor also shows weekly
 Grok Bot usage next to its monthly Cursor-model and Other-model limits, plus a
 per-model included-usage breakdown. It starts empty and reads usage only after
 you connect an individual provider and approve that provider's optional access.
-The side panel supports English and Simplified Chinese. Follow Chrome uses those
-languages when Chrome is set to one of them, and falls back to English for every
-other Chrome language. Settings can pin English or Simplified Chinese for this
+The side panel supports English and Simplified Chinese. Follow browser uses those
+languages when the browser is set to one of them, and falls back to English for
+every other browser language. Settings can pin English or Simplified Chinese for this
 panel.
 
 AI Limits is an independent project by TiantianFlow. It is not affiliated with,

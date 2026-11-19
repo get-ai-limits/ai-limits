@@ -4,7 +4,9 @@ import {
   FIDELITY_FIXED_CLOCK,
   createFidelityScenario,
   parseFidelityRequest,
+  parsePreviewBrowser,
   parsePreviewLanguage,
+  previewContentFor,
   previewContent,
 } from "./copy";
 
@@ -229,5 +231,32 @@ describe("store artwork copy", () => {
     expect([...previewContent.zh_CN.promo.description].length).toBeLessThanOrEqual(
       24,
     );
+  });
+
+  it("names each store's own browser panel and keeps Chrome copy unchanged", () => {
+    const params = (query: string) => new URLSearchParams(query);
+    expect(parsePreviewBrowser(params("browser=edge"))).toBe("edge");
+    expect(parsePreviewBrowser(params("browser=firefox"))).toBe("firefox");
+    expect(parsePreviewBrowser(params("browser=safari"))).toBe("chrome");
+    expect(parsePreviewBrowser(params(""))).toBe("chrome");
+
+    expect(previewContentFor("en", "chrome")).toBe(previewContent.en);
+
+    const edge = previewContentFor("en", "edge");
+    expect(edge.overview.eyebrow).toBe("One Edge side panel");
+    expect(edge.chromeSidePanelLabel).toBe("Edge side panel");
+    expect(edge.promo.eyebrow).toBe("Edge side panel");
+
+    const firefox = previewContentFor("zh_CN", "firefox");
+    expect(firefox.overview.eyebrow).toBe("一个 Firefox 侧边栏");
+    expect(firefox.chromeSidePanelLabel).toBe("Firefox 侧边栏");
+
+    for (const language of ["en", "zh_CN"] as const) {
+      for (const browser of ["edge", "firefox"] as const) {
+        expect(
+          JSON.stringify(previewContentFor(language, browser)),
+        ).not.toContain("Chrome");
+      }
+    }
   });
 });
