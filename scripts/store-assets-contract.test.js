@@ -338,7 +338,9 @@ describe("store assets", () => {
   });
 
   it("adds one deterministic GitHub social preview to the marketing captures", () => {
-    expect(storeAssetContract.MARKETING_ASSET_CAPTURES).toHaveLength(10);
+    expect(storeAssetContract.MARKETING_ASSET_CAPTURES).toHaveLength(
+      10 + storeAssetContract.OTHER_STORE_ASSET_CAPTURES.length,
+    );
     expect(storeAssetContract.MARKETING_ASSET_CAPTURES).toContainEqual({
       locale: "en",
       view: "social",
@@ -1189,6 +1191,11 @@ describe("store assets", () => {
       "chrome-web-store/screenshot-privacy-1280x800.png": dimensions,
       "chrome-web-store/small-promo-440x280.png": { width: 440, height: 280 },
       "github/social-preview-1280x640.png": { width: 1280, height: 640 },
+      ...Object.fromEntries(
+        storeAssetContract.OTHER_STORE_ASSET_CAPTURES.map(
+          ({ relativePath, viewport }) => [relativePath, viewport],
+        ),
+      ),
     });
 
     expect(errors).toEqual([
@@ -1200,5 +1207,29 @@ describe("store assets", () => {
     expect(errors).not.toContain(
       "chrome-web-store/zh_CN/small-promo-440x280.png is missing.",
     );
+  });
+
+  it("captures English Edge and Firefox store artwork with their own panel name", () => {
+    const captures = storeAssetContract.OTHER_STORE_ASSET_CAPTURES;
+    expect(captures.map(({ relativePath }) => relativePath)).toEqual([
+      "edge-add-ons/screenshot-overview-1280x800.png",
+      "edge-add-ons/screenshot-pacing-1280x800.png",
+      "edge-add-ons/screenshot-history-1280x800.png",
+      "edge-add-ons/screenshot-privacy-1280x800.png",
+      "edge-add-ons/small-promo-440x280.png",
+      "edge-add-ons/store-logo-300x300.png",
+      "firefox-add-ons/screenshot-overview-1280x800.png",
+      "firefox-add-ons/screenshot-pacing-1280x800.png",
+      "firefox-add-ons/screenshot-history-1280x800.png",
+      "firefox-add-ons/screenshot-privacy-1280x800.png",
+    ]);
+    for (const capture of captures) {
+      expect(capture.dataSource).toBe("fixture");
+      if (capture.kind === "logo") continue;
+      expect(capture.locale).toBe("en");
+      expect(capture.relativePath.startsWith(`${capture.browser}-add-ons/`)).toBe(
+        true,
+      );
+    }
   });
 });

@@ -269,3 +269,46 @@ describe("publication content", () => {
     );
   });
 });
+
+describe("Edge and Firefox store listings", () => {
+  it("accepts the repository's Edge and Firefox listings", () => {
+    expect(validate()).toEqual([]);
+  });
+
+  it("rejects a stale summary, Chrome wording, a wrong count, and brand lists", () => {
+    const firefox = real.firefoxListing;
+    expect(
+      validate({
+        firefoxListing: firefox.replaceAll("one Firefox sidebar", "one Chrome side panel"),
+      }),
+    ).toEqual(
+      expect.arrayContaining([
+        "Firefox listing must quote the manifest descriptionFirefox exactly.",
+        "Firefox listing description names another browser's panel.",
+      ]),
+    );
+    expect(
+      validate({
+        edgeListing: real.edgeListing.replace(
+          "AI Limits supports 23 AI services",
+          "AI Limits supports 22 AI services",
+        ),
+      }),
+    ).toContain(
+      `Edge listing says 22 providers; the catalog has ${providerNames.length}.`,
+    );
+    expect(
+      validate({
+        edgeListingZh: real.edgeListingZh.replace(
+          "https://get-ai-limits.com/zh-CN/providers/",
+          `${providerNames.slice(0, 6).join("、")}`,
+        ),
+      }),
+    ).toEqual(
+      expect.arrayContaining([
+        "Simplified Chinese Edge listing description is missing the supported-providers URL.",
+        "Simplified Chinese Edge listing description must not enumerate provider brands.",
+      ]),
+    );
+  });
+});

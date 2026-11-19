@@ -6,6 +6,8 @@ export type PreviewView =
   | "promo"
   | "social";
 export type PreviewLanguage = "en" | "zh_CN";
+// Which store the artwork is for. Only the browser's panel name changes.
+export type PreviewBrowser = "chrome" | "edge" | "firefox";
 
 export const FIDELITY_FIXED_CLOCK = "2026-08-09T14:00:00.000Z";
 
@@ -350,4 +352,51 @@ export function parsePreviewLanguage(
   parameters: URLSearchParams,
 ): PreviewLanguage {
   return parameters.get("locale") === "zh_CN" ? "zh_CN" : "en";
+}
+
+export function parsePreviewBrowser(
+  parameters: URLSearchParams,
+): PreviewBrowser {
+  const browser = parameters.get("browser");
+  return browser === "edge" || browser === "firefox" ? browser : "chrome";
+}
+
+type BrowserPanelCopy = {
+  overviewEyebrow: string;
+  panelLabel: string;
+};
+
+const browserPanelCopy: Record<
+  Exclude<PreviewBrowser, "chrome">,
+  Record<PreviewLanguage, BrowserPanelCopy>
+> = {
+  edge: {
+    en: { overviewEyebrow: "One Edge side panel", panelLabel: "Edge side panel" },
+    zh_CN: { overviewEyebrow: "一个 Edge 侧边栏", panelLabel: "Edge 侧边栏" },
+  },
+  firefox: {
+    en: { overviewEyebrow: "One Firefox sidebar", panelLabel: "Firefox sidebar" },
+    zh_CN: {
+      overviewEyebrow: "一个 Firefox 侧边栏",
+      panelLabel: "Firefox 侧边栏",
+    },
+  },
+};
+
+// Chrome artwork keeps its copy unchanged; Edge and Firefox artwork names
+// their own browser's panel wherever the Chrome copy names Chrome's.
+export function previewContentFor(
+  language: PreviewLanguage,
+  browser: PreviewBrowser,
+): PreviewContent {
+  const content = previewContent[language];
+  if (browser === "chrome") return content;
+  const { overviewEyebrow, panelLabel } = browserPanelCopy[browser][language];
+  return {
+    ...content,
+    overview: { ...content.overview, eyebrow: overviewEyebrow },
+    promo: { ...content.promo, eyebrow: panelLabel },
+    social: { ...content.social, eyebrow: panelLabel },
+    chromeSidePanelLabel: panelLabel,
+  };
 }

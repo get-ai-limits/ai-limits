@@ -51,6 +51,20 @@ no separate Chinese promotional tile.
 The side panel supports English and Simplified Chinese, and the Chinese images
 embed the production UI rendered from the Simplified Chinese catalog.
 
+### Edge Add-ons and Firefox Add-ons assets
+
+The same English views, captured with the browser's own panel name
+(`browser=edge` or `browser=firefox` in the preview) instead of Chrome's:
+
+- `edge-add-ons/screenshot-{overview,pacing,history,privacy}-1280x800.png`,
+  `edge-add-ons/small-promo-440x280.png`, and
+  `edge-add-ons/store-logo-300x300.png`, the extension icon scaled to the
+  Edge store logo size.
+- `firefox-add-ons/screenshot-{overview,pacing,history,privacy}-1280x800.png`.
+
+Their listing packs are `edge-add-ons/listing-*.md` and
+`firefox-add-ons/listing-*.md`. Neither store gets localized screenshots.
+
 ### GitHub repository artwork
 
 `github/social-preview-1280x640.png` is the repository's deterministic social
@@ -66,6 +80,12 @@ Use Node 24 and the Corepack-managed pnpm version pinned in `package.json`:
 ```bash
 pnpm assets:store
 pnpm verify:store-assets
+```
+
+To regenerate only some files, pass output-path prefixes:
+
+```bash
+pnpm assets:store -- --only=edge-add-ons/,firefox-add-ons/
 ```
 
 The capture script uses the standard macOS Google Chrome executable. To use a
