@@ -87,7 +87,7 @@ expired session token. The extension checks the legacy
 Kimi cookie first, then the exact `access_token` entry in an already-open Kimi
 page. Browser shutdown or API errors can delay or prevent best-effort cleanup.
 Whenever it reads a Kimi page, it also keeps that page's `refresh_token` in
-memory-backed `chrome.storage.session`, which Chrome clears when the browser
+memory-backed `chrome.storage.session`, which the browser clears when it
 exits. Scheduled refresh uses it to renew Kimi's short-lived access token
 directly with Kimi, without a tab, until the browser restarts.
 

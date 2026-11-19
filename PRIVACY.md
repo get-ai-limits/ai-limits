@@ -53,8 +53,8 @@ data, or other relay keys.
 
 ChatGPT, Claude, Kimi, Cursor, Grok, Mistral, and Perplexity use signed-in
 browser sessions. AI Limits sends read-only requests to those providers' own
-web-session services, and browser cookies may accompany requests to the same
-provider origin. OpenRouter is an API-key provider, but its
+web-session services, plus the Kimi token-renewal call described below, and
+browser cookies may accompany requests to the same provider origin. OpenRouter is an API-key provider, but its
 promotional-credit read also uses the signed-in openrouter.ai session, as
 described below. Requests normally run directly from the extension; the Cursor
 and Grok page-origin reads described below run in an already-open exact-origin
@@ -74,7 +74,7 @@ reads that page, it also reads the exact `refresh_token` entry. It does not
 read other Kimi browser-storage entries. During an interactive Connect or
 Refresh, either a missing credential or a credential rejected by Kimi may
 cause AI Limits to create one inactive Kimi homepage tab. Recovery reads
-`access_token` only after that page sets `window.__kimiAppMounted`, the flag
+`access_token` and `refresh_token` only after that page sets `window.__kimiAppMounted`, the flag
 Kimi sets when its client app mounts. It then keeps the owned tab open so Kimi
 can replace an expired token. Recovery has a 30-second deadline for obtaining
 a credential. When recovery finishes or times out, the extension attempts
@@ -86,7 +86,7 @@ Kimi access tokens last about 15 minutes, and the Kimi page renews them only
 while a Kimi tab is open. So scheduled refresh can keep working after the tab
 closes, AI Limits holds the Kimi refresh token, and the most recent access
 token with its expiry time, in `chrome.storage.session`. That storage is
-memory-backed: Chrome clears it when the browser exits, and it is never
+memory-backed: the browser clears it when it exits, and it is never
 written to disk or included in saved refresh results. When the access token
 is missing or expired, the background worker sends the refresh token, and
 nothing else, to Kimi's own sign-in service at

@@ -15,11 +15,7 @@ import {
   retryKimiAdapterAfterChangedToken,
 } from "./adapter";
 import { readKimiPageSession } from "./page-session";
-import {
-  clearKimiStoredSession,
-  createKimiStoredSessionTokenSource,
-  saveKimiStoredSession,
-} from "./refresh-session";
+import { createKimiSessionHolder } from "./refresh-session";
 import {
   cleanupAbandonedKimiRecoveryTab,
   createKimiRecoveryAfterStartupCleanup,
@@ -277,31 +273,19 @@ function productionDependencies(): KimiPackageDependencies {
     set: (items) => browser.storage.session.set(items),
     remove: (key) => browser.storage.session.remove(key),
   };
-  let lastSavedRefreshToken: string | undefined;
+  const sessionHolder = createKimiSessionHolder({
+    storage: storageSession,
+    fetch: (input, init) => globalThis.fetch(input, init),
+  });
   const readPageToken = async (tabId: number) => {
     const session = await readKimiPageSession(tabId, (details) =>
       browser.scripting.executeScript(details),
     );
-    const { accessToken, refreshToken } = session;
-    if (refreshToken !== undefined && refreshToken !== lastSavedRefreshToken) {
-      // Keep the page's refresh token in memory-backed session storage so a
-      // later scheduled refresh can renew access without a Kimi tab.
-      try {
-        await saveKimiStoredSession(storageSession, {
-          refreshToken,
-          accessToken,
-        });
-        lastSavedRefreshToken = refreshToken;
-      } catch {
-        // Session storage is an optimization; the page token still works.
-      }
-    }
-    return accessToken;
+    // Keep the page's refresh token in memory-backed session storage so a
+    // later scheduled refresh can renew access without a Kimi tab.
+    await sessionHolder.rememberPageSession(session).catch(() => undefined);
+    return session.accessToken;
   };
-  const storedSessionToken = createKimiStoredSessionTokenSource({
-    storage: storageSession,
-    fetch: (input, init) => globalThis.fetch(input, init),
-  });
 
   return {
     adapter: kimiAdapter,
@@ -348,11 +332,9 @@ function productionDependencies(): KimiPackageDependencies {
         .catch(() => undefined);
     },
     retryAfterChangedToken: retryKimiAdapterAfterChangedToken,
-    storedSessionToken,
-    async forgetSession() {
-      lastSavedRefreshToken = undefined;
-      await clearKimiStoredSession(storageSession);
-    },
+    storedSessionToken: (rejectedToken, signal) =>
+      sessionHolder.tokenFor(rejectedToken, signal),
+    forgetSession: () => sessionHolder.forget(),
   };
 }
 

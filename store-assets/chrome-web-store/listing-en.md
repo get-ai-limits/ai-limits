@@ -91,8 +91,8 @@ AI Limits is an independent project by TiantianFlow. It is not affiliated with, 
   per-instance History, and sanitized refresh status in
   `chrome.storage.local`. It also holds temporary Kimi, Cursor, and Grok tab-cleanup
   lease metadata in `chrome.storage.session`, plus the Kimi refresh token and
-  latest Kimi access token, which Chrome clears when the browser exits. Browser-session cookies and access
-  credentials are not persisted. After validation, each user-created provider API
+  latest Kimi access token, which the browser clears when it exits. Otherwise,
+  browser-session cookies and access credentials are not stored. After validation, each user-created provider API
   key is persisted in a separate `chrome.storage.local` credential record whose
   Chrome storage access level is restricted to trusted extension contexts. It
   is not OS-keychain encrypted and may be inspectable from an
@@ -120,8 +120,9 @@ These origins are requested one provider at a time after the user clicks
 - `https://www.kimi.com/*`: reads Kimi usage/subscription responses and supports
   the bounded interactive session-access and recovery flow. Renewing Kimi's
   access token calls Kimi's sign-in service at `auth.kimi.com` with only the
-  refresh token and no cookies; that service accepts the request without a
-  separate host permission.
+  refresh token and no cookies, and does not request an additional host
+  permission. If Kimi stops accepting that request, refresh falls back to the
+  page and tab paths above.
 - `https://cursor.com/*`: reads the signed-in user's base Cursor usage. During
   Connect or manual Refresh only, it can also run bundled read-only code in one
   already-open exact-origin page, or briefly open one inactive spending tab if
@@ -200,7 +201,12 @@ into an already-open grok.com tab; Cursor scheduled refresh never injects.
   validation. Browser-session JSON, cookies, and access credentials for the
   other providers, and the openrouter.ai session cookies Chrome attaches to
   OpenRouter's promotional-credit page read, are handled only for the selected
-  collection sequence and are not persisted. API keys are stored in the separate
+  collection sequence and are not persisted. The exception is Kimi: its
+  refresh token and latest access token are held in memory-backed
+  `chrome.storage.session` across scheduled refreshes until the browser exits,
+  Kimi rejects them, or the user disconnects Kimi or deletes all local data.
+  The refresh token is sent only to Kimi's sign-in service at `auth.kimi.com`.
+  API keys are stored in the separate
   trusted-context credential record, sent only to the selected provider API,
   and never sent to the developer.
 - **Website content:** Yes. AI Limits handles private provider session, usage,

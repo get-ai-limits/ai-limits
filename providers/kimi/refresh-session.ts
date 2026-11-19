@@ -21,12 +21,16 @@ const storedSessionSchema = z.object({
   refreshToken: nonEmptyToken,
   accessToken: nonEmptyToken.optional(),
   accessExpiresAt: z.number().finite().positive().optional(),
+  // The page's refresh token this chain was last taken from.
+  pageRefreshToken: nonEmptyToken.optional(),
 });
 
 const refreshResponseSchema = z.object({
   accessToken: nonEmptyToken,
   refreshToken: nonEmptyToken,
 });
+
+const connectErrorSchema = z.object({ code: z.string() });
 
 export type KimiStoredSession = z.infer<typeof storedSessionSchema>;
 
@@ -71,7 +75,11 @@ export async function readKimiStoredSession(
 
 export async function saveKimiStoredSession(
   storage: StorageSessionLike,
-  session: { refreshToken: string; accessToken?: string },
+  session: {
+    refreshToken: string;
+    accessToken?: string;
+    pageRefreshToken?: string;
+  },
 ): Promise<void> {
   const refreshToken = session.refreshToken.trim();
   if (!refreshToken) return;
@@ -79,8 +87,10 @@ export async function saveKimiStoredSession(
   const accessExpiresAt = accessToken
     ? kimiTokenExpiresAt(accessToken)
     : undefined;
+  const pageRefreshToken = session.pageRefreshToken?.trim();
   const value: KimiStoredSession = {
     refreshToken,
+    ...(pageRefreshToken ? { pageRefreshToken } : {}),
     // Cache the access token only when its expiry is readable, so a token of
     // unknown age is never reused past its life.
     ...(accessToken && accessExpiresAt !== undefined
@@ -125,7 +135,6 @@ export async function exchangeKimiRefreshToken({
   if (response.status === 401 || response.status === 403) {
     return { kind: "rejected" };
   }
-  if (!response.ok) return { kind: "unavailable" };
 
   let body: unknown;
   try {
@@ -133,18 +142,42 @@ export async function exchangeKimiRefreshToken({
   } catch {
     return { kind: "unavailable" };
   }
+  if (!response.ok) {
+    // Connect-protocol errors carry a code; an invalid or expired token may
+    // come back as one of these with a non-auth HTTP status.
+    const code = connectErrorSchema.safeParse(body);
+    return code.success &&
+      (code.data.code === "unauthenticated" ||
+        code.data.code === "permission_denied")
+      ? { kind: "rejected" }
+      : { kind: "unavailable" };
+  }
   const parsed = refreshResponseSchema.safeParse(body);
   return parsed.success
     ? { kind: "refreshed", ...parsed.data }
     : { kind: "unavailable" };
 }
 
-/**
- * Returns an access token from the in-memory session, renewing it with the
- * held refresh token when the cached one is missing, expired, or the token the
- * caller just saw Kimi reject. Concurrent callers share one renewal.
- */
-export function createKimiStoredSessionTokenSource({
+export interface KimiSessionHolder {
+  /**
+   * Returns an access token from the in-memory session, renewing it with the
+   * held refresh token when the cached one is missing, expired, or the token
+   * the caller just saw Kimi reject. Concurrent callers share one renewal.
+   */
+  tokenFor(
+    rejectedToken: string | undefined,
+    signal: AbortSignal,
+  ): Promise<string | undefined>;
+  /** Holds the tokens just read from a Kimi page. */
+  rememberPageSession(session: {
+    accessToken?: string;
+    refreshToken?: string;
+  }): Promise<void>;
+  /** Drops the held session; writes still in flight are discarded. */
+  forget(): Promise<void>;
+}
+
+export function createKimiSessionHolder({
   storage,
   fetch: injectedFetch,
   now = Date.now,
@@ -152,16 +185,30 @@ export function createKimiStoredSessionTokenSource({
   storage: StorageSessionLike;
   fetch: typeof globalThis.fetch;
   now?: () => number;
-}): (
-  rejectedToken: string | undefined,
-  signal: AbortSignal,
-) => Promise<string | undefined> {
+}): KimiSessionHolder {
   let inFlight: Promise<string | undefined> | undefined;
+  // Bumped by forget(), so a page read or renewal that finishes after a
+  // disconnect cannot bring the session back.
+  let generation = 0;
+
+  const saveIfCurrent = async (
+    startedIn: number,
+    session: Parameters<typeof saveKimiStoredSession>[1],
+  ): Promise<boolean> => {
+    if (startedIn !== generation) return false;
+    await saveKimiStoredSession(storage, session);
+    if (startedIn !== generation) {
+      await clearKimiStoredSession(storage).catch(() => undefined);
+      return false;
+    }
+    return true;
+  };
 
   const renew = async (
     session: KimiStoredSession,
     signal: AbortSignal,
   ): Promise<string | undefined> => {
+    const startedIn = generation;
     const outcome = await exchangeKimiRefreshToken({
       fetch: injectedFetch,
       refreshToken: session.refreshToken,
@@ -175,33 +222,61 @@ export function createKimiStoredSessionTokenSource({
       }
       return undefined;
     }
-    if (outcome.kind !== "refreshed" || signal.aborted) return undefined;
-    await saveKimiStoredSession(storage, outcome).catch(() => undefined);
-    return outcome.accessToken;
+    if (outcome.kind !== "refreshed") return undefined;
+    // Kimi has already rotated the pair, so keep it even if this caller was
+    // aborted meanwhile; dropping it would strand the held chain.
+    const saved = await saveIfCurrent(startedIn, {
+      accessToken: outcome.accessToken,
+      refreshToken: outcome.refreshToken,
+      pageRefreshToken: session.pageRefreshToken,
+    }).catch(() => false);
+    return saved && !signal.aborted ? outcome.accessToken : undefined;
   };
 
-  return async (rejectedToken, signal) => {
-    if (signal.aborted) return undefined;
-    const session = await readKimiStoredSession(storage);
-    if (!session) return undefined;
+  return {
+    async tokenFor(rejectedToken, signal) {
+      if (signal.aborted) return undefined;
+      const session = await readKimiStoredSession(storage);
+      if (!session) return undefined;
 
-    if (
-      session.accessToken !== undefined &&
-      session.accessToken !== rejectedToken &&
-      session.accessExpiresAt !== undefined &&
-      session.accessExpiresAt - KIMI_ACCESS_EXPIRY_MARGIN_MS > now()
-    ) {
-      return session.accessToken;
-    }
+      if (
+        session.accessToken !== undefined &&
+        session.accessToken !== rejectedToken &&
+        session.accessExpiresAt !== undefined &&
+        session.accessExpiresAt - KIMI_ACCESS_EXPIRY_MARGIN_MS > now()
+      ) {
+        return session.accessToken;
+      }
 
-    inFlight ??= renew(session, signal).finally(() => {
-      inFlight = undefined;
-    });
-    try {
-      const token = await inFlight;
-      return token === rejectedToken ? undefined : token;
-    } catch {
-      return undefined;
-    }
+      inFlight ??= renew(session, signal).finally(() => {
+        inFlight = undefined;
+      });
+      try {
+        const token = await inFlight;
+        return token === rejectedToken ? undefined : token;
+      } catch {
+        return undefined;
+      }
+    },
+
+    async rememberPageSession({ accessToken, refreshToken }) {
+      const pageRefreshToken = refreshToken?.trim();
+      if (!pageRefreshToken) return;
+      const startedIn = generation;
+      const current = await readKimiStoredSession(storage);
+      // The page still holds the token this chain started from; the held
+      // chain may already be newer, so leave it alone.
+      if (current?.pageRefreshToken === pageRefreshToken) return;
+      await saveIfCurrent(startedIn, {
+        refreshToken: pageRefreshToken,
+        accessToken,
+        pageRefreshToken,
+      });
+    },
+
+    async forget() {
+      generation += 1;
+      await clearKimiStoredSession(storage);
+    },
   };
 }

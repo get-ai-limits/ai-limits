@@ -5,7 +5,7 @@ import {
   KIMI_ACCESS_EXPIRY_MARGIN_MS,
   KIMI_REFRESH_ENDPOINT,
   KIMI_REFRESH_SESSION_KEY,
-  createKimiStoredSessionTokenSource,
+  createKimiSessionHolder,
   exchangeKimiRefreshToken,
   kimiTokenExpiresAt,
   readKimiStoredSession,
@@ -147,11 +147,11 @@ describe("Kimi refresh exchange", () => {
 describe("Kimi stored-session token source", () => {
   test("returns nothing and makes no request without a held session", async () => {
     const fetch = vi.fn();
-    const source = createKimiStoredSessionTokenSource({
+    const source = createKimiSessionHolder({
       storage: memoryStorage(),
       fetch,
       now: () => NOW,
-    });
+    }).tokenFor;
 
     await expect(source(undefined, signal())).resolves.toBeUndefined();
     expect(fetch).not.toHaveBeenCalled();
@@ -167,11 +167,11 @@ describe("Kimi stored-session token source", () => {
         accessExpiresAt: NOW + 10 * 60_000,
       },
     });
-    const source = createKimiStoredSessionTokenSource({
+    const source = createKimiSessionHolder({
       storage,
       fetch,
       now: () => now,
-    });
+    }).tokenFor;
 
     await expect(source(undefined, signal())).resolves.toBe("a1");
     expect(fetch).not.toHaveBeenCalled();
@@ -196,11 +196,11 @@ describe("Kimi stored-session token source", () => {
     const fetch = vi.fn(async () =>
       jsonResponse(200, { accessToken: access, refreshToken: "r2" }),
     );
-    const source = createKimiStoredSessionTokenSource({
+    const source = createKimiSessionHolder({
       storage,
       fetch,
       now: () => NOW,
-    });
+    }).tokenFor;
 
     await expect(source("a1", signal())).resolves.toBe(access);
     expect(storage.items[KIMI_REFRESH_SESSION_KEY]).toEqual({
@@ -214,11 +214,11 @@ describe("Kimi stored-session token source", () => {
     const storage = memoryStorage({
       [KIMI_REFRESH_SESSION_KEY]: { refreshToken: "r1" },
     });
-    const source = createKimiStoredSessionTokenSource({
+    const source = createKimiSessionHolder({
       storage,
       fetch: vi.fn(async () => jsonResponse(401, {})),
       now: () => NOW,
-    });
+    }).tokenFor;
 
     await expect(source(undefined, signal())).resolves.toBeUndefined();
     expect(storage.items).not.toHaveProperty(KIMI_REFRESH_SESSION_KEY);
@@ -228,14 +228,14 @@ describe("Kimi stored-session token source", () => {
     const storage = memoryStorage({
       [KIMI_REFRESH_SESSION_KEY]: { refreshToken: "r1" },
     });
-    const source = createKimiStoredSessionTokenSource({
+    const source = createKimiSessionHolder({
       storage,
       fetch: vi.fn(async () => {
         storage.items[KIMI_REFRESH_SESSION_KEY] = { refreshToken: "page-r" };
         return jsonResponse(401, {});
       }),
       now: () => NOW,
-    });
+    }).tokenFor;
 
     await expect(source(undefined, signal())).resolves.toBeUndefined();
     expect(storage.items[KIMI_REFRESH_SESSION_KEY]).toEqual({
@@ -247,11 +247,11 @@ describe("Kimi stored-session token source", () => {
     const storage = memoryStorage({
       [KIMI_REFRESH_SESSION_KEY]: { refreshToken: "r1" },
     });
-    const source = createKimiStoredSessionTokenSource({
+    const source = createKimiSessionHolder({
       storage,
       fetch: vi.fn(async () => jsonResponse(503, {})),
       now: () => NOW,
-    });
+    }).tokenFor;
 
     await expect(source(undefined, signal())).resolves.toBeUndefined();
     expect(storage.items[KIMI_REFRESH_SESSION_KEY]).toEqual({
@@ -267,13 +267,13 @@ describe("Kimi stored-session token source", () => {
           resolve = done;
         }),
     );
-    const source = createKimiStoredSessionTokenSource({
+    const source = createKimiSessionHolder({
       storage: memoryStorage({
         [KIMI_REFRESH_SESSION_KEY]: { refreshToken: "r1" },
       }),
       fetch,
       now: () => NOW,
-    });
+    }).tokenFor;
 
     const first = source(undefined, signal());
     const second = source(undefined, signal());
@@ -287,15 +287,124 @@ describe("Kimi stored-session token source", () => {
     const controller = new AbortController();
     controller.abort();
     const fetch = vi.fn();
-    const source = createKimiStoredSessionTokenSource({
+    const source = createKimiSessionHolder({
       storage: memoryStorage({
         [KIMI_REFRESH_SESSION_KEY]: { refreshToken: "r1" },
       }),
       fetch,
       now: () => NOW,
-    });
+    }).tokenFor;
 
     await expect(source(undefined, controller.signal)).resolves.toBeUndefined();
     expect(fetch).not.toHaveBeenCalled();
+  });
+});
+
+describe("Kimi session holder lifecycle", () => {
+  test("keeps a rotated pair even when the caller aborted meanwhile", async () => {
+    const controller = new AbortController();
+    const storage = memoryStorage({
+      [KIMI_REFRESH_SESSION_KEY]: { refreshToken: "r1", pageRefreshToken: "r1" },
+    });
+    const holder = createKimiSessionHolder({
+      storage,
+      fetch: vi.fn(async () => {
+        controller.abort();
+        return jsonResponse(200, { accessToken: "a2", refreshToken: "r2" });
+      }),
+      now: () => NOW,
+    });
+
+    await expect(
+      holder.tokenFor(undefined, controller.signal),
+    ).resolves.toBeUndefined();
+    expect(storage.items[KIMI_REFRESH_SESSION_KEY]).toEqual({
+      refreshToken: "r2",
+      pageRefreshToken: "r1",
+    });
+  });
+
+  test("discards a renewal that finishes after forget", async () => {
+    const storage = memoryStorage({
+      [KIMI_REFRESH_SESSION_KEY]: { refreshToken: "r1" },
+    });
+    let holder: ReturnType<typeof createKimiSessionHolder> | undefined;
+    holder = createKimiSessionHolder({
+      storage,
+      fetch: vi.fn(async () => {
+        await holder?.forget();
+        return jsonResponse(200, { accessToken: "a2", refreshToken: "r2" });
+      }),
+      now: () => NOW,
+    });
+
+    await expect(holder.tokenFor(undefined, signal())).resolves.toBeUndefined();
+    expect(storage.items).not.toHaveProperty(KIMI_REFRESH_SESSION_KEY);
+  });
+
+  test("discards a page save that finishes after forget", async () => {
+    const storage = memoryStorage();
+    const holder = createKimiSessionHolder({
+      storage,
+      fetch: vi.fn(),
+      now: () => NOW,
+    });
+    const originalGet = storage.get;
+    storage.get = vi.fn(async (key: string | null) => {
+      await holder.forget();
+      return originalGet(key);
+    });
+
+    await holder.rememberPageSession({ refreshToken: "page-r" });
+    expect(storage.items).not.toHaveProperty(KIMI_REFRESH_SESSION_KEY);
+  });
+
+  test("does not overwrite a newer held chain with the page token it came from", async () => {
+    const storage = memoryStorage({
+      [KIMI_REFRESH_SESSION_KEY]: { refreshToken: "r2", pageRefreshToken: "r1" },
+    });
+    const holder = createKimiSessionHolder({
+      storage,
+      fetch: vi.fn(),
+      now: () => NOW,
+    });
+
+    await holder.rememberPageSession({ accessToken: "a1", refreshToken: "r1" });
+    expect(storage.items[KIMI_REFRESH_SESSION_KEY]).toEqual({
+      refreshToken: "r2",
+      pageRefreshToken: "r1",
+    });
+
+    await holder.rememberPageSession({ refreshToken: "page-r3" });
+    expect(storage.items[KIMI_REFRESH_SESSION_KEY]).toEqual({
+      refreshToken: "page-r3",
+      pageRefreshToken: "page-r3",
+    });
+  });
+
+  test("ignores a page without a refresh token", async () => {
+    const storage = memoryStorage();
+    const holder = createKimiSessionHolder({
+      storage,
+      fetch: vi.fn(),
+      now: () => NOW,
+    });
+
+    await holder.rememberPageSession({ accessToken: "a1" });
+    expect(storage.set).not.toHaveBeenCalled();
+  });
+});
+
+describe("Kimi refresh rejection codes", () => {
+  test("treats a Connect unauthenticated code as a rejected token", async () => {
+    await expect(
+      exchangeKimiRefreshToken({
+        fetch: vi.fn(async () =>
+          jsonResponse(400, { code: "unauthenticated" }),
+        ),
+        refreshToken: "r1",
+        signal: signal(),
+      }),
+    ).resolves.toEqual({ kind: "rejected" });
   });
 });
