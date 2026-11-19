@@ -139,7 +139,11 @@ is asked only for the exact instance origin entered in onboarding. Same-origin
 instances share that browser-global grant only; their credentials, labels,
 usage, and History remain independent. The optional
 `scripting` permission is requested
+<<<<<<< HEAD
 for Kimi page reads and interactive recovery, Cursor's page enrichment,
+=======
+for Kimi interactive recovery, Cursor's manual/connect-only page enrichment,
+>>>>>>> 7886ff932070b6f1d0a6aa32e1ec4291379ebdc2
 and Grok page-origin session and usage reads. Fixed API-key providers receive only optional access to their own
 API origins. Public setup pages are opened normally and do not receive
 extension host access. The extension does not request the broad `tabs`
