@@ -6,7 +6,8 @@ built with `pnpm zip:firefox`. It is not a claim that any provider has approved
 the extension.
 
 The Firefox package runs the same code as the Chrome Web Store package, except
-that the panel opens as a Firefox sidebar. The
+that the panel opens as a Firefox sidebar and the API-key record is not
+restricted with `storage.setAccessLevel`, which Firefox lacks. The
 [Chrome Web Store pack](../chrome-web-store/listing-en.md) holds the full
 permission and data-handling reference and the twenty-three-provider test
 flow; read "Chrome side panel" there as "Firefox sidebar". The writing rules in
@@ -98,15 +99,15 @@ AI Limits privacy policy (summary). The full policy is at https://get-ai-limits.
 
 AI Limits is a locally running browser extension by TiantianFlow. It has no backend server, no AI Limits account, and no analytics, telemetry, or advertising. Nothing is sent to the developer.
 
-What it accesses: only after you connect a service and approve its site access, AI Limits reads that service's plan, quota, usage, reset time, credit, and balance data. For services you are signed in to, it uses your existing sign-in session with that service. For API services, it uses an API key you create and enter.
+What it accesses: only after you connect a service and approve its site access, AI Limits reads that service's plan, quota, usage, reset time, credit, and balance data. For services you are signed in to, it uses your existing sign-in session with that service. For API services, it uses an API key you create and enter. For OpenRouter, it also reads the promotional-credit amounts from your signed-in openrouter.ai Credits page.
 
-Where data goes: your sign-in session or API key for a service is sent only to that same service, to fetch your usage. AI Limits never sends it anywhere else. It never reads page text, prompts, conversations, or generated responses.
+Where data goes: your sign-in session or API key for a service is sent only to that same service, to fetch your usage. AI Limits never sends it anywhere else. Apart from that OpenRouter credit amount, it never reads page text, prompts, conversations, or generated responses.
 
-What it stores, on your device only: your settings, provider order, normalized usage snapshots, and up to 30 days of usage History per connection. API keys you enter are stored locally in the browser's extension storage; they are not encrypted by your operating system's keychain. Sign-in cookies and session credentials are never stored.
+What it stores, on your device only: your settings, provider order, the address and label you give any self-hosted gateway, normalized usage snapshots, and up to 30 days of usage History per connection. API keys you enter are stored in Firefox's extension storage without operating-system keychain encryption, so anyone with access to your Firefox profile may be able to read them. Sign-in cookies and session credentials are never stored.
 
 Your controls: disconnect any service, turn off automatic refresh, or use Delete all local data in Settings at any time. Uninstalling the extension removes its local data.
 
-Data is never sold or shared with advertisers, data brokers, or anyone else.
+Data is never sold, and is never shared with the developer, advertisers, data brokers, or anyone other than the service it belongs to.
 
 Contact: https://get-ai-limits.com/support/
 

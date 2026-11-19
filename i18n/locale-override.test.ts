@@ -76,7 +76,7 @@ describe("locale override resolver", () => {
     fetchSpy.mockRestore();
   });
 
-  it("hydrates a stored override and Follow Chrome clears it", async () => {
+  it("hydrates a stored override and Follow browser clears it", async () => {
     await persistLocaleOverride("zh_CN");
     resetLocaleRuntime();
     preloadLocaleCatalog("en", chromeMessages("en"));
