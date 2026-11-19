@@ -62,4 +62,6 @@ export interface ProviderPackage {
     credentialOverride?: ProviderCredential,
   ): Promise<CollectionResult>;
   startup?(): Promise<void>;
+  /** Drops any in-memory session the package holds, on disconnect or delete. */
+  forgetSession?(): Promise<void>;
 }

@@ -176,6 +176,15 @@ export function createProviderService(
   options: ProviderServiceOptions = {},
 ): ProviderService {
   const packages = options.packages ?? providerRegistry;
+
+  async function forgetPackageSession(kind: ProviderKind): Promise<void> {
+    try {
+      await packages[kind].forgetSession?.();
+    } catch {
+      // Held sessions live only in memory-backed storage; failing to drop one
+      // early must not block removing the instance's saved data.
+    }
+  }
   const fetch = options.fetch ?? globalThis.fetch.bind(globalThis);
   const clock = options.clock ?? Date.now;
   const randomUUID = options.randomUUID ?? (() => globalThis.crypto.randomUUID());
@@ -786,6 +795,7 @@ export function createProviderService(
           apiKeyConnections.invalidateInstance(instance.id);
           try {
             await connectionRepository.setAccess(instance.id, "required");
+            await forgetPackageSession(instance.providerKind);
           } finally {
             if (cleanup) lanes.endCleanup(cleanup);
           }
@@ -829,6 +839,7 @@ export function createProviderService(
               instance,
             );
             await deleteCredential(instanceId);
+            await forgetPackageSession(instance.providerKind);
             await usageRepository.clear(instanceId);
             await connectionRepository.delete(instanceId);
             const removed = await completePermissionCleanup(permissionCleanup);
@@ -858,6 +869,9 @@ export function createProviderService(
           orchestrator.invalidateAll();
           apiKeyConnections.invalidateAll();
           await deleteAllCredentials();
+          await Promise.all(
+            (Object.keys(packages) as ProviderKind[]).map(forgetPackageSession),
+          );
           await deleteAllInstanceData();
           const removed = await removeAllInstancePermissions(
             [...instances, ...intentCandidates],

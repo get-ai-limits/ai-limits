@@ -1,6 +1,6 @@
 # Privacy Policy
 
-Last updated: November 17, 2026
+Last updated: November 19, 2026
 
 AI Limits is a locally running browser extension for Chrome, Edge, and Firefox
 by TiantianFlow. This policy
@@ -54,8 +54,8 @@ data, or other relay keys.
 
 ChatGPT, Claude, Kimi, Cursor, Grok, Mistral, and Perplexity use signed-in
 browser sessions. AI Limits sends read-only requests to those providers' own
-web-session services, and browser cookies may accompany requests to the same
-provider origin. OpenRouter is an API-key provider, but its
+web-session services, plus the Kimi token-renewal call described below, and
+browser cookies may accompany requests to the same provider origin. OpenRouter is an API-key provider, but its
 promotional-credit read also uses the signed-in openrouter.ai session, as
 described below. Requests normally run directly from the extension; the Cursor
 and Grok page-origin reads described below run in an already-open exact-origin
@@ -65,28 +65,54 @@ and Kimi access credentials, the derived ChatGPT account identifier, and the
 selected Claude organization UUID and capabilities may be held in memory long
 enough to complete the related collection attempt and request sequence. Those
 values are not written to persistent extension storage or included in saved
-refresh results. The selected Claude organization name may separately be
+refresh results. The Kimi session held in memory-backed session storage is
+described below. The selected Claude organization name may separately be
 stored as the visible plan label.
 
 For Kimi, AI Limits checks the exact legacy `kimi-auth` cookie first, then the
-exact `access_token` entry from an already-open matching Kimi page. It does not
+exact `access_token` entry from an already-open matching Kimi page. When it
+reads that page, it also reads the exact `refresh_token` entry. After a
+successful cookie-based refresh, if no Kimi session is held yet, it may read
+those two entries from an already-open Kimi page in the same way. It does not
 read other Kimi browser-storage entries. During an interactive Connect or
 Refresh, either a missing credential or a credential rejected by Kimi may
 cause AI Limits to create one inactive Kimi homepage tab. Recovery reads
-`access_token` only after that page sets `window.__kimiAppMounted`, the flag
-Kimi sets when its client app mounts. It then keeps the owned tab open so Kimi
-can replace an expired token. Recovery has a 30-second deadline for obtaining
-a credential. When recovery finishes or times out, the extension attempts
-best-effort cleanup of only the tab and lease it owns; browser shutdown or API
-errors can delay or prevent cleanup. Scheduled refresh never creates a Kimi
-tab.
+`access_token` and `refresh_token` only after that page sets
+`window.__kimiAppMounted`, the flag Kimi sets when its client app mounts. It
+then keeps the owned tab open so Kimi can replace an expired token. Recovery
+has a 30-second deadline for obtaining a credential. When recovery finishes or
+times out, the extension attempts best-effort cleanup of only the tab and
+lease it owns; browser shutdown or API errors can delay or prevent cleanup.
+Scheduled refresh never creates a Kimi tab.
 
-While that recovery is active, the extension stores only a generated lease
-identifier with the temporary tab ID and creation timestamp in
+While interactive Kimi recovery is active, its cleanup lease stores only a
+generated lease identifier with the temporary tab ID and creation timestamp in
 `chrome.storage.session`. This transient metadata supports cleanup if the
 background worker is interrupted. AI Limits attempts to remove it when
 recovery finishes and also performs best-effort abandoned-lease cleanup when
 the background worker starts.
+
+Kimi access tokens last about 15 minutes, and the Kimi page renews them only
+while a Kimi tab is open. So scheduled refresh can keep working after the tab
+closes, AI Limits holds a Kimi session in `chrome.storage.session`: the
+current Kimi refresh token, the most recent access token with its expiry time,
+and the page refresh token the session was taken from (kept only to tell when
+the page holds a different session). That storage is memory-backed: the browser
+clears it when it exits or when the extension is reloaded or updated, and it
+is never written to disk or included in saved refresh results. When the
+access token is missing, expired, or rejected by Kimi, the background worker
+sends the current refresh token, and nothing else, to Kimi's own sign-in
+service at
+`https://auth.kimi.com/api/account.gateway.v1.AuthService/RefreshToken`,
+without cookies. It keeps the new pair Kimi returns and never opens a tab to
+do so. The held session is dropped when Kimi rejects the refresh token, when a
+Kimi page shows the user is signed out, when Kimi access is disconnected or
+its permission is removed, and when all local data is deleted. Signing out of
+Kimi in a tab that AI Limits does not read afterwards drops the held session
+only once Kimi rejects the refresh token or the browser exits; disconnect Kimi
+in AI Limits to drop it immediately. After a browser
+restart, Kimi needs one open Kimi tab or one manual Connect or Refresh before
+scheduled refresh can renew on its own again.
 
 For Grok, grok.com rejects extension-background session and usage requests
 when the Origin is not `https://grok.com`. AI Limits therefore does not fetch
@@ -354,7 +380,8 @@ Optional access lets the extension interact with sensitive signed-in provider
 sessions and with API keys you provide. AI Limits minimizes that access and
 stores normalized results locally, but no browser extension or local profile
 is risk-free. Anyone who can access your unlocked Chrome profile may be able to
-access extension data, including separately saved API keys.
+access extension data, including separately saved API keys and, while the
+browser is running, the Kimi session held in `chrome.storage.session`.
 
 Browser-session provider endpoints are private, unsupported interfaces and may
 change or stop working without notice. API-key providers use documented or

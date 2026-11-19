@@ -853,7 +853,7 @@ providers:
   kimi:
     name: Kimi
     connect: 连接 Kimi
-    connectionDisclosure: 在获得许可后，AI Limits 可能会读取 Kimi 已登录的 kimi-auth cookie 的精确值，或 kimi.com 页面 localStorage.access_token。它只在本地存储标准化用量，不存储凭据。
+    connectionDisclosure: 在获得许可后，AI Limits 可能会读取 Kimi 已登录的 kimi-auth cookie 的精确值，或 kimi.com 页面 localStorage 中的 access_token 和 refresh_token。Kimi 令牌只保存在基于内存的会话存储中，直到浏览器退出；刷新令牌只会发送到 Kimi 登录服务（auth.kimi.com）以续期访问。它会在本地存储标准化用量。
     manualRefreshDisclosure: 连接和手动刷新在需要恢复时可能会短暂打开一个不活动的 Kimi 标签页。定时或自动刷新永远不会打开标签页。
     capabilities:
       subscriptionUsage: 订阅用量

@@ -1,30 +1,53 @@
 import { describe, expect, test, vi } from "vitest";
 
 import {
-  readKimiAccessTokenAtExpectedOrigin,
-  readKimiPageAccessToken,
+  parseKimiPageSession,
+  readKimiPageSession,
+  readKimiPageSessionAtExpectedOrigin,
 } from "./page-session";
 
+function storageWith(values: Record<string, string>) {
+  return { getItem: vi.fn((key: string) => values[key] ?? null) };
+}
+
 describe("Kimi page credential isolation", () => {
-  test("reads the exact key only when the executing page is still on Kimi", () => {
-    const storage = { getItem: vi.fn(() => "kimi-token") };
+  test("reads only the exact token keys when the executing page is still on Kimi", () => {
+    const storage = storageWith({
+      access_token: "kimi-access",
+      refresh_token: "kimi-refresh",
+      other: "unrelated",
+    });
 
     expect(
-      readKimiAccessTokenAtExpectedOrigin(
+      readKimiPageSessionAtExpectedOrigin(
         "https://www.kimi.com",
         storage,
         "https://www.kimi.com",
         true,
       ),
-    ).toBe("kimi-token");
-    expect(storage.getItem).toHaveBeenCalledWith("access_token");
+    ).toEqual({ accessToken: "kimi-access", refreshToken: "kimi-refresh" });
+    expect(storage.getItem.mock.calls.map(([key]) => key).sort()).toEqual([
+      "access_token",
+      "refresh_token",
+    ]);
+  });
+
+  test("reports missing keys as undefined", () => {
+    expect(
+      readKimiPageSessionAtExpectedOrigin(
+        "https://www.kimi.com",
+        storageWith({}),
+        "https://www.kimi.com",
+        true,
+      ),
+    ).toEqual({ accessToken: undefined, refreshToken: undefined });
   });
 
   test("does not read storage until Kimi's client app has mounted", () => {
-    const storage = { getItem: vi.fn(() => "stale-token") };
+    const storage = storageWith({ access_token: "stale-token" });
 
     expect(
-      readKimiAccessTokenAtExpectedOrigin(
+      readKimiPageSessionAtExpectedOrigin(
         "https://www.kimi.com",
         storage,
         "https://www.kimi.com",
@@ -35,18 +58,18 @@ describe("Kimi page credential isolation", () => {
   });
 
   test("uses the page mount flag when the caller does not pass one", () => {
-    const storage = { getItem: vi.fn(() => "kimi-token") };
+    const storage = storageWith({ access_token: "kimi-token" });
     const host = globalThis as { __kimiAppMounted?: unknown };
     const previous = host.__kimiAppMounted;
     host.__kimiAppMounted = true;
 
     try {
       expect(
-        readKimiAccessTokenAtExpectedOrigin(
+        readKimiPageSessionAtExpectedOrigin(
           "https://www.kimi.com",
           storage,
           "https://www.kimi.com",
-        ),
+        )?.accessToken,
       ).toBe("kimi-token");
     } finally {
       if (previous === undefined) delete host.__kimiAppMounted;
@@ -55,10 +78,10 @@ describe("Kimi page credential isolation", () => {
   });
 
   test("does not touch storage after a selected tab navigates to another origin", () => {
-    const storage = { getItem: vi.fn(() => "other-provider-token") };
+    const storage = storageWith({ access_token: "other-provider-token" });
 
     expect(
-      readKimiAccessTokenAtExpectedOrigin(
+      readKimiPageSessionAtExpectedOrigin(
         "https://www.kimi.com",
         storage,
         "https://chatgpt.com",
@@ -68,17 +91,29 @@ describe("Kimi page credential isolation", () => {
     expect(storage.getItem).not.toHaveBeenCalled();
   });
 
+  test("keeps only non-empty string tokens from the injected result", () => {
+    expect(parseKimiPageSession(undefined)).toEqual({});
+    expect(parseKimiPageSession("token")).toEqual({});
+    expect(
+      parseKimiPageSession({ accessToken: " a ", refreshToken: 42 }),
+    ).toEqual({ accessToken: "a" });
+    expect(
+      parseKimiPageSession({ accessToken: "", refreshToken: "r" }),
+    ).toEqual({ refreshToken: "r" });
+  });
+
   test("binds the injected read to the expected Kimi origin", async () => {
     const executeScript = vi.fn(async (details) => {
       expect(details.target).toEqual({ tabId: 42 });
       expect(details.world).toBe("MAIN");
       expect(details.args).toEqual(["https://www.kimi.com"]);
-      return [{ result: undefined }];
+      return [{ result: { accessToken: "a", refreshToken: "r" } }];
     });
 
-    await expect(
-      readKimiPageAccessToken(42, executeScript),
-    ).resolves.toBeUndefined();
+    await expect(readKimiPageSession(42, executeScript)).resolves.toEqual({
+      accessToken: "a",
+      refreshToken: "r",
+    });
     expect(executeScript).toHaveBeenCalledOnce();
   });
 });

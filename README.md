@@ -72,7 +72,9 @@ its affiliates.
   store raw provider responses or credentials in History.
 - Browser-session cookies and access credentials are used only for the current
   provider collection attempt and are not saved in persistent extension
-  storage. Successfully validated API keys are stored separately in local
+  storage, except Kimi's refresh and access tokens, which are held in
+  memory-backed `chrome.storage.session` until the browser exits (see Kimi
+  below). Successfully validated API keys are stored separately in local
   extension storage so manual and scheduled refresh can run without reopening
   the setup page.
 - Automatic refresh is enabled by default and runs about every 15 minutes only
@@ -86,6 +88,10 @@ loading the page, then keeps the tab open long enough for Kimi to replace an
 expired session token. The extension checks the legacy
 Kimi cookie first, then the exact `access_token` entry in an already-open Kimi
 page. Browser shutdown or API errors can delay or prevent best-effort cleanup.
+Whenever it reads a Kimi page, it also keeps that page's `refresh_token` in
+memory-backed `chrome.storage.session`, which the browser clears when it
+exits. Scheduled refresh uses it to renew Kimi's short-lived access token
+directly with Kimi, without a tab, until the browser restarts.
 
 Cursor Connect or manual Refresh prefer one already-open `cursor.com` tab. If
 none is open, they may briefly open one inactive

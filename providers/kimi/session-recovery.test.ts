@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
 
-import { readKimiAccessTokenAtExpectedOrigin } from "./page-session";
+import { readKimiPageSessionAtExpectedOrigin } from "./page-session";
 import {
   KIMI_RECOVERY_LEASE_KEY,
   KIMI_RECOVERY_TIMEOUT_MS,
@@ -574,12 +574,12 @@ describe("Kimi page session", () => {
         url: "https://www.kimi.com/",
       }),
       readAccessToken: vi.fn(async () =>
-        readKimiAccessTokenAtExpectedOrigin(
+        readKimiPageSessionAtExpectedOrigin(
           "https://www.kimi.com",
           storage,
           "https://www.kimi.com",
           mounted,
-        ),
+        )?.accessToken,
       ),
     });
 

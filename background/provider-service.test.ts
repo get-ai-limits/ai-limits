@@ -1147,6 +1147,54 @@ describe("generic provider instance service", () => {
     await expect(connectionRepository.get(FIRST)).resolves.toBeDefined();
   });
 
+  test("losing a provider's permission drops the session its package holds", async () => {
+    const kimi: ProviderInstanceRecord = {
+      id: "kimi:default",
+      providerKind: "kimi",
+      config: { kind: "fixed" },
+      access: "granted",
+      createdAt: NOW,
+      history: [],
+    } as ProviderInstanceRecord;
+    await connectionRepository.create(kimi);
+    vi.mocked(browser.permissions.contains).mockResolvedValue(false as never);
+    const forgetKimi = vi.fn().mockResolvedValue(undefined);
+    const service = createProviderService({
+      clock: () => NOW,
+      packages: registryWith({
+        kimi: { ...providerRegistry.kimi, forgetSession: forgetKimi },
+      }),
+    });
+
+    await service.reconcilePermissions();
+
+    await expect(connectionRepository.get(kimi.id)).resolves.toMatchObject({
+      access: "required",
+    });
+    expect(forgetKimi).toHaveBeenCalledOnce();
+  });
+
+  test("disconnect and delete-all drop sessions a provider package holds in memory", async () => {
+    await seed(newApiInstance(FIRST), "first-secret");
+    const forgetNewApi = vi.fn().mockRejectedValue(new Error("busy"));
+    const forgetKimi = vi.fn().mockResolvedValue(undefined);
+    const packages = registryWith({
+      newapi: { ...providerRegistry.newapi, forgetSession: forgetNewApi },
+      kimi: { ...providerRegistry.kimi, forgetSession: forgetKimi },
+    });
+    const service = createProviderService({ clock: () => NOW, packages });
+
+    await expect(service.disconnectInstance(FIRST)).resolves.toMatchObject({
+      localDataDeleted: true,
+    });
+    expect(forgetNewApi).toHaveBeenCalledOnce();
+    expect(forgetKimi).not.toHaveBeenCalled();
+
+    await service.deleteAllLocalData();
+    expect(forgetKimi).toHaveBeenCalledOnce();
+    expect(forgetNewApi).toHaveBeenCalledTimes(2);
+  });
+
   test("disconnect deletes local credential, state, and history before shared permission cleanup", async () => {
     await seed({
       ...newApiInstance(FIRST),

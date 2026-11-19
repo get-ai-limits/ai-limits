@@ -104,7 +104,7 @@ What it accesses: only after you connect a service and approve its site access, 
 
 Where data goes: your sign-in session or API key for a service is sent only to that same service, to fetch your usage. AI Limits never sends it anywhere else. Apart from that OpenRouter credit amount, it never reads page text, prompts, conversations, or generated responses.
 
-What it stores, on your device only: your settings, provider order, the address and label you give any self-hosted gateway, normalized usage snapshots, and up to 30 days of usage History per connection. API keys you enter are stored in Firefox's extension storage without operating-system keychain encryption, so anyone with access to your Firefox profile may be able to read them. Sign-in cookies and session credentials are never stored.
+What it stores, on your device only: your settings, provider order, the address and label you give any self-hosted gateway, normalized usage snapshots, and up to 30 days of usage History per connection. API keys you enter are stored in Firefox's extension storage without operating-system keychain encryption, so anyone with access to your Firefox profile may be able to read them. Sign-in cookies and session credentials are never stored on disk. Kimi's refresh tokens (current and the page's) and latest access token are the only credentials kept, and only in memory-only session storage until Firefox exits, so background refresh can renew Kimi access.
 
 Your controls: disconnect any service, turn off automatic refresh, or use Delete all local data in Settings at any time. Uninstalling the extension removes its local data.
 
@@ -124,7 +124,7 @@ Test accounts: none are supplied by the extension. To see real data, sign in to 
 
 Data collection: the manifest declares authenticationInfo as required because the user's sign-in session or API key for a service is sent to that same service to read usage. Nothing is sent to the developer, and there is no remote code.
 
-Injected code: for Kimi, Cursor, and Grok, scripting.executeScript runs a bundled read-only function in that provider's own page (MAIN world) to read usage responses or Kimi's access_token storage entry. During Connect or manual Refresh it may open one inactive provider tab and closes only that tab.
+Injected code: for Kimi, Cursor, and Grok, scripting.executeScript runs a bundled read-only function in that provider's own page (MAIN world) to read usage responses or Kimi's access_token and refresh_token storage entries. The Kimi refresh token is sent only to Kimi's sign-in service (auth.kimi.com), without cookies, to renew access. During Connect or manual Refresh it may open one inactive provider tab and closes only that tab.
 
 declarativeNetRequest: one session rule removes the Origin header from the extension's own POST to https://app.warp.dev/graphql/v2?op=GetRequestLimitInfo, because Warp refuses requests carrying an extension origin. It is active only after the user grants app.warp.dev access.
 

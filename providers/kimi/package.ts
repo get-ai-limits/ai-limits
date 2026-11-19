@@ -14,13 +14,19 @@ import {
   kimiAdapter,
   retryKimiAdapterAfterChangedToken,
 } from "./adapter";
-import { readKimiPageAccessToken } from "./page-session";
+import {
+  KIMI_ORIGIN,
+  parseKimiPageSession,
+  readKimiPageSessionAtExpectedOrigin,
+} from "./page-session";
+import { createKimiSessionHolder } from "./refresh-session";
 import {
   cleanupAbandonedKimiRecoveryTab,
   createKimiRecoveryAfterStartupCleanup,
   findKimiPageAccessToken,
   refreshKimiAccessTokenInTemporaryTab,
 } from "./session-recovery";
+import type { StorageSessionLike } from "../tab-ensure";
 
 const KIMI_URL = "https://www.kimi.com/";
 const KIMI_ORIGIN_PATTERN = providerDefinitions.kimi.optionalOrigins[0];
@@ -39,6 +45,20 @@ interface KimiPackageDependencies {
     result: CollectionResult,
     context: CollectionContext,
   ): Promise<CollectionResult>;
+  /**
+   * An access token from the refresh token held in memory-backed session
+   * storage. It never opens a tab, so scheduled refresh may use it.
+   */
+  storedSessionToken?(
+    rejectedToken: string | undefined,
+    signal: AbortSignal,
+  ): Promise<string | undefined>;
+  forgetSession?(): Promise<void>;
+  /**
+   * Reads an already-open Kimi page only to hold its refresh token, when no
+   * session is held yet. Never opens a tab.
+   */
+  captureOpenPageSession?(signal: AbortSignal): Promise<void>;
 }
 
 function normalizedToken(value: string | undefined): string | undefined {
@@ -109,6 +129,15 @@ export function createKimiPackage(
     })(rejectedToken).catch(() => undefined);
   };
 
+  const storedSessionToken = (
+    rejectedToken: string | undefined,
+    signal: AbortSignal,
+  ): Promise<string | undefined> => {
+    const source = dependencies.storedSessionToken;
+    if (!source || signal.aborted) return Promise.resolve(undefined);
+    return safelyResolveToken(() => source(rejectedToken, signal));
+  };
+
   return {
     kind: "kimi",
     cardinality: providerDefinitions.kimi.cardinality,
@@ -126,6 +155,9 @@ export function createKimiPackage(
             permissions: [...providerDefinitions.kimi.optionalPermissions],
           }
         : undefined,
+    async forgetSession(): Promise<void> {
+      await dependencies.forgetSession?.();
+    },
     async startup(): Promise<void> {
       try {
         await ensureStartup();
@@ -143,10 +175,14 @@ export function createKimiPackage(
       }
 
       let token = await safelyResolveToken(() => dependencies.getCookieToken());
-      if (!token) {
+      const tokenFromCookie = token !== undefined;
+      if (!token && !services.signal.aborted) {
         token = await safelyResolveToken(() =>
           dependencies.findPageAccessToken(),
         );
+      }
+      if (!token) {
+        token = await storedSessionToken(undefined, services.signal);
       }
 
       if (!token) {
@@ -175,12 +211,29 @@ export function createKimiPackage(
         signal: services.signal,
         accessToken: token,
       });
-      if (!requiresSession(firstResult)) return firstResult;
+      if (!requiresSession(firstResult) || services.signal.aborted) {
+        if (tokenFromCookie && firstResult.ok && !services.signal.aborted) {
+          // The cookie path never reads a page, so hold an open page's
+          // refresh token now for when the cookie token expires.
+          try {
+            await dependencies.captureOpenPageSession?.(services.signal);
+          } catch {
+            // Best effort; the collection already succeeded.
+          }
+        }
+        return firstResult;
+      }
 
       let changedToken = await safelyResolveToken(
         () => dependencies.findPageAccessToken(),
       );
       if (changedToken === token) changedToken = undefined;
+      if (!changedToken) {
+        changedToken = await storedSessionToken(token, services.signal);
+        if (changedToken === token) changedToken = undefined;
+      }
+      // From an open page or the held session; either allows one more
+      // interactive recovery if this token is rejected too.
       const changedTokenFromPage = changedToken !== undefined;
       if (!changedToken && services.interaction === "allowed") {
         changedToken = normalizedToken(
@@ -236,10 +289,40 @@ export function createKimiPackage(
 }
 
 function productionDependencies(): KimiPackageDependencies {
-  const readPageToken = (tabId: number) =>
-    readKimiPageAccessToken(tabId, (details) =>
-      browser.scripting.executeScript(details),
-    );
+  // Resolve lazily: the package is built at import time, before tests or the
+  // worker have necessarily installed the browser global.
+  const storageSession: StorageSessionLike = {
+    get: (key) => browser.storage.session.get(key),
+    set: (items) => browser.storage.session.set(items),
+    remove: (key) => browser.storage.session.remove(key),
+  };
+  const sessionHolder = createKimiSessionHolder({
+    storage: storageSession,
+    fetch: (input, init) => globalThis.fetch(input, init),
+  });
+  // A disconnect aborts the collection before it forgets the held session, so
+  // callers check their signal and take the generation in the same tick.
+  const readPageToken = async (
+    tabId: number,
+    startedIn = sessionHolder.beginPageRead(),
+  ) => {
+    const injected = await browser.scripting.executeScript({
+      target: { tabId },
+      world: "MAIN",
+      func: readKimiPageSessionAtExpectedOrigin,
+      args: [KIMI_ORIGIN],
+    });
+    const result = injected[0]?.result;
+    // Before Kimi mounts the read returns nothing; that is not a sign-out.
+    if (result === undefined || result === null) return undefined;
+    const session = parseKimiPageSession(result);
+    // Keep the page's refresh token in memory-backed session storage so a
+    // later scheduled refresh can renew access without a Kimi tab.
+    await sessionHolder
+      .rememberPageSession(session, startedIn)
+      .catch(() => undefined);
+    return session.accessToken;
+  };
 
   return {
     adapter: kimiAdapter,
@@ -247,11 +330,13 @@ function productionDependencies(): KimiPackageDependencies {
       return (await browser.cookies.get({ url: KIMI_URL, name: "kimi-auth" }))
         ?.value;
     },
-    findPageAccessToken: () =>
-      findKimiPageAccessToken({
+    findPageAccessToken: () => {
+      const startedIn = sessionHolder.beginPageRead();
+      return findKimiPageAccessToken({
         queryTabs: () => browser.tabs.query({ url: KIMI_ORIGIN_PATTERN }),
-        readAccessToken: readPageToken,
-      }),
+        readAccessToken: (tabId) => readPageToken(tabId, startedIn),
+      });
+    },
     recoverAccessToken: (rejectedToken, signal) =>
       refreshKimiAccessTokenInTemporaryTab({
         rejectedToken,
@@ -267,12 +352,12 @@ function productionDependencies(): KimiPackageDependencies {
           browser.tabs.onRemoved.addListener(listener);
           return () => browser.tabs.onRemoved.removeListener(listener);
         },
-        storageSession: browser.storage.session,
+        storageSession,
         signal,
       }),
     cleanupAbandonedRecovery: () =>
       cleanupAbandonedKimiRecoveryTab({
-        storageSession: browser.storage.session,
+        storageSession,
         getTab: (tabId) => browser.tabs.get(tabId),
         removeTab: (tabId) => browser.tabs.remove(tabId),
       }),
@@ -286,6 +371,18 @@ function productionDependencies(): KimiPackageDependencies {
         .catch(() => undefined);
     },
     retryAfterChangedToken: retryKimiAdapterAfterChangedToken,
+    storedSessionToken: (rejectedToken, signal) =>
+      sessionHolder.tokenFor(rejectedToken, signal),
+    forgetSession: () => sessionHolder.forget(),
+    async captureOpenPageSession(signal) {
+      if (signal.aborted) return;
+      const startedIn = sessionHolder.beginPageRead();
+      if (await sessionHolder.hasSession()) return;
+      await findKimiPageAccessToken({
+        queryTabs: () => browser.tabs.query({ url: KIMI_ORIGIN_PATTERN }),
+        readAccessToken: (tabId) => readPageToken(tabId, startedIn),
+      });
+    },
   };
 }
 
