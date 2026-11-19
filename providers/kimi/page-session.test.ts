@@ -2,7 +2,6 @@ import { describe, expect, test, vi } from "vitest";
 
 import {
   parseKimiPageSession,
-  readKimiPageSession,
   readKimiPageSessionAtExpectedOrigin,
 } from "./page-session";
 
@@ -100,20 +99,5 @@ describe("Kimi page credential isolation", () => {
     expect(
       parseKimiPageSession({ accessToken: "", refreshToken: "r" }),
     ).toEqual({ refreshToken: "r" });
-  });
-
-  test("binds the injected read to the expected Kimi origin", async () => {
-    const executeScript = vi.fn(async (details) => {
-      expect(details.target).toEqual({ tabId: 42 });
-      expect(details.world).toBe("MAIN");
-      expect(details.args).toEqual(["https://www.kimi.com"]);
-      return [{ result: { accessToken: "a", refreshToken: "r" } }];
-    });
-
-    await expect(readKimiPageSession(42, executeScript)).resolves.toEqual({
-      accessToken: "a",
-      refreshToken: "r",
-    });
-    expect(executeScript).toHaveBeenCalledOnce();
   });
 });

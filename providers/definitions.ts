@@ -28,7 +28,7 @@ export const providerDefinitions = {
     credentialKind: "none",
     configKind: "fixed",
     optionalOrigins: ["https://www.kimi.com/*"],
-    optionalPermissions: ["cookies", "scripting"],
+    optionalPermissions: ["scripting"],
   },
   cursor: {
     cardinality: "single",

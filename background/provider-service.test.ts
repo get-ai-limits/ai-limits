@@ -255,7 +255,7 @@ describe("generic provider instance service", () => {
     });
   });
 
-  test("prepares exact Kimi origin, cookie, and scripting permission ownership", async () => {
+  test("prepares exact Kimi origin and scripting permission ownership", async () => {
     const service = createProviderService({
       clock: () => NOW,
       randomUUID: () => "550e8400-e29b-41d4-a716-446655440099",
@@ -270,7 +270,7 @@ describe("generic provider instance service", () => {
       instanceId: "kimi:default",
       permissions: {
         origins: ["https://www.kimi.com/*"],
-        permissions: ["cookies", "scripting"],
+        permissions: ["scripting"],
       },
     });
   });
@@ -302,7 +302,7 @@ describe("generic provider instance service", () => {
 
     expect(remove).toHaveBeenCalledWith({
       origins: ["https://www.kimi.com/*"],
-      permissions: ["cookies", "scripting"],
+      permissions: ["scripting"],
     });
     expect(JSON.stringify(await browser.storage.local.get(null))).not.toContain(
       "kimi:default",
@@ -1540,7 +1540,7 @@ describe("generic provider instance service", () => {
 
     expect(remove).toHaveBeenCalledWith({
       origins: ["https://relay.example/*", "https://www.kimi.com/*"],
-      permissions: ["cookies", "scripting"],
+      permissions: ["scripting"],
     });
     await expect(browser.storage.local.get("unrelated")).resolves.toEqual({
       unrelated: "keep",

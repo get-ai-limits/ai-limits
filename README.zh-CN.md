@@ -64,8 +64,8 @@ AI Limits 是 TiantianFlow 开发的独立项目，与任何受支持的服务�
 Kimi 定时刷新绝不会打开标签页。交互式 Connect 或 Refresh 最多打开一个非活动
 的临时 Kimi 标签页，最多等待 30 秒完成恢复，并且只关闭它自己创建的标签页。
 恢复会等到 Kimi 页面加载完成，并让标签页继续打开一段时间，以便 Kimi 替换过期
-的会话令牌。扩展会先检查旧版 Kimi Cookie，再读取已打开 Kimi 页面中名称完全匹配的
-`access_token` 项；浏览器关闭或 API 错误可能延迟或阻止尽力清理。
+的会话令牌。扩展读取已打开 Kimi 页面中名称完全匹配的 `access_token` 项，
+不会读取 Kimi Cookie；浏览器关闭或 API 错误可能延迟或阻止尽力清理。
 每次读取 Kimi 页面时，扩展还会把该页面的 `refresh_token` 保存在基于内存的
 `chrome.storage.session` 中，浏览器退出时会清除它。在浏览器重启之前，
 定时刷新会用它直接向 Kimi 续期短效访问令牌，无需打开标签页。
@@ -106,7 +106,7 @@ API 密钥连接时才会逐个请求。New API、LiteLLM、ClawRouter、sub2api
 LLM Proxy 因来源可配置而声明动态可选主机能力，但 Chrome 实际只会请求设置中
 输入的那个实例来源。同一来源的多个实例只共享这一浏览器全局授权；凭据、标签、
 用量和 History 始终相互独立。可选的
-`cookies` 权限只用于 Kimi 会话访问。`scripting` 权限用于 Kimi 交互式恢复、
+`scripting` 权限用于 Kimi 交互式恢复、
 Cursor 仅在 Connect 或手动刷新期间执行的页面增强，以及 Grok 在 grok.com
 页面中读取会话和用量。固定 API 密钥服务只会
 获得各自 API 来源的可选访问权限；公开设置页面按普通网页打开，不会获得扩展

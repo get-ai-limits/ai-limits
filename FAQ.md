@@ -96,8 +96,8 @@ Kimi scheduled refresh never opens a tab. An interactive Connect or Refresh may
 open at most one inactive temporary Kimi tab, waits up to 30 seconds for
 recovery, and closes only the tab it created. Recovery waits until Kimi finishes
 loading the page before accepting a session token, and it leaves the tab open
-long enough for Kimi to replace an expired token. It can use the legacy Kimi cookie
-or read an `access_token` from an already-open Kimi page.
+long enough for Kimi to replace an expired token. It reads an `access_token`
+from an already-open Kimi page and does not read Kimi cookies.
 
 Kimi access tokens expire after about 15 minutes, but each time AI Limits
 reads a Kimi page it also keeps that page's refresh token in memory-backed

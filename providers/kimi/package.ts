@@ -28,12 +28,10 @@ import {
 } from "./session-recovery";
 import type { StorageSessionLike } from "../tab-ensure";
 
-const KIMI_URL = "https://www.kimi.com/";
 const KIMI_ORIGIN_PATTERN = providerDefinitions.kimi.optionalOrigins[0];
 
 interface KimiPackageDependencies {
   adapter: ProviderCollector<"kimi">;
-  getCookieToken(): Promise<string | undefined>;
   findPageAccessToken(): Promise<string | undefined>;
   recoverAccessToken(
     rejectedToken: string | undefined,
@@ -54,11 +52,6 @@ interface KimiPackageDependencies {
     signal: AbortSignal,
   ): Promise<string | undefined>;
   forgetSession?(): Promise<void>;
-  /**
-   * Reads an already-open Kimi page only to hold its refresh token, when no
-   * session is held yet. Never opens a tab.
-   */
-  captureOpenPageSession?(signal: AbortSignal): Promise<void>;
 }
 
 function normalizedToken(value: string | undefined): string | undefined {
@@ -174,13 +167,9 @@ export function createKimiPackage(
         return { ok: false, health: { kind: "temporary_error" } };
       }
 
-      let token = await safelyResolveToken(() => dependencies.getCookieToken());
-      const tokenFromCookie = token !== undefined;
-      if (!token && !services.signal.aborted) {
-        token = await safelyResolveToken(() =>
-          dependencies.findPageAccessToken(),
-        );
-      }
+      let token = await safelyResolveToken(() =>
+        dependencies.findPageAccessToken(),
+      );
       if (!token) {
         token = await storedSessionToken(undefined, services.signal);
       }
@@ -212,15 +201,6 @@ export function createKimiPackage(
         accessToken: token,
       });
       if (!requiresSession(firstResult) || services.signal.aborted) {
-        if (tokenFromCookie && firstResult.ok && !services.signal.aborted) {
-          // The cookie path never reads a page, so hold an open page's
-          // refresh token now for when the cookie token expires.
-          try {
-            await dependencies.captureOpenPageSession?.(services.signal);
-          } catch {
-            // Best effort; the collection already succeeded.
-          }
-        }
         return firstResult;
       }
 
@@ -326,10 +306,6 @@ function productionDependencies(): KimiPackageDependencies {
 
   return {
     adapter: kimiAdapter,
-    async getCookieToken() {
-      return (await browser.cookies.get({ url: KIMI_URL, name: "kimi-auth" }))
-        ?.value;
-    },
     findPageAccessToken: () => {
       const startedIn = sessionHolder.beginPageRead();
       return findKimiPageAccessToken({
@@ -374,15 +350,6 @@ function productionDependencies(): KimiPackageDependencies {
     storedSessionToken: (rejectedToken, signal) =>
       sessionHolder.tokenFor(rejectedToken, signal),
     forgetSession: () => sessionHolder.forget(),
-    async captureOpenPageSession(signal) {
-      if (signal.aborted) return;
-      const startedIn = sessionHolder.beginPageRead();
-      if (await sessionHolder.hasSession()) return;
-      await findKimiPageAccessToken({
-        queryTabs: () => browser.tabs.query({ url: KIMI_ORIGIN_PATTERN }),
-        readAccessToken: (tabId) => readPageToken(tabId, startedIn),
-      });
-    },
   };
 }
 

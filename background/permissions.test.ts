@@ -47,7 +47,7 @@ describe("instance permission ownership", () => {
     });
     expect(requiredPermissionsForInstance(kimi)).toEqual({
       origins: ["https://www.kimi.com/*"],
-      permissions: ["cookies", "scripting"],
+      permissions: ["scripting"],
     });
   });
 
@@ -148,7 +148,7 @@ describe("instance permission ownership", () => {
       ),
     ).toBe(false);
     expect(
-      permissionChangeAffectsInstance(kimi, { permissions: ["cookies"] }),
+      permissionChangeAffectsInstance(kimi, { permissions: ["scripting"] }),
     ).toBe(true);
   });
 
@@ -162,7 +162,7 @@ describe("instance permission ownership", () => {
 
     expect(browser.permissions.remove).toHaveBeenCalledWith({
       origins: ["https://relay.example/*", "https://www.kimi.com/*"],
-      permissions: ["cookies", "scripting"],
+      permissions: ["scripting"],
     });
   });
 

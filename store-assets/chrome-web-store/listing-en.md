@@ -123,7 +123,7 @@ These origins are requested one provider at a time after the user clicks
   access token calls Kimi's sign-in service at `auth.kimi.com` with only the
   refresh token and no cookies, and does not request an additional host
   permission. If Kimi stops accepting that request, refresh falls back to the
-  page and tab paths above.
+  page and tab paths described under `scripting` below.
 - `https://cursor.com/*`: reads the signed-in user's base Cursor usage. During
   Connect or manual Refresh only, it can also run bundled read-only code in one
   already-open exact-origin page, or briefly open one inactive spending tab if
@@ -161,8 +161,6 @@ These origins are requested one provider at a time after the user clicks
 
 ### Optional API permissions
 
-- `cookies`: requested only with Kimi access; reads only Kimi's exact legacy
-  `kimi-auth` cookie when available. This is checked before Kimi page storage.
 - `scripting`: requested with Kimi, Cursor, or Grok access. For Kimi, it reads only
   the exact `access_token` and `refresh_token` browser-storage entries from an already-open or
   recovery-created matching Kimi page. If a credential is missing or rejected,
@@ -298,7 +296,7 @@ The full policy is in [PRIVACY.md](../../PRIVACY.md).
    the Claude origin, and confirm organization plan and available usage windows
    or extra-usage credits appears. Use the card's **Refresh** action once.
 4. **Kimi:** sign in at `www.kimi.com`, click **Connect** on Kimi, approve the
-   Kimi origin plus `cookies` and `scripting`, and confirm available usage and
+   Kimi origin plus `scripting`, and confirm available usage and
    subscription data appears. If session recovery is required during an
    interactive refresh, an inactive Kimi tab may appear. Confirm recovery waits
    for the Kimi page to finish loading, stops waiting for a credential after

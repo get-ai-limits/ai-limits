@@ -2184,7 +2184,7 @@ describe("Cockpit", () => {
 
   it("shows Kimi's credential and interactive-tab disclosure on First Run and Add Provider", () => {
     const connectionDisclosure =
-      "With permission, AI Limits may read the exact value of Kimi's signed-in kimi-auth cookie, or the page's localStorage.access_token and refresh_token on kimi.com. The Kimi tokens are held only in memory-backed session storage until the browser exits, and the refresh token is sent only to Kimi's sign-in service (auth.kimi.com) to renew access. It stores normalized usage locally.";
+      "With permission, AI Limits may read the page's localStorage.access_token and refresh_token on kimi.com. It does not read Kimi cookies. The Kimi tokens are held only in memory-backed session storage until the browser exits, and the refresh token is sent only to Kimi's sign-in service (auth.kimi.com) to renew access. It stores normalized usage locally.";
     const recoveryDisclosure =
       "Connect and manual Refresh may briefly open one inactive Kimi tab when recovery is needed. Scheduled or automatic refresh never opens a tab.";
 
