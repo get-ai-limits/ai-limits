@@ -72,7 +72,9 @@ its affiliates.
   store raw provider responses or credentials in History.
 - Browser-session cookies and access credentials are used only for the current
   provider collection attempt and are not saved in persistent extension
-  storage. Successfully validated API keys are stored separately in local
+  storage, except Kimi's refresh and access tokens, which are held in
+  memory-backed `chrome.storage.session` until the browser exits (see Kimi
+  below). Successfully validated API keys are stored separately in local
   extension storage so manual and scheduled refresh can run without reopening
   the setup page.
 - Automatic refresh is enabled by default and runs about every 15 minutes only

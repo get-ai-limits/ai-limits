@@ -102,7 +102,7 @@ or read an `access_token` from an already-open Kimi page.
 Kimi access tokens expire after about 15 minutes, but each time AI Limits
 reads a Kimi page it also keeps that page's refresh token in memory-backed
 session storage. Scheduled refresh then renews the access token directly with
-Kimi, with no tab, until the browser restarts. After a restart, open Kimi once
+Kimi, with no tab, until the browser restarts. After a restart or extension update, open Kimi once
 or use a manual Refresh to start this again. If no usable session is
 available, automatic refresh defers until a later refresh, preserves the last
 good data, and adds no history observation.

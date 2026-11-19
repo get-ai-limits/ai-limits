@@ -157,6 +157,29 @@ describe("Kimi provider package", () => {
     expect(findPageAccessToken).not.toHaveBeenCalled();
   });
 
+  test("an aborted collection never captures a page session", async () => {
+    const controller = new AbortController();
+    const captureOpenPageSession = vi.fn();
+    const providerPackage = createKimiPackage({
+      adapter: adapterResult(async () => {
+        controller.abort();
+        return successfulCollection();
+      }),
+      getCookieToken: vi.fn().mockResolvedValue("cookie-access"),
+      findPageAccessToken: vi.fn(),
+      recoverAccessToken: vi.fn(),
+      cleanupAbandonedRecovery: vi.fn().mockResolvedValue(undefined),
+      announceRecovery: vi.fn(),
+      captureOpenPageSession,
+    });
+
+    await providerPackage.collect(instance, {
+      ...services("forbidden"),
+      signal: controller.signal,
+    });
+    expect(captureOpenPageSession).not.toHaveBeenCalled();
+  });
+
   test("a failed page capture never affects a cookie-backed success", async () => {
     const providerPackage = createKimiPackage({
       adapter: adapterResult(vi.fn().mockResolvedValue(successfulCollection())),

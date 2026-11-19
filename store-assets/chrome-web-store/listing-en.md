@@ -193,7 +193,9 @@ These origins are requested one provider at a time after the user clicks
 
 The manifest does not request the broad `tabs` permission. Scheduled refresh
 does not create or activate provider tabs. Grok scheduled refresh may inject
-into an already-open grok.com tab; Cursor scheduled refresh never injects.
+into an already-open grok.com tab; Kimi scheduled refresh may read
+`access_token`/`refresh_token` from an already-open Kimi tab; Cursor scheduled
+refresh never injects.
 
 ## Data-disclosure answers
 
@@ -206,7 +208,7 @@ into an already-open grok.com tab; Cursor scheduled refresh never injects.
   refresh tokens (current and the one read from the page) and latest access
   token are held in memory-backed
   `chrome.storage.session` across scheduled refreshes until the browser exits,
-  Kimi rejects them, the Kimi page shows a sign-out, or the user removes Kimi
+  Kimi rejects the refresh token, a Kimi page shows a sign-out, or the user removes Kimi
   access or deletes all local data.
   The refresh token is sent only to Kimi's sign-in service at `auth.kimi.com`.
   API keys are stored in the separate

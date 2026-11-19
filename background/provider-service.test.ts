@@ -1147,6 +1147,33 @@ describe("generic provider instance service", () => {
     await expect(connectionRepository.get(FIRST)).resolves.toBeDefined();
   });
 
+  test("losing a provider's permission drops the session its package holds", async () => {
+    const kimi: ProviderInstanceRecord = {
+      id: "kimi:default",
+      providerKind: "kimi",
+      config: { kind: "fixed" },
+      access: "granted",
+      createdAt: NOW,
+      history: [],
+    } as ProviderInstanceRecord;
+    await connectionRepository.create(kimi);
+    vi.mocked(browser.permissions.contains).mockResolvedValue(false as never);
+    const forgetKimi = vi.fn().mockResolvedValue(undefined);
+    const service = createProviderService({
+      clock: () => NOW,
+      packages: registryWith({
+        kimi: { ...providerRegistry.kimi, forgetSession: forgetKimi },
+      }),
+    });
+
+    await service.reconcilePermissions();
+
+    await expect(connectionRepository.get(kimi.id)).resolves.toMatchObject({
+      access: "required",
+    });
+    expect(forgetKimi).toHaveBeenCalledOnce();
+  });
+
   test("disconnect and delete-all drop sessions a provider package holds in memory", async () => {
     await seed(newApiInstance(FIRST), "first-secret");
     const forgetNewApi = vi.fn().mockRejectedValue(new Error("busy"));

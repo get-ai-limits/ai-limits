@@ -106,7 +106,10 @@ service at
 without cookies. It keeps the new pair Kimi returns and never opens a tab to
 do so. The held session is dropped when Kimi rejects the refresh token, when a
 Kimi page shows the user is signed out, when Kimi access is disconnected or
-its permission is removed, and when all local data is deleted. After a browser
+its permission is removed, and when all local data is deleted. Signing out of
+Kimi in a tab that AI Limits does not read afterwards drops the held session
+only once Kimi rejects the refresh token or the browser exits; disconnect Kimi
+in AI Limits to drop it immediately. After a browser
 restart, Kimi needs one open Kimi tab or one manual Connect or Refresh before
 scheduled refresh can renew on its own again.
 
