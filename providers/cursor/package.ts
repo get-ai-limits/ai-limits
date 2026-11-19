@@ -32,8 +32,47 @@ interface CursorPackageDependencies {
     context: CollectionContext,
     dashboard: CursorDashboardJson,
   ): Promise<CollectionResult>;
-  findDashboardJson(): Promise<CursorDashboardProbe>;
+  /**
+   * Reads the dashboard JSON through a cursor.com page. `allowOwnedTab` lets
+   * it open one inactive tab when none is open; otherwise it only uses a tab
+   * the user already has open.
+   */
+  findDashboardJson(options: {
+    allowOwnedTab: boolean;
+    /** Set on scheduled reads; aborts when the read is abandoned. */
+    signal?: AbortSignal;
+  }): Promise<CursorDashboardProbe>;
   cleanupAbandonedOwnedTab?(): Promise<void>;
+  /** How long scheduled refresh waits for a page read; tests shorten it. */
+  scheduledProbeBudgetMs?: number;
+}
+
+// Scheduled refresh shares the provider's collection deadline with the base
+// usage request, so its optional page read gets a short budget of its own.
+export const CURSOR_SCHEDULED_PROBE_BUDGET_MS = 8_000;
+
+type ProbeOrSkipped = CursorDashboardProbe | { kind: "skipped" };
+
+/** Resolves to `skipped` once the budget runs out or the signal aborts. */
+function withinBudget(
+  probe: Promise<CursorDashboardProbe>,
+  budgetMs: number,
+  signal: AbortSignal,
+): Promise<ProbeOrSkipped> {
+  return new Promise((resolve) => {
+    const finish = (value: ProbeOrSkipped) => {
+      clearTimeout(timer);
+      signal.removeEventListener("abort", onAbort);
+      resolve(value);
+    };
+    const onAbort = () => finish({ kind: "skipped" });
+    const timer = setTimeout(() => finish({ kind: "skipped" }), budgetMs);
+    signal.addEventListener("abort", onAbort, { once: true });
+    if (signal.aborted) onAbort();
+    probe.then(finish, () =>
+      finish({ kind: "inject_threw", detail: "findDashboardJson threw" }),
+    );
+  });
 }
 
 function adapterContext(services: ProviderRuntimeServices): CollectionContext {
@@ -79,14 +118,38 @@ export function createCursorPackage(
         return { ok: false, health: { kind: "provider_changed" } };
       }
 
-      let probe: CursorDashboardProbe | { kind: "skipped" } = { kind: "skipped" };
-      if (services.interaction === "allowed" && !services.signal.aborted) {
+      const interactive = services.interaction === "allowed";
+      let probe: ProbeOrSkipped = { kind: "skipped" };
+      if (interactive && !services.signal.aborted) {
         try {
-          probe = await dependencies.findDashboardJson();
+          probe = await dependencies.findDashboardJson({ allowOwnedTab: true });
         } catch {
           probe = { kind: "inject_threw", detail: "findDashboardJson threw" };
         }
+      } else if (!interactive && !services.signal.aborted) {
+        // Stops the read itself, not just the wait, once it is abandoned.
+        const abandon = new AbortController();
+        let started: Promise<CursorDashboardProbe>;
+        try {
+          started = dependencies.findDashboardJson({
+            allowOwnedTab: false,
+            signal: abandon.signal,
+          });
+        } catch {
+          started = Promise.reject(new Error("findDashboardJson threw"));
+        }
+        probe = await withinBudget(
+          started,
+          dependencies.scheduledProbeBudgetMs ??
+            CURSOR_SCHEDULED_PROBE_BUDGET_MS,
+          services.signal,
+        );
+        abandon.abort();
       }
+      // Scheduled refresh only uses an already-open cursor.com tab, within a
+      // short budget. Without a usable read it keeps the scheduled wording
+      // (no tab hints) and last-good page values.
+      if (!interactive && probe.kind !== "read") probe = { kind: "skipped" };
       const dashboard =
         probe.kind === "skipped" ? {} : dashboardJsonFromProbe(probe);
       const result = await dependencies.collect(
@@ -123,7 +186,7 @@ function cursorOwnedTabBrowser() {
 
 export const cursorPackage = createCursorPackage({
   collect: collectCursor,
-  findDashboardJson: () => {
+  findDashboardJson: ({ allowOwnedTab, signal }) => {
     const tabs = cursorOwnedTabBrowser();
     return findCursorDashboardJson({
       hasPagePermission: async () => {
@@ -140,7 +203,10 @@ export const cursorPackage = createCursorPackage({
       },
       queryTabs: (details) => browser.tabs.query(details),
       executeScript: (details) => browser.scripting.executeScript(details),
-      openOwnedTab: async () => {
+      // Scheduled reads use only the direct read: no page-global stash.
+      stashFallback: allowOwnedTab,
+      signal,
+      openOwnedTab: allowOwnedTab ? async () => {
         const owned = await openOwnedBackgroundTab({
           url: CURSOR_OWNED_TAB_URL,
           leaseKeyPrefix: CURSOR_OWNED_TAB_LEASE_PREFIX,
@@ -158,7 +224,7 @@ export const cursorPackage = createCursorPackage({
               storageSession: tabs.storageSession,
             }),
         };
-      },
+      } : undefined,
     });
   },
   cleanupAbandonedOwnedTab: () => {

@@ -141,10 +141,10 @@ owned tab is released and also performs best-effort abandoned-lease cleanup
 when the background worker starts.
 
 For Cursor, the base monthly and on-demand request runs from the extension.
-During Connect or an explicit manual Refresh only, AI Limits checks for one
-already-open tab matching `https://cursor.com/*`. If one exists, it uses the
-optional `scripting` permission to run a bundled function in that page's main
-JavaScript world. If none exists, the same interactive path may create one
+During collection, AI Limits checks for one already-open tab matching
+`https://cursor.com/*`. If one exists, it uses the optional `scripting`
+permission to run a bundled function in that page's main JavaScript world. If
+none exists, only Connect or an explicit manual Refresh may create one
 inactive `https://cursor.com/dashboard/spending` tab. That create-wait-read
 path has a 10-second deadline. When it finishes or times out, the extension
 attempts best-effort cleanup of only the tab and lease it owns; browser
@@ -156,10 +156,10 @@ extension context. It
 does not read rendered page content, local or session storage, or cookie
 values directly. Chrome does attach the signed-in Cursor cookies to these
 fixed same-origin requests. AI Limits never activates a Cursor tab. Scheduled
-refresh never queries for, opens, or injects into a Cursor page. Page-only
-Grok Bot and extra-credit metrics are refreshed only by Connect or manual
-Refresh; last-good normalized values may remain visible until Grok Bot's
-weekly reset. Raw dashboard JSON is request-local and is not persisted.
+refresh may run the same function in an already-open `cursor.com` tab and never
+opens a new one. If no tab is open or the read does not finish, page-only Grok Bot and extra-credit
+metrics are refreshed only by Connect or manual Refresh; last-good normalized
+values may remain visible until Grok Bot's weekly reset. Raw dashboard JSON is request-local and is not persisted.
 
 While that owned Cursor tab is active, the extension stores only a generated
 lease identifier with the temporary tab ID and creation timestamp in
@@ -341,7 +341,8 @@ Automatic refresh is enabled in the default settings. A repeating Chrome alarm
 is created only when automatic refresh is enabled and at least one provider is
 connected. About every 15 minutes, AI Limits checks providers whose optional
 permission is still granted. Cursor automatic refresh collects base monthly and
-on-demand usage only and never injects into a page. API-key providers
+on-demand usage, and may read the page-only metrics from an already-open
+`cursor.com` tab; it never opens a Cursor tab. API-key providers
 additionally require an active saved key; configurable-origin providers also
 require a normalized instance URL and exact runtime host permission. A rejected
 API key stops that provider's scheduled requests while stale normalized usage

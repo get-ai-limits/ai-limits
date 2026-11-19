@@ -41,9 +41,11 @@ its affiliates.
   browser session. The extension sends low-frequency, read-only requests to
   their own web-session usage services and does not scrape rendered page
   content. Cursor's base
-  usage refresh remains a background request; Connect or manual Refresh may
-  additionally run bundled read-only code in one already-open `cursor.com`
-  page, or briefly open one inactive spending tab if none is open, to request
+  usage refresh remains a background request. Any refresh, including scheduled
+  refresh, may additionally run
+  bundled read-only code in one already-open `cursor.com` page, and only
+  Connect or manual Refresh may briefly open one inactive spending tab if none
+  is open, to request
   Grok Bot, extra-credit, and per-model included-usage JSON.
 - ElevenLabs, DeepSeek, Moonshot, DeepInfra, Fireworks, OpenAI, GroqCloud,
   OpenRouter, Droid, GLM, and Warp use user-created API keys against their fixed provider APIs. GLM
@@ -100,8 +102,8 @@ it, and close only the tab they created. That owned-tab path uses the same
 shared helper as Kimi. AI Limits never activates a tab and never closes a tab
 the user opened. It does not inspect rendered content, browser storage, or
 cookie values directly; Chrome still attaches the signed-in Cursor cookies to
-those fixed same-origin requests. Scheduled or automatic refresh never opens
-or injects into a Cursor page. The card shows monthly Cursor-model and
+those fixed same-origin requests. Scheduled refresh may read from an
+already-open `cursor.com` tab the same way and never opens a new one. The card shows monthly Cursor-model and
 Other-model limits plus weekly Grok Bot usage. A detail view lists included
 usage by model, grouped into Cursor Models and Other Models, with input,
 output, and cost plus provider totals. That detail surface is generic so other
@@ -139,7 +141,7 @@ is asked only for the exact instance origin entered in onboarding. Same-origin
 instances share that browser-global grant only; their credentials, labels,
 usage, and History remain independent. The optional
 `scripting` permission is requested
-for Kimi interactive recovery, Cursor's manual/connect-only page enrichment,
+for Kimi page reads and interactive recovery, Cursor's page enrichment,
 and Grok page-origin session and usage reads. Fixed API-key providers receive only optional access to their own
 API origins. Public setup pages are opened normally and do not receive
 extension host access. The extension does not request the broad `tabs`
