@@ -51,6 +51,8 @@ interface CursorDashboardBridge {
     target: { tabId: number };
     world: "MAIN";
     func: InjectedDashboardFunc;
+    /** Set for the owned tab, which may still be loading. */
+    injectImmediately?: boolean;
   }): Promise<CursorScriptResult[]>;
   now?(): number;
   delay?(ms: number): Promise<void>;
@@ -63,7 +65,16 @@ interface CursorDashboardBridge {
   stashFallback?: boolean;
   /** Stops trying further tabs once aborted. */
   signal?: AbortSignal;
+  /** Caps the read of an owned tab; tests shorten it. */
+  ownedReadBudgetMs?: number;
 }
+
+/**
+ * The owned tab is handed off while it may still be loading, so its read
+ * gets a deadline of its own: a document that never settles must not keep
+ * the refresh pending or the tab open.
+ */
+export const CURSOR_OWNED_READ_BUDGET_MS = 10_000;
 
 const EXPECTED_ORIGIN = "https://cursor.com";
 
@@ -499,6 +510,7 @@ export async function findCursorDashboardJson({
   openOwnedTab,
   stashFallback = true,
   signal,
+  ownedReadBudgetMs = CURSOR_OWNED_READ_BUDGET_MS,
 }: CursorDashboardBridge): Promise<CursorDashboardProbe> {
   try {
     if (!(await hasPagePermission())) return { kind: "permission_missing" };
@@ -508,19 +520,37 @@ export async function findCursorDashboardJson({
       if (!openOwnedTab) return { kind: "no_tab" };
       const owned = await openOwnedTab();
       if (!owned) return { kind: "no_tab" };
+      // The tab may still be loading. Inject right away rather than at
+      // document_idle: the same-origin POSTs only need the committed
+      // document, and idle can wait on the same slow resources as load.
+      const ownedExecute: CursorDashboardBridge["executeScript"] = (details) =>
+        executeScript({ ...details, injectImmediately: true });
+      const budget = new AbortController();
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const timedOut = new Promise<CursorDashboardProbe>((resolve) => {
+        timer = setTimeout(() => {
+          budget.abort();
+          resolve({ kind: "inject_empty", detail: "owned tab read timed out" });
+        }, ownedReadBudgetMs);
+      });
       try {
-        const opened = await injectIntoTabIds(
+        const read = injectIntoTabIds(
           [owned.tabId],
-          executeScript,
+          ownedExecute,
           now,
           delay,
+          true,
+          budget.signal,
+        ).then(
+          (opened): CursorDashboardProbe =>
+            opened.probe ??
+            opened.lastWrongOrigin ??
+            opened.firstFailure ?? { kind: "no_tab" },
         );
-        return (
-          opened.probe ??
-          opened.lastWrongOrigin ??
-          opened.firstFailure ?? { kind: "no_tab" }
-        );
+        return await Promise.race([read, timedOut]);
       } finally {
+        clearTimeout(timer);
+        budget.abort();
         owned.release();
       }
     }

@@ -251,6 +251,63 @@ describe("Cursor page dashboard bridge", () => {
     expect(release).toHaveBeenCalledOnce();
   });
 
+  test("injects into the owned tab immediately, without waiting for idle", async () => {
+    const dashboard = {
+      grok: { ok: true as const, value: { usagePercent: 40 } },
+      credits: { ok: false as const },
+      aggregated: { ok: false as const },
+    };
+    const executeScript = vi.fn().mockResolvedValue([{ result: dashboard }]);
+    await findCursorDashboardJson({
+      hasPagePermission: granted,
+      queryTabs: vi.fn().mockResolvedValue([]),
+      executeScript,
+      openOwnedTab: vi.fn().mockResolvedValue({ tabId: 88, release: vi.fn() }),
+    });
+    expect(executeScript).toHaveBeenCalledWith(
+      expect.objectContaining({ target: { tabId: 88 }, injectImmediately: true }),
+    );
+  });
+
+  test("does not inject immediately into a tab the user already has open", async () => {
+    const executeScript = vi.fn().mockResolvedValue([
+      { result: { grok: { ok: false }, credits: { ok: false }, aggregated: { ok: false } } },
+    ]);
+    await findCursorDashboardJson({
+      hasPagePermission: granted,
+      queryTabs: vi
+        .fn()
+        .mockResolvedValue([{ id: 5, url: "https://cursor.com/dashboard", status: "complete" }]),
+      executeScript,
+    });
+    expect(executeScript.mock.calls[0]?.[0]).not.toHaveProperty("injectImmediately");
+  });
+
+  test("gives up on a stalled owned tab within its budget and releases it", async () => {
+    vi.useFakeTimers();
+    try {
+      const release = vi.fn();
+      const executeScript = vi.fn(() => new Promise<never>(() => undefined));
+      const probe = findCursorDashboardJson({
+        hasPagePermission: granted,
+        queryTabs: vi.fn().mockResolvedValue([]),
+        executeScript,
+        openOwnedTab: vi.fn().mockResolvedValue({ tabId: 88, release }),
+        ownedReadBudgetMs: 5_000,
+      });
+      await vi.advanceTimersByTimeAsync(4_999);
+      expect(release).not.toHaveBeenCalled();
+      await vi.advanceTimersByTimeAsync(1);
+      await expect(probe).resolves.toEqual({
+        kind: "inject_empty",
+        detail: "owned tab read timed out",
+      });
+      expect(release).toHaveBeenCalledOnce();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   test("returns no_tab when owned-tab creation is unavailable", async () => {
     const executeScript = vi.fn();
     await expect(
