@@ -208,16 +208,19 @@ export const cursorPackage = createCursorPackage({
       stashFallback: allowOwnedTab,
       signal,
       openOwnedTab: allowOwnedTab ? async () => {
+        // One deadline covers opening the tab and reading it.
+        const deadline = Date.now() + CURSOR_OWNED_TAB_TIMEOUT_MS;
         const owned = await openOwnedBackgroundTab({
           url: CURSOR_OWNED_TAB_URL,
           leaseKeyPrefix: CURSOR_OWNED_TAB_LEASE_PREFIX,
-          deadline: Date.now() + CURSOR_OWNED_TAB_TIMEOUT_MS,
+          deadline,
           readyWhen: cursorOwnedTabCommitted,
           ...tabs,
         });
         if (!owned) return undefined;
         return {
           tabId: owned.tabId,
+          deadline,
           release: () =>
             releaseOwnedBackgroundTab({
               tabId: owned.tabId,

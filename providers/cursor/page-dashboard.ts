@@ -56,7 +56,15 @@ interface CursorDashboardBridge {
   }): Promise<CursorScriptResult[]>;
   now?(): number;
   delay?(ms: number): Promise<void>;
-  openOwnedTab?(): Promise<{ tabId: number; release: () => void } | undefined>;
+  openOwnedTab?(): Promise<
+    | {
+        tabId: number;
+        release: () => void;
+        /** Shared create-wait-read deadline (epoch ms); the read ends by it. */
+        deadline?: number;
+      }
+    | undefined
+  >;
   /**
    * Whether a failed direct read may retry through the page-global stash.
    * Defaults to true; scheduled reads turn it off so an abandoned read can
@@ -65,16 +73,17 @@ interface CursorDashboardBridge {
   stashFallback?: boolean;
   /** Stops trying further tabs once aborted. */
   signal?: AbortSignal;
-  /** Caps the read of an owned tab; tests shorten it. */
+  /** Caps an owned-tab read that has no shared deadline; tests shorten it. */
   ownedReadBudgetMs?: number;
 }
 
 /**
- * The owned tab is handed off while it may still be loading, so its read
- * gets a deadline of its own: a document that never settles must not keep
- * the refresh pending or the tab open.
+ * The owned tab is handed off while it may still be loading, so its read is
+ * bounded too: a document that never settles must not keep the refresh
+ * pending or the tab open. The read ends by the deadline the tab was opened
+ * with; this cap applies only when none is given.
  */
-export const CURSOR_OWNED_READ_BUDGET_MS = 10_000;
+export const CURSOR_OWNED_READ_BUDGET_MS = CURSOR_OWNED_TAB_TIMEOUT_MS;
 
 const EXPECTED_ORIGIN = "https://cursor.com";
 
@@ -531,7 +540,9 @@ export async function findCursorDashboardJson({
         timer = setTimeout(() => {
           budget.abort();
           resolve({ kind: "inject_empty", detail: "owned tab read timed out" });
-        }, ownedReadBudgetMs);
+        }, owned.deadline === undefined
+          ? ownedReadBudgetMs
+          : Math.max(0, owned.deadline - Date.now()));
       });
       try {
         const read = injectIntoTabIds(

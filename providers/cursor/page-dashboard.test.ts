@@ -308,6 +308,31 @@ describe("Cursor page dashboard bridge", () => {
     }
   });
 
+  test("ends an owned-tab read by the deadline the tab was opened with", async () => {
+    vi.useFakeTimers();
+    try {
+      const release = vi.fn();
+      const probe = findCursorDashboardJson({
+        hasPagePermission: granted,
+        queryTabs: vi.fn().mockResolvedValue([]),
+        executeScript: vi.fn(() => new Promise<never>(() => undefined)),
+        openOwnedTab: vi
+          .fn()
+          .mockResolvedValue({ tabId: 88, release, deadline: Date.now() + 3_000 }),
+      });
+      await vi.advanceTimersByTimeAsync(2_999);
+      expect(release).not.toHaveBeenCalled();
+      await vi.advanceTimersByTimeAsync(1);
+      await expect(probe).resolves.toEqual({
+        kind: "inject_empty",
+        detail: "owned tab read timed out",
+      });
+      expect(release).toHaveBeenCalledOnce();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   test("returns no_tab when owned-tab creation is unavailable", async () => {
     const executeScript = vi.fn();
     await expect(
