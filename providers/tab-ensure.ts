@@ -3,6 +3,7 @@ export interface ProviderTab {
   status?: string;
   active?: boolean;
   url?: string;
+  pendingUrl?: string;
 }
 
 export interface OwnedTabLease {
@@ -113,8 +114,10 @@ async function waitForOwnedTabReadiness({
   signal,
   deadline,
   now,
+  readyWhen,
 }: {
   tabId: number;
+  readyWhen?: (tab: ProviderTab) => boolean;
   getTab(tabId: number): Promise<ProviderTab>;
   addUpdatedListener(listener: UpdatedListener): ListenerCleanup;
   addRemovedListener(listener: RemovedListener): ListenerCleanup;
@@ -148,9 +151,18 @@ async function waitForOwnedTabReadiness({
       resolve(ready);
     };
     const stop = () => finish(false);
+    const isReady = (tab: ProviderTab | undefined): boolean => {
+      if (isComplete(tab)) return true;
+      if (tab === undefined || readyWhen === undefined) return false;
+      try {
+        return readyWhen(tab);
+      } catch {
+        return false;
+      }
+    };
     const onUpdated: UpdatedListener = (updatedTabId, changeInfo, tab) => {
       if (updatedTabId !== tabId) return;
-      if (changeInfo.status === "complete" || isComplete(tab)) finish(true);
+      if (changeInfo.status === "complete" || isReady(tab)) finish(true);
     };
     const onRemoved: RemovedListener = (removedTabId) => {
       if (removedTabId === tabId) finish(false);
@@ -173,7 +185,7 @@ async function waitForOwnedTabReadiness({
 
     void getTab(tabId).then(
       (tab) => {
-        if (isComplete(tab)) finish(true);
+        if (isReady(tab)) finish(true);
       },
       () => finish(false),
     );
@@ -271,8 +283,15 @@ export async function openOwnedBackgroundTab({
   signal,
   now = Date.now,
   createLeaseId = () => globalThis.crypto.randomUUID(),
+  readyWhen,
 }: {
   url: string;
+  /**
+   * Hands the tab off before it finishes loading once this returns true.
+   * Without it the tab must reach status "complete", which a slow
+   * third-party script on the page can hold back well past the deadline.
+   */
+  readyWhen?: (tab: ProviderTab) => boolean;
   leaseKeyPrefix: string;
   deadline: number;
   createTab(details: { url: string; active: false }): Promise<ProviderTab>;
@@ -347,6 +366,7 @@ export async function openOwnedBackgroundTab({
       signal,
       deadline,
       now,
+      readyWhen,
     });
     if (!ready) return undefined;
     handedOff = true;

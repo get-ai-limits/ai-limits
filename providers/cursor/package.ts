@@ -21,6 +21,7 @@ import {
   CURSOR_OWNED_TAB_LEASE_PREFIX,
   CURSOR_OWNED_TAB_TIMEOUT_MS,
   CURSOR_OWNED_TAB_URL,
+  cursorOwnedTabCommitted,
   dashboardJsonFromProbe,
   findCursorDashboardJson,
   type CursorDashboardJson,
@@ -211,6 +212,7 @@ export const cursorPackage = createCursorPackage({
           url: CURSOR_OWNED_TAB_URL,
           leaseKeyPrefix: CURSOR_OWNED_TAB_LEASE_PREFIX,
           deadline: Date.now() + CURSOR_OWNED_TAB_TIMEOUT_MS,
+          readyWhen: cursorOwnedTabCommitted,
           ...tabs,
         });
         if (!owned) return undefined;

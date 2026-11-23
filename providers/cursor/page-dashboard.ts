@@ -67,6 +67,25 @@ interface CursorDashboardBridge {
 
 const EXPECTED_ORIGIN = "https://cursor.com";
 
+/**
+ * Whether a freshly opened owned tab has committed a cursor.com document.
+ * The dashboard POSTs only need a same-origin page, so the read need not
+ * wait for the tab's load event: slow third-party resources on the dashboard
+ * can hold that back past the owned-tab deadline (issue #63).
+ */
+export function cursorOwnedTabCommitted(tab: {
+  url?: string;
+  pendingUrl?: string;
+}): boolean {
+  if (tab.pendingUrl !== undefined && tab.pendingUrl !== "") return false;
+  if (tab.url === undefined) return false;
+  try {
+    return new URL(tab.url).origin === EXPECTED_ORIGIN;
+  } catch {
+    return false;
+  }
+}
+
 function asEndpointResult(value: unknown): CursorDashboardEndpointResult {
   if (value === undefined) return { ok: false };
   if (typeof value !== "object" || value === null || Array.isArray(value)) {

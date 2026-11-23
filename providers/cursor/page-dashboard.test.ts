@@ -2,6 +2,7 @@ import { describe, expect, test, vi } from "vitest";
 
 import {
   clearCursorDashboardStashAtExpectedOrigin,
+  cursorOwnedTabCommitted,
   dashboardJsonFromProbe,
   findCursorDashboardJson,
   rankCursorTabs,
@@ -673,5 +674,38 @@ describe("Cursor page dashboard bridge", () => {
     expect(executeScript.mock.calls.some(([details]) =>
       details.func === clearCursorDashboardStashAtExpectedOrigin,
     )).toBe(true);
+  });
+});
+
+describe("cursorOwnedTabCommitted", () => {
+  test("accepts a committed cursor.com document before it finishes loading", () => {
+    expect(
+      cursorOwnedTabCommitted({ url: "https://cursor.com/dashboard/spending" }),
+    ).toBe(true);
+    expect(
+      cursorOwnedTabCommitted({ url: "https://cursor.com/cn/dashboard", pendingUrl: "" }),
+    ).toBe(true);
+  });
+
+  test("waits while a navigation is pending or off cursor.com", () => {
+    expect(
+      cursorOwnedTabCommitted({
+        url: "",
+        pendingUrl: "https://cursor.com/dashboard/spending",
+      }),
+    ).toBe(false);
+    expect(
+      cursorOwnedTabCommitted({
+        url: "https://cursor.com/dashboard/spending",
+        pendingUrl: "https://authenticator.cursor.sh/",
+      }),
+    ).toBe(false);
+    expect(cursorOwnedTabCommitted({})).toBe(false);
+    expect(cursorOwnedTabCommitted({ url: "about:blank" })).toBe(false);
+    expect(
+      cursorOwnedTabCommitted({ url: "https://authenticator.cursor.sh/" }),
+    ).toBe(false);
+    expect(cursorOwnedTabCommitted({ url: "https://www.cursor.com/" })).toBe(false);
+    expect(cursorOwnedTabCommitted({ url: "not a url" })).toBe(false);
   });
 });
