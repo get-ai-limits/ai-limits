@@ -161,6 +161,74 @@ describe("owned background tab helper", () => {
     expect(harness.removeTab).toHaveBeenCalledWith(77);
   });
 
+  test("hands off a still-loading tab once readyWhen accepts it", async () => {
+    const readyWhen = vi.fn(
+      (tab: Tab) => tab.url === "https://cursor.com/dashboard/spending" && !tab.pendingUrl,
+    );
+    const harness = ownedTabHarness({
+      readyWhen,
+      getTab: vi.fn().mockResolvedValue({
+        id: 42,
+        status: "loading",
+        active: false,
+        url: "",
+        pendingUrl: "https://cursor.com/dashboard/spending",
+      }),
+    });
+    const result = openOwnedBackgroundTab(harness.dependencies);
+    await vi.waitFor(() => expect(harness.updatedListeners.size).toBe(1));
+    await vi.waitFor(() => expect(readyWhen).toHaveBeenCalled());
+
+    for (const listener of harness.updatedListeners) {
+      listener(
+        42,
+        { status: "loading" },
+        {
+          id: 42,
+          status: "loading",
+          url: "",
+          pendingUrl: "https://cursor.com/dashboard/spending",
+        },
+      );
+    }
+    let settled = false;
+    void result.then(() => {
+      settled = true;
+    });
+    await Promise.resolve();
+    expect(settled).toBe(false);
+
+    for (const listener of harness.updatedListeners) {
+      listener(
+        42,
+        {},
+        { id: 42, status: "loading", url: "https://cursor.com/dashboard/spending" },
+      );
+    }
+    await expect(result).resolves.toEqual({
+      tabId: 42,
+      leaseKey: expect.stringMatching(/^cursorDashboardTabLease:/),
+    });
+    expect(harness.removeTab).not.toHaveBeenCalled();
+  });
+
+  test("a throwing readyWhen falls back to waiting for complete", async () => {
+    const harness = ownedTabHarness({
+      readyWhen: () => {
+        throw new Error("boom");
+      },
+    });
+    const result = openOwnedBackgroundTab(harness.dependencies);
+    await vi.waitFor(() => expect(harness.updatedListeners.size).toBe(1));
+    for (const listener of harness.updatedListeners) {
+      listener(42, { status: "complete" }, { id: 42, status: "complete" });
+    }
+    await expect(result).resolves.toEqual({
+      tabId: 42,
+      leaseKey: expect.stringMatching(/^cursorDashboardTabLease:/),
+    });
+  });
+
   test("releaseOwnedBackgroundTab removes only the leased tab", () => {
     const session = storageSession({
       "cursorDashboardTabLease:owned": { tabId: 42, createdAt: 1 },

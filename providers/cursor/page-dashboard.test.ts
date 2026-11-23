@@ -2,6 +2,7 @@ import { describe, expect, test, vi } from "vitest";
 
 import {
   clearCursorDashboardStashAtExpectedOrigin,
+  cursorOwnedTabCommitted,
   dashboardJsonFromProbe,
   findCursorDashboardJson,
   rankCursorTabs,
@@ -248,6 +249,88 @@ describe("Cursor page dashboard bridge", () => {
       detail: "inject failed",
     });
     expect(release).toHaveBeenCalledOnce();
+  });
+
+  test("injects into the owned tab immediately, without waiting for idle", async () => {
+    const dashboard = {
+      grok: { ok: true as const, value: { usagePercent: 40 } },
+      credits: { ok: false as const },
+      aggregated: { ok: false as const },
+    };
+    const executeScript = vi.fn().mockResolvedValue([{ result: dashboard }]);
+    await findCursorDashboardJson({
+      hasPagePermission: granted,
+      queryTabs: vi.fn().mockResolvedValue([]),
+      executeScript,
+      openOwnedTab: vi.fn().mockResolvedValue({ tabId: 88, release: vi.fn() }),
+    });
+    expect(executeScript).toHaveBeenCalledWith(
+      expect.objectContaining({ target: { tabId: 88 }, injectImmediately: true }),
+    );
+  });
+
+  test("does not inject immediately into a tab the user already has open", async () => {
+    const executeScript = vi.fn().mockResolvedValue([
+      { result: { grok: { ok: false }, credits: { ok: false }, aggregated: { ok: false } } },
+    ]);
+    await findCursorDashboardJson({
+      hasPagePermission: granted,
+      queryTabs: vi
+        .fn()
+        .mockResolvedValue([{ id: 5, url: "https://cursor.com/dashboard", status: "complete" }]),
+      executeScript,
+    });
+    expect(executeScript.mock.calls[0]?.[0]).not.toHaveProperty("injectImmediately");
+  });
+
+  test("gives up on a stalled owned tab within its budget and releases it", async () => {
+    vi.useFakeTimers();
+    try {
+      const release = vi.fn();
+      const executeScript = vi.fn(() => new Promise<never>(() => undefined));
+      const probe = findCursorDashboardJson({
+        hasPagePermission: granted,
+        queryTabs: vi.fn().mockResolvedValue([]),
+        executeScript,
+        openOwnedTab: vi.fn().mockResolvedValue({ tabId: 88, release }),
+        ownedReadBudgetMs: 5_000,
+      });
+      await vi.advanceTimersByTimeAsync(4_999);
+      expect(release).not.toHaveBeenCalled();
+      await vi.advanceTimersByTimeAsync(1);
+      await expect(probe).resolves.toEqual({
+        kind: "inject_empty",
+        detail: "owned tab read timed out",
+      });
+      expect(release).toHaveBeenCalledOnce();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  test("ends an owned-tab read by the deadline the tab was opened with", async () => {
+    vi.useFakeTimers();
+    try {
+      const release = vi.fn();
+      const probe = findCursorDashboardJson({
+        hasPagePermission: granted,
+        queryTabs: vi.fn().mockResolvedValue([]),
+        executeScript: vi.fn(() => new Promise<never>(() => undefined)),
+        openOwnedTab: vi
+          .fn()
+          .mockResolvedValue({ tabId: 88, release, deadline: Date.now() + 3_000 }),
+      });
+      await vi.advanceTimersByTimeAsync(2_999);
+      expect(release).not.toHaveBeenCalled();
+      await vi.advanceTimersByTimeAsync(1);
+      await expect(probe).resolves.toEqual({
+        kind: "inject_empty",
+        detail: "owned tab read timed out",
+      });
+      expect(release).toHaveBeenCalledOnce();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   test("returns no_tab when owned-tab creation is unavailable", async () => {
@@ -673,5 +756,38 @@ describe("Cursor page dashboard bridge", () => {
     expect(executeScript.mock.calls.some(([details]) =>
       details.func === clearCursorDashboardStashAtExpectedOrigin,
     )).toBe(true);
+  });
+});
+
+describe("cursorOwnedTabCommitted", () => {
+  test("accepts a committed cursor.com document before it finishes loading", () => {
+    expect(
+      cursorOwnedTabCommitted({ url: "https://cursor.com/dashboard/spending" }),
+    ).toBe(true);
+    expect(
+      cursorOwnedTabCommitted({ url: "https://cursor.com/cn/dashboard", pendingUrl: "" }),
+    ).toBe(true);
+  });
+
+  test("waits while a navigation is pending or off cursor.com", () => {
+    expect(
+      cursorOwnedTabCommitted({
+        url: "",
+        pendingUrl: "https://cursor.com/dashboard/spending",
+      }),
+    ).toBe(false);
+    expect(
+      cursorOwnedTabCommitted({
+        url: "https://cursor.com/dashboard/spending",
+        pendingUrl: "https://authenticator.cursor.sh/",
+      }),
+    ).toBe(false);
+    expect(cursorOwnedTabCommitted({})).toBe(false);
+    expect(cursorOwnedTabCommitted({ url: "about:blank" })).toBe(false);
+    expect(
+      cursorOwnedTabCommitted({ url: "https://authenticator.cursor.sh/" }),
+    ).toBe(false);
+    expect(cursorOwnedTabCommitted({ url: "https://www.cursor.com/" })).toBe(false);
+    expect(cursorOwnedTabCommitted({ url: "not a url" })).toBe(false);
   });
 });

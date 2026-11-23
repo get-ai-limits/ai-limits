@@ -51,10 +51,20 @@ interface CursorDashboardBridge {
     target: { tabId: number };
     world: "MAIN";
     func: InjectedDashboardFunc;
+    /** Set for the owned tab, which may still be loading. */
+    injectImmediately?: boolean;
   }): Promise<CursorScriptResult[]>;
   now?(): number;
   delay?(ms: number): Promise<void>;
-  openOwnedTab?(): Promise<{ tabId: number; release: () => void } | undefined>;
+  openOwnedTab?(): Promise<
+    | {
+        tabId: number;
+        release: () => void;
+        /** Shared create-wait-read deadline (epoch ms); the read ends by it. */
+        deadline?: number;
+      }
+    | undefined
+  >;
   /**
    * Whether a failed direct read may retry through the page-global stash.
    * Defaults to true; scheduled reads turn it off so an abandoned read can
@@ -63,9 +73,38 @@ interface CursorDashboardBridge {
   stashFallback?: boolean;
   /** Stops trying further tabs once aborted. */
   signal?: AbortSignal;
+  /** Caps an owned-tab read that has no shared deadline; tests shorten it. */
+  ownedReadBudgetMs?: number;
 }
 
+/**
+ * The owned tab is handed off while it may still be loading, so its read is
+ * bounded too: a document that never settles must not keep the refresh
+ * pending or the tab open. The read ends by the deadline the tab was opened
+ * with; this cap applies only when none is given.
+ */
+export const CURSOR_OWNED_READ_BUDGET_MS = CURSOR_OWNED_TAB_TIMEOUT_MS;
+
 const EXPECTED_ORIGIN = "https://cursor.com";
+
+/**
+ * Whether a freshly opened owned tab has committed a cursor.com document.
+ * The dashboard POSTs only need a same-origin page, so the read need not
+ * wait for the tab's load event: slow third-party resources on the dashboard
+ * can hold that back past the owned-tab deadline (issue #63).
+ */
+export function cursorOwnedTabCommitted(tab: {
+  url?: string;
+  pendingUrl?: string;
+}): boolean {
+  if (tab.pendingUrl !== undefined && tab.pendingUrl !== "") return false;
+  if (tab.url === undefined) return false;
+  try {
+    return new URL(tab.url).origin === EXPECTED_ORIGIN;
+  } catch {
+    return false;
+  }
+}
 
 function asEndpointResult(value: unknown): CursorDashboardEndpointResult {
   if (value === undefined) return { ok: false };
@@ -480,6 +519,7 @@ export async function findCursorDashboardJson({
   openOwnedTab,
   stashFallback = true,
   signal,
+  ownedReadBudgetMs = CURSOR_OWNED_READ_BUDGET_MS,
 }: CursorDashboardBridge): Promise<CursorDashboardProbe> {
   try {
     if (!(await hasPagePermission())) return { kind: "permission_missing" };
@@ -489,19 +529,39 @@ export async function findCursorDashboardJson({
       if (!openOwnedTab) return { kind: "no_tab" };
       const owned = await openOwnedTab();
       if (!owned) return { kind: "no_tab" };
+      // The tab may still be loading. Inject right away rather than at
+      // document_idle: the same-origin POSTs only need the committed
+      // document, and idle can wait on the same slow resources as load.
+      const ownedExecute: CursorDashboardBridge["executeScript"] = (details) =>
+        executeScript({ ...details, injectImmediately: true });
+      const budget = new AbortController();
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const timedOut = new Promise<CursorDashboardProbe>((resolve) => {
+        timer = setTimeout(() => {
+          budget.abort();
+          resolve({ kind: "inject_empty", detail: "owned tab read timed out" });
+        }, owned.deadline === undefined
+          ? ownedReadBudgetMs
+          : Math.max(0, owned.deadline - Date.now()));
+      });
       try {
-        const opened = await injectIntoTabIds(
+        const read = injectIntoTabIds(
           [owned.tabId],
-          executeScript,
+          ownedExecute,
           now,
           delay,
+          true,
+          budget.signal,
+        ).then(
+          (opened): CursorDashboardProbe =>
+            opened.probe ??
+            opened.lastWrongOrigin ??
+            opened.firstFailure ?? { kind: "no_tab" },
         );
-        return (
-          opened.probe ??
-          opened.lastWrongOrigin ??
-          opened.firstFailure ?? { kind: "no_tab" }
-        );
+        return await Promise.race([read, timedOut]);
       } finally {
+        clearTimeout(timer);
+        budget.abort();
         owned.release();
       }
     }
