@@ -1,6 +1,6 @@
 # Firefox Add-ons listing
 
-This document describes AI Limits version 0.5.6 for Firefox Add-ons (AMO). It
+This document describes AI Limits version 0.6.0 for Firefox Add-ons (AMO). It
 is the paste-ready listing copy and reviewer material for the Firefox package
 built with `pnpm zip:firefox`. It is not a claim that any provider has approved
 the extension.
@@ -15,11 +15,11 @@ flow; read "Chrome side panel" there as "Firefox sidebar". The writing rules in
 
 ## Upload
 
-- Add-on file: `.output/ai-limits-0.5.6-firefox.zip`, built and checked with
+- Add-on file: `.output/ai-limits-0.6.0-firefox.zip`, built and checked with
   `pnpm verify:zip && pnpm verify:targets`.
 - Compatibility: Firefox for desktop only. Leave Firefox for Android
   unchecked; Android has no sidebar.
-- Source code: Yes. Upload `.output/ai-limits-0.5.6-sources.zip`. The build
+- Source code: Yes. Upload `.output/ai-limits-0.6.0-sources.zip`. The build
   output is bundled and minified, not obfuscated.
 - The add-on ID `ai-limits@get-ai-limits.com` is permanent. Never change it.
 - At install, Firefox shows the data collection declared in the manifest
