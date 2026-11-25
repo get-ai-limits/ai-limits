@@ -20,7 +20,7 @@
 - **Settings** 中的 **Automatic refresh** 必须保持开启。
 - 至少有一个服务保持连接；没有已连接服务时，AI Limits 会删除刷新闹钟。
 - Chrome 仍然保留该服务的可选访问权限。
-- 对于 ChatGPT、Claude、Kimi、Cursor、Grok、Mistral 和 Perplexity，服务商的
+- 对于 ChatGPT、Claude、Kimi、Cursor、Grok、Mistral、Perplexity 和 Gumloop，服务商的
   浏览器登录会话仍然可用；API 密钥服务则需要已保存且处于有效状态的密钥；
   可配置实例还需要其精确实例权限。
 - Chrome 正在运行，并且能够运行后台扩展。

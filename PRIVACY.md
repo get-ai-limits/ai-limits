@@ -52,11 +52,12 @@ data, or other relay keys.
 
 ## Provider authentication and requests
 
-ChatGPT, Claude, Kimi, Cursor, Grok, Mistral, and Perplexity use signed-in
-browser sessions. AI Limits sends read-only requests to those providers' own
-web-session services, plus the Kimi token-renewal call described below, and
-browser cookies may accompany requests to the same provider origin (Kimi usage
-requests carry only the access token, without cookies). OpenRouter is an API-key provider, but its
+ChatGPT, Claude, Kimi, Cursor, Grok, Mistral, Perplexity, and Gumloop use
+signed-in browser sessions. AI Limits sends read-only requests to those
+providers' own web-session services, plus the Kimi and Gumloop token-renewal
+calls described below, and browser cookies may accompany requests to the same
+provider origin (Kimi and Gumloop usage requests carry only the access token,
+without cookies). OpenRouter is an API-key provider, but its
 promotional-credit read also uses the signed-in openrouter.ai session, as
 described below. Requests normally run directly from the extension; the Cursor
 and Grok page-origin reads described below run in an already-open exact-origin
@@ -115,6 +116,47 @@ in AI Limits to drop it immediately. After a browser
 restart, Kimi needs one open Kimi tab or one manual Connect or Refresh before
 scheduled refresh can renew on its own again.
 
+For Gumloop, which signs users in with Google's Firebase Authentication, AI
+Limits uses the optional `scripting` permission to run a bundled read-only
+function in an already-open `https://www.gumloop.com/*` page. That function
+reads only the Firebase sign-in entry in the page's `firebaseLocalStorageDb`
+IndexedDB database: the Firebase ID token with its expiry time, the Firebase
+refresh token, the Firebase web API key Gumloop's page uses, and the Gumloop
+user ID. It does not read Gumloop cookies, other browser-storage entries, or
+page content. The background worker then sends three read-only GET requests to
+`https://api.gumloop.com` without cookies, carrying the ID token as a bearer
+token and the user ID in the `x-auth-key` header, the same way Gumloop's own
+Credit Usage page does: `/project` (only to learn the organization ID),
+`/organization/{id}/credits` (remaining credits), and
+`/organization/{id}/subscription` (monthly allotment, billing period, and
+plan tier). The organization ID is used only to build those two paths and is
+not stored. If those background requests fail before Gumloop answers, or
+Gumloop refuses them, and a gumloop.com page is open, the same three reads run
+from inside that page with the same token, and only the status codes and JSON
+bodies come back. During an interactive Connect or Refresh only, when no
+gumloop.com page is open and no held session is available, AI Limits may
+create one inactive `https://www.gumloop.com/settings/profile/general` tab,
+read the sign-in entry within a 15-second deadline, and then attempt
+best-effort cleanup of only the tab and lease it owns. Scheduled refresh never
+creates a Gumloop tab. Its cleanup lease works like the Kimi lease described
+above.
+
+Gumloop ID tokens last about an hour. So scheduled refresh can keep working
+without a Gumloop tab, AI Limits holds the Gumloop refresh token, the Firebase
+web API key, the user ID, and the most recent ID token with its expiry time in
+memory-backed `chrome.storage.session`, under the same rules as the Kimi
+session: it is cleared when the browser exits or the extension is reloaded or
+updated, and it is never written to disk or included in saved refresh results.
+When the ID token is missing, about to expire, or rejected by Gumloop, the
+background worker sends the refresh token, and nothing else besides the
+public web API key in the URL, to Google's Firebase token service at
+`https://securetoken.googleapis.com/v1/token`, the same service the gumloop.com
+page itself calls, without cookies, and keeps the new token it returns. The
+held session is dropped when that service rejects the refresh token, when a
+gumloop.com page shows the user is signed out, when Gumloop access is
+disconnected or its permission is removed, and when all local data is
+deleted.
+
 For Grok, grok.com rejects extension-background session and usage requests
 when the Origin is not `https://grok.com`. AI Limits therefore does not fetch
 grok.com from the extension worker. It checks for one already-open tab matching
@@ -170,7 +212,7 @@ when the background worker starts.
 
 For conservative Chrome Web Store disclosure, AI Limits classifies its
 current-tab exact-provider-origin checks as **Web history** access. For Kimi,
-Cursor, and Grok, the extension learns only whether a tab at that fixed
+Cursor, Grok, and Gumloop, the extension learns only whether a tab at that fixed
 provider origin is currently open so it can complete the user-requested
 provider operation.
 This open-state result is used locally for that attempt and is never retained,
@@ -383,7 +425,8 @@ sessions and with API keys you provide. AI Limits minimizes that access and
 stores normalized results locally, but no browser extension or local profile
 is risk-free. Anyone who can access your unlocked Chrome profile may be able to
 access extension data, including separately saved API keys and, while the
-browser is running, the Kimi session held in `chrome.storage.session`.
+browser is running, the Kimi and Gumloop sessions held in
+`chrome.storage.session`.
 
 Browser-session provider endpoints are private, unsupported interfaces and may
 change or stop working without notice. API-key providers use documented or

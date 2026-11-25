@@ -140,6 +140,9 @@ const KNOWN_METRIC_KEYS: Partial<
     included: "metrics.warp.included",
     "add-on": "metrics.warp.addOn",
   },
+  gumloop: {
+    "monthly-credits": "metrics.gumloop.monthlyCredits",
+  },
 };
 
 const KNOWN_GROUP_KEYS: Record<string, string> = {
@@ -230,6 +233,7 @@ const CAPABILITY_IDS: Record<ProviderKind, readonly string[]> = {
   factory: ["rateLimits", "extraUsage"],
   zai: ["rateLimits", "mcpTools"],
   warp: ["includedCredits", "addOnCredits"],
+  gumloop: ["monthlyCredits"],
 };
 
 const DURATION_METRIC = /^(\d+(?:\.\d+)?)-(day|hour)$/;
@@ -270,7 +274,8 @@ export function localizeManualRefreshDisclosure(
   if (
     providerKind !== "kimi" &&
     providerKind !== "cursor" &&
-    providerKind !== "grok"
+    providerKind !== "grok" &&
+    providerKind !== "gumloop"
   ) {
     return undefined;
   }

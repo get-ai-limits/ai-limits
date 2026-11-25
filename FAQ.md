@@ -22,7 +22,7 @@ panel, it reads the latest data from local extension storage.
 - At least one provider must remain connected. AI Limits removes the alarm when
   no providers are connected.
 - Chrome must still have that provider's optional permission.
-- For ChatGPT, Claude, Kimi, Cursor, Grok, Mistral, and Perplexity, the signed-in
+- For ChatGPT, Claude, Kimi, Cursor, Grok, Mistral, Perplexity, and Gumloop, the signed-in
   browser session must still be usable. API-key providers instead need a saved
   active key; configurable instances also need their exact instance permission.
 - Chrome must be running and able to run background extensions.

@@ -7,7 +7,7 @@ has approved the extension.
 
 The Edge package runs the same code as the Chrome Web Store package. The
 [Chrome Web Store pack](../chrome-web-store/listing-en.md) holds the full
-permission and data-handling reference and the twenty-three-provider test
+permission and data-handling reference and the twenty-four-provider test
 flow; read "Chrome" there as "Edge". The writing rules in
 [`AGENTS.md`](../chrome-web-store/AGENTS.md) apply to this listing too.
 
@@ -35,18 +35,18 @@ flow; read "Chrome" there as "Edge". The writing rules in
 
 ### Single purpose description
 
-AI Limits gives a user one Edge side panel for viewing current subscription usage as Used or Left, reset timing, pace, and local quota-history graphs across twenty-three supported services. Browser-session services use an account already signed in within the user's browser profile; API-key services use a key the user connects through guided setup.
+AI Limits gives a user one Edge side panel for viewing current subscription usage as Used or Left, reset timing, pace, and local quota-history graphs across twenty-four supported services. Browser-session services use an account already signed in within the user's browser profile; API-key services use a key the user connects through guided setup.
 
 ### Permission justifications
 
 Each entry is one Partner Center box. Optional permissions are requested only
 when the user connects the provider that needs them.
 
-- `storage`: Saves the user's preferences, provider order and visibility, provider access state, normalized usage snapshots, and up to 30 days of local usage History on this device. API keys the user enters are saved locally in a separate record restricted to trusted extension contexts. Browser-session cookies and access credentials are never saved to disk. Kimi's refresh tokens (current and the page's) and latest access token are the only credentials kept, and only in memory-only session storage until the browser exits, so background refresh can renew Kimi access.
+- `storage`: Saves the user's preferences, provider order and visibility, provider access state, normalized usage snapshots, and up to 30 days of local usage History on this device. API keys the user enters are saved locally in a separate record restricted to trusted extension contexts. Browser-session cookies and access credentials are never saved to disk. Kimi's refresh tokens (current and the page's) and latest access token, and Gumloop's refresh token, latest ID token, user ID, and Firebase web API key, are the only credentials kept, and only in memory-only session storage until the browser exits, so background refresh can renew Kimi and Gumloop access.
 - `alarms`: Schedules the background refresh about every 15 minutes, only while automatic refresh is on and at least one provider is connected.
 - `sidePanel`: Shows the extension's only interface in the Edge side panel when the user selects the toolbar button.
 - `declarativeNetRequestWithHostAccess`: One session rule removes the Origin header from the extension's own POST request to Warp's usage endpoint (https://app.warp.dev/graphql/v2?op=GetRequestLimitInfo), because Warp refuses requests that carry an extension origin. It applies only to that URL, only to this extension's own background requests, and only after the user grants access to app.warp.dev. No other request is changed.
-- `scripting` (optional): Requested only when the user connects Kimi, Cursor, or Grok. Runs bundled, read-only code in that provider's own page to read the user's usage: Kimi's access_token and refresh_token storage entries, or Cursor's and Grok's usage responses. The Kimi refresh token is sent only to Kimi's sign-in service (auth.kimi.com), without cookies, to renew access. It may briefly open one inactive provider tab during Connect or manual Refresh and closes only the tab it opened. It never reads page text, prompts, or conversations.
+- `scripting` (optional): Requested only when the user connects Kimi, Cursor, Grok, or Gumloop. Runs bundled, read-only code in that provider's own page to read the user's usage: Kimi's access_token and refresh_token storage entries, Gumloop's Firebase sign-in entry in the page's IndexedDB, or Cursor's, Grok's, and Gumloop's usage responses. The Kimi refresh token is sent only to Kimi's sign-in service (auth.kimi.com), and the Gumloop refresh token only to Google's Firebase token service that Gumloop uses (securetoken.googleapis.com), without cookies, to renew access. It may briefly open one inactive provider tab during Connect or manual Refresh and closes only the tab it opened. It never reads page text, prompts, or conversations.
 - Optional host permissions: Each provider's origin is requested only when the user clicks Connect on that provider, and is used only to read that provider's usage, plan, or balance. For self-hosted gateways (New API, LiteLLM, ClawRouter, sub2api, LLM Proxy), the extension asks only for the exact HTTPS origin, or the exact localhost port, that the user enters.
 
 ### Remote code
@@ -110,7 +110,7 @@ WHY AI LIMITS
 • English and Simplified Chinese. The panel follows Edge's language or can be pinned in Settings.
 
 23 SUPPORTED SERVICES
-AI Limits supports 23 AI services: chat and coding subscriptions, API platforms with credits or balances, and self-hosted API gateways. Connect only the ones you use; every connection is opt-in and only gets the Edge access you approve for it. Subscription services use the account you're already signed in to in Edge, while API services use a key you provide through a guided setup.
+AI Limits supports 24 AI services: chat and coding subscriptions, API platforms with credits or balances, and self-hosted API gateways. Connect only the ones you use; every connection is opt-in and only gets the Edge access you approve for it. Subscription services use the account you're already signed in to in Edge, while API services use a key you provide through a guided setup.
 
 See every supported service and what AI Limits shows for it:
 https://get-ai-limits.com/providers/
@@ -142,7 +142,7 @@ total. They are not shown to users.
 
 <!-- This field is plain text: paste everything below this line, up to the end of the document. -->
 
-AI Limits shows the user's own usage limits for AI services in the Edge side panel. Select the toolbar button to open it. Nothing is connected at install: First Run lists 23 opt-in providers, and each provider's site access is requested only when the reviewer clicks Connect.
+AI Limits shows the user's own usage limits for AI services in the Edge side panel. Select the toolbar button to open it. Nothing is connected at install: First Run lists 24 opt-in providers, and each provider's site access is requested only when the reviewer clicks Connect.
 
 No test account is supplied by the extension. To see real data, sign in to any supported subscription service in the same Edge profile (for example ChatGPT or Claude) and click Connect on it, or create a temporary read-only API key for an API service (for example OpenRouter or DeepSeek) and connect it through the guided setup. Without an account, the reviewer can still check First Run, Settings, the provider list, the permission prompts, and Delete all local data.
 

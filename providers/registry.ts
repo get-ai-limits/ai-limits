@@ -15,6 +15,7 @@ import { groqCloudAdapter } from "./groqcloud/adapter";
 import { openAiAdapter } from "./openai/adapter";
 import { openRouterAdapter } from "./openrouter/adapter";
 import { kimiPackage } from "./kimi/package";
+import { gumloopPackage } from "./gumloop/package";
 import { clawRouterAdapter } from "./clawrouter/adapter";
 import { liteLlmAdapter } from "./litellm/adapter";
 import { llmProxyAdapter } from "./llm-proxy/adapter";
@@ -255,4 +256,5 @@ export const providerRegistry = {
     ),
     startup: () => installWarpOriginRule(),
   }),
+  gumloop: gumloopPackage,
 } satisfies { [Kind in ProviderKind]: ProviderPackage };

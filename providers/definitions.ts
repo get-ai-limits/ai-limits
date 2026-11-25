@@ -193,4 +193,11 @@ export const providerDefinitions = {
     optionalOrigins: ["https://app.warp.dev/*"],
     optionalPermissions: [],
   },
+  gumloop: {
+    cardinality: "single",
+    credentialKind: "none",
+    configKind: "fixed",
+    optionalOrigins: ["https://www.gumloop.com/*", "https://api.gumloop.com/*"],
+    optionalPermissions: ["scripting"],
+  },
 } as const satisfies { [Kind in ProviderKind]: ProviderDefinition };

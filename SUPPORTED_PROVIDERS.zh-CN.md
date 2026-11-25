@@ -2,7 +2,7 @@
 
 [English](SUPPORTED_PROVIDERS.md) | 简体中文
 
-AI Limits 目前支持二十三种服务连接。每个服务都需要用户主动启用；标准化用量和
+AI Limits 目前支持二十四种服务连接。每个服务都需要用户主动启用；标准化用量和
 History 只保存在当前 Chrome 配置文件中。
 
 来源等级描述的是响应结构证据，而不是当前可用性：**OBSERVED** 表示字段有开发期间
@@ -14,7 +14,7 @@ History 只保存在当前 Chrome 配置文件中。
 - **余额为主** — Mistral、sub2api、DeepSeek、Moonshot、DeepInfra、OpenAI 和
   OpenRouter。服务报告的零余额仍会显示。
 - **套餐/用量池为主** — ChatGPT、Claude、Cursor、Grok、Perplexity、
-  ElevenLabs、Droid 和 Warp。为零的辅助或额外额度会隐藏，因为套餐或用量池才是主要信号。
+  ElevenLabs、Droid、Warp 和 Gumloop。为零的辅助或额外额度会隐藏，因为套餐或用量池才是主要信号。
 - **当前无余额指标** — Kimi、New API、LiteLLM、ClawRouter、LLM Proxy、
   Fireworks、GroqCloud 和 GLM；当前契约报告配额或计数。
 
@@ -43,6 +43,7 @@ History 只保存在当前 Chrome 配置文件中。
 | Droid | 用户创建的 Factory API 密钥 | Standard 的 5 小时、每周和每月速率限制；Droid Core 用量池在使用中时的窗口；账户可以花费或持有额外用量时的余额 | **INFERRED** | 读取 `api.factory.ai` 上 Factory Droid 客户端。令牌速率限制账户使用 `/api/billing/limits`，其他账户回退到 `/api/organization/subscription/usage`。套餐标签可能来自 `/api/app/auth/me`，该请求失败时省略；响应中的账户标识不会保存。密钥仅作为 bearer token 发送，并附带 `x-factory-client: web-app`。额外用量的美元单位根据分字段和 Factory 已公布的预付额外用量定价推断。这不是组织管理用的额度上限接口。 |
 | GLM | 用户创建的 Z.ai GLM Coding Plan API 密钥 | Coding Plan 的 5 小时和每周额度（报告时含已用/上限计数和重置时间），以及每月 MCP 工具额度 | **INFERRED** | 读取 `https://api.z.ai/api/monitor/usage/quota/limit`，与 Z.ai 官方 GLM Coding Plan 用量插件发出的只读请求相同。这不是公开文档化的 API；响应结构来自该插件和社区实现。密钥仅作为 bearer token 发送。目前只支持 Global `api.z.ai` 账户，暂不支持中国大陆 BigModel 和 Team 套餐。距今超过五小时的 5 小时重置时间会被省略而不是修正，因为部分账户会带时区偏移报告。Z.ai 条款要求不要在客户端代码中暴露密钥，并将 Coding Plan 限定于官方支持的工具，因此连接后用户的 Z.ai 账户可能存在风险；AI Limits 将密钥保存在本地凭据库中，且不会发送到其他地方。 |
 | Warp | 用户创建的 Warp API 密钥 | 当前刷新周期内套餐包含的额度及重置时间（无限套餐时显示已用额度），以及账户持有未用完且未过期的附加额度时的附加额度余额 | **INFERRED** | 读取 `https://app.warp.dev/graphql/v2?op=GetRequestLimitInfo`，与 Warp 开源客户端发送的只读 GraphQL 查询相同。这不是公开文档化的 API。密钥仅作为 bearer token 发送，不冒充 Warp 客户端、操作系统或 User-Agent 身份。Warp 服务器会拒绝带有扩展 `Origin` 请求头的请求，因此 AI Limits 仅从这一个请求中移除该请求头。用量以额度显示；Warp 现在以美元用量为套餐定价，暂不读取美元数值。附加额度合计未过期的个人和工作区授予，不包括仅可用于后台代理运行的授予。Warp API 密钥无法设为只读，并且可以启动由用户付费的代理运行，因此请使用设有过期时间的专用密钥。 |
+| Gumloop | 已登录的浏览器会话，并续期令牌 | 组织本月已用额度与每月额度，以及计费周期重置时间和套餐等级 | **OBSERVED** | 从已打开的 `gumloop.com` 页面的 IndexedDB 中读取 Firebase 登录条目（ID 令牌、刷新令牌、Web API 密钥、用户 ID）；不读取 Gumloop Cookie。使用 ID 令牌调用 Gumloop 额度用量页面所用的同一组私有 `api.gumloop.com` 接口（`/project`、`/organization/{id}/credits`、`/organization/{id}/subscription`），由后台发起；如果 Gumloop 拒绝后台请求，则在已打开的 `gumloop.com` 页面内发起。通过 Google 的 Firebase 令牌服务（`securetoken.googleapis.com`）续期一小时有效的 ID 令牌，刷新令牌只保存在基于内存的会话存储中，直到浏览器重启。手动连接或刷新可能短暂打开一个非活动的 `gumloop.com` 标签页；自动刷新绝不会打开标签页，没有会话时会推迟。不使用 Gumloop 个人 API 密钥：Gumloop 公开 API 没有额度接口。 |
 
 ## New API 连接模式
 
@@ -92,7 +93,7 @@ History 绘制配额指标以及以余额为主的服务商的余额。History �
 
 ## 兼容性边界
 
-ChatGPT、Claude、Kimi、Cursor、Grok、Mistral 和 Perplexity 依赖可能随时变化的
+ChatGPT、Claude、Kimi、Cursor、Grok、Mistral、Perplexity 和 Gumloop 依赖可能随时变化的
 未公开接口。API 密钥服务使用有文档或已逆向的 HTTP 接口，但响应和授权行为仍
 可能变化。对于格式异常或彼此矛盾的用量，AI Limits 会拒绝数据，而不会虚构
 百分比、重置时间或用量节奏。

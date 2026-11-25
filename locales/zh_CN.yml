@@ -814,6 +814,8 @@ metrics:
   warp:
     included: 包含的额度
     addOn: 附加额度
+  gumloop:
+    monthlyCredits: 每月额度
   grok:
     weeklyPool: 每周用量池
     monthlyPool: 每月用量池
@@ -1021,6 +1023,13 @@ providers:
     capabilities:
       includedCredits: 包含的额度
       addOnCredits: 附加额度
+  gumloop:
+    name: Gumloop
+    connect: 连接 Gumloop
+    connectionDisclosure: 获得授权后，AI Limits 可能会在 gumloop.com 页面中运行内置的只读代码，从该页面的存储中读取 Gumloop 的登录令牌。它不会读取 Gumloop 的 Cookie。这些令牌只保存在基于内存的会话存储中，直到浏览器退出；刷新令牌只会发送到 Gumloop 所使用的 Google 登录服务（securetoken.googleapis.com）以续期访问，访问令牌只会发送到 api.gumloop.com。它大约每 15 分钟刷新一次，并在本地保存规范化后的用量。
+    manualRefreshDisclosure: 连接和手动刷新会优先使用已打开的 gumloop.com 标签页。如果没有打开的标签页，可能会短暂打开一个非活动的 gumloop.com 标签页。定时刷新可能会读取已打开的 gumloop.com 标签页，但绝不会打开新的标签页。
+    capabilities:
+      monthlyCredits: 每月额度
 
 accessibility:
   refreshProvider: "刷新 {provider}"

@@ -9,7 +9,7 @@ The Firefox package runs the same code as the Chrome Web Store package, except
 that the panel opens as a Firefox sidebar and the API-key record is not
 restricted with `storage.setAccessLevel`, which Firefox lacks. The
 [Chrome Web Store pack](../chrome-web-store/listing-en.md) holds the full
-permission and data-handling reference and the twenty-three-provider test
+permission and data-handling reference and the twenty-four-provider test
 flow; read "Chrome side panel" there as "Firefox sidebar". The writing rules in
 [`AGENTS.md`](../chrome-web-store/AGENTS.md) apply to this listing too.
 
@@ -66,7 +66,7 @@ WHY AI LIMITS
 • English and Simplified Chinese. The sidebar follows Firefox's language or can be pinned in Settings.
 
 23 SUPPORTED SERVICES
-AI Limits supports 23 AI services: chat and coding subscriptions, API platforms with credits or balances, and self-hosted API gateways. Connect only the ones you use; every connection is opt-in and only gets the Firefox access you approve for it. Subscription services use the account you're already signed in to in Firefox, while API services use a key you provide through a guided setup.
+AI Limits supports 24 AI services: chat and coding subscriptions, API platforms with credits or balances, and self-hosted API gateways. Connect only the ones you use; every connection is opt-in and only gets the Firefox access you approve for it. Subscription services use the account you're already signed in to in Firefox, while API services use a key you provide through a guided setup.
 
 See every supported service and what AI Limits shows for it:
 https://get-ai-limits.com/providers/
@@ -116,7 +116,7 @@ Contact: https://get-ai-limits.com/support/
 
 <!-- Paste everything below this line, up to the end of the document. -->
 
-AI Limits shows the user's own usage limits for AI services in a Firefox sidebar. Click the toolbar button to toggle the sidebar. Nothing is connected at install: First Run lists 23 opt-in providers, and each provider's host permission is requested only when the user clicks Connect on it.
+AI Limits shows the user's own usage limits for AI services in a Firefox sidebar. Click the toolbar button to toggle the sidebar. Nothing is connected at install: First Run lists 24 opt-in providers, and each provider's host permission is requested only when the user clicks Connect on it.
 
 Building from source: use Node 24 and the pnpm version pinned in package.json (via Corepack), then run: pnpm install --frozen-lockfile && pnpm zip:firefox. The output is .output/firefox-mv3, which matches the uploaded package. The build uses WXT and Vite; nothing is obfuscated.
 
@@ -124,7 +124,7 @@ Test accounts: none are supplied by the extension. To see real data, sign in to 
 
 Data collection: the manifest declares authenticationInfo as required because the user's sign-in session or API key for a service is sent to that same service to read usage. Nothing is sent to the developer, and there is no remote code.
 
-Injected code: for Kimi, Cursor, and Grok, scripting.executeScript runs a bundled read-only function in that provider's own page (MAIN world) to read usage responses or Kimi's access_token and refresh_token storage entries. The Kimi refresh token is sent only to Kimi's sign-in service (auth.kimi.com), without cookies, to renew access. During Connect or manual Refresh it may open one inactive provider tab and closes only that tab.
+Injected code: for Kimi, Cursor, Grok, and Gumloop, scripting.executeScript runs a bundled read-only function in that provider's own page (MAIN world) to read usage responses, Kimi's access_token and refresh_token storage entries, or Gumloop's Firebase sign-in entry in IndexedDB. The Kimi refresh token is sent only to Kimi's sign-in service (auth.kimi.com), and the Gumloop refresh token only to Google's Firebase token service that Gumloop uses (securetoken.googleapis.com), without cookies, to renew access. During Connect or manual Refresh it may open one inactive provider tab and closes only that tab.
 
 declarativeNetRequest: one session rule removes the Origin header from the extension's own POST to https://app.warp.dev/graphql/v2?op=GetRequestLimitInfo, because Warp refuses requests carrying an extension origin. It is active only after the user grants app.warp.dev access.
 

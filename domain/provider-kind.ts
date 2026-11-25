@@ -22,6 +22,7 @@ export const providerKinds = [
   "factory",
   "zai",
   "warp",
+  "gumloop",
 ] as const;
 
 export type ProviderKind = (typeof providerKinds)[number];
@@ -32,7 +33,8 @@ export type BrowserSessionProviderKind =
   | "cursor"
   | "grok"
   | "mistral"
-  | "perplexity";
+  | "perplexity"
+  | "gumloop";
 export const apiKeyProviderKinds = [
   "elevenlabs",
   "newapi",

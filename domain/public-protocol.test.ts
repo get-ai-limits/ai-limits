@@ -26,6 +26,7 @@ const providers = [
   { providerKind: "factory", cardinality: "single", credentialKind: "api-key", configKind: "fixed" },
   { providerKind: "zai", cardinality: "single", credentialKind: "api-key", configKind: "fixed" },
   { providerKind: "warp", cardinality: "single", credentialKind: "api-key", configKind: "fixed" },
+  { providerKind: "gumloop", cardinality: "single", credentialKind: "none", configKind: "fixed" },
 ] as const;
 
 describe("public side-panel protocol", () => {

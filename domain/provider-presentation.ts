@@ -172,6 +172,13 @@ export const providerCatalog = {
       apiKeySetupUrl: "https://oz.warp.dev/settings",
     },
   },
+  gumloop: {
+    displayName: "Gumloop",
+    presentation: {
+      markPath: "/provider-marks/gumloop.svg",
+      usagePageUrl: "https://www.gumloop.com/settings/profile/usage-limits",
+    },
+  },
 } as const;
 
 export type ProviderBalanceCategory =
@@ -203,6 +210,7 @@ export const providerBalanceCategories = {
   factory: "pool-primary",
   zai: "none",
   warp: "pool-primary",
+  gumloop: "pool-primary",
 } as const satisfies Record<ProviderKind, ProviderBalanceCategory>;
 
 export const providerNames = Object.fromEntries(

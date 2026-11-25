@@ -12,7 +12,7 @@
 Chrome 应用商店版本可能因审核或发布流程而滞后；应用商店徽章显示当前已发布的版本。
 GitHub Releases 会保留对应的源代码和已验证上传包。
 
-AI Limits 支持二十三个服务：ChatGPT、Claude、Kimi、Cursor、Grok、Mistral、Perplexity、ElevenLabs、New API、LiteLLM、ClawRouter、sub2api、LLM Proxy、DeepSeek、Moonshot、DeepInfra、Fireworks、OpenAI、GroqCloud、OpenRouter、Droid、GLM 和 Warp。
+AI Limits 支持二十四个服务：ChatGPT、Claude、Kimi、Cursor、Grok、Mistral、Perplexity、ElevenLabs、New API、LiteLLM、ClawRouter、sub2api、LLM Proxy、DeepSeek、Moonshot、DeepInfra、Fireworks、OpenAI、GroqCloud、OpenRouter、Droid、GLM、Warp 和 Gumloop。
 它是一款 Chrome 侧边栏扩展，可在一个紧凑的界面中查看这些服务的当前订阅用量
 及本地配额历史图表。它会将不同服务商的用量统一为“已用”或“剩余”视图；当
 服务商提供完整的重置周期信息时，还会将配额消耗与已过时间比较，显示用量节奏。
@@ -38,6 +38,10 @@ AI Limits 是 TiantianFlow 开发的独立项目，与任何受支持的服务�
   一个已经打开的 `cursor.com` 页面中运行扩展自带的只读代码；只有 Connect 或手动
   Refresh 会在没有打开的标签页时短暂打开一个非活动用量页，以请求 Grok Bot、额外 Credits
   和按模型包含用量 JSON。
+- Gumloop 同样使用已登录的浏览器会话。AI Limits 从已打开的 `gumloop.com` 页面的
+  IndexedDB 中读取 Firebase 登录令牌，并用它从 `api.gumloop.com` 读取组织的剩余额度和
+  每月额度，与 Gumloop 自己的额度用量页面相同。Connect 或手动 Refresh 在没有打开的
+  标签页时可能短暂打开一个非活动的 `gumloop.com` 标签页；定时刷新绝不会打开标签页。
 - ElevenLabs、DeepSeek、Moonshot、DeepInfra、Fireworks、OpenAI、GroqCloud、
   OpenRouter、Droid、GLM 和 Warp 使用用户创建的 API 密钥访问各自固定的服务商 API。GLM
   使用 Z.ai GLM Coding Plan 自己的 API 密钥读取该套餐用量；Warp 使用 Warp API

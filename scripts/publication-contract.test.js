@@ -290,12 +290,12 @@ describe("Edge and Firefox store listings", () => {
     expect(
       validate({
         edgeListing: real.edgeListing.replace(
+          "AI Limits supports 24 AI services",
           "AI Limits supports 23 AI services",
-          "AI Limits supports 22 AI services",
         ),
       }),
     ).toContain(
-      `Edge listing says 22 providers; the catalog has ${providerNames.length}.`,
+      `Edge listing says 23 providers; the catalog has ${providerNames.length}.`,
     );
     expect(
       validate({
