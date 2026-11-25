@@ -297,6 +297,8 @@ export function createGumloopPackage(
       let credentials = found.credentials;
 
       let outcome = await inBackground(credentials, services);
+      // Set when a 401 could not be followed by a renewal answer.
+      let renewalUnconfirmed = false;
       if (outcome.kind === "auth_rejected" && !services.signal.aborted) {
         const renewed = await dependencies.holder.credentialsFor(
           credentials.accessToken,
@@ -309,7 +311,8 @@ export function createGumloopPackage(
           return { ok: false, health: { kind: "signed_out" } };
         } else {
           // The token service could not answer now; that is not a sign-out.
-          return { ok: false, health: { kind: "temporary_error" } };
+          // An open page may still read with its own token, below.
+          renewalUnconfirmed = true;
         }
       }
       // Gumloop may refuse requests that do not come from its own site. An
@@ -326,7 +329,9 @@ export function createGumloopPackage(
         case "snapshot":
           return { ok: true, snapshot: outcome.snapshot };
         case "auth_rejected":
-          return { ok: false, health: { kind: "signed_out" } };
+          return renewalUnconfirmed
+            ? { ok: false, health: { kind: "temporary_error" } }
+            : { ok: false, health: { kind: "signed_out" } };
         case "unreachable":
           return { ok: false, health: { kind: "temporary_error" } };
         case "failed":

@@ -63,8 +63,8 @@ calls described below, and browser cookies may accompany requests to the same
 provider origin (Kimi and Gumloop usage requests carry only the access token,
 without cookies). OpenRouter is an API-key provider, but its
 promotional-credit read also uses the signed-in openrouter.ai session, as
-described below. Requests normally run directly from the extension; the Cursor
-and Grok page-origin reads described below run in an already-open exact-origin
+described below. Requests normally run directly from the extension; the Cursor,
+Grok, and Gumloop page-origin reads described below run in an already-open exact-origin
 page or, if none is open during Connect or manual Refresh, in one inactive tab
 created for that attempt. ChatGPT
 and Kimi access credentials, the derived ChatGPT account identifier, and the

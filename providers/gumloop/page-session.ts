@@ -164,10 +164,14 @@ export async function fetchGumloopRepliesInPage(
     get(`${base}/subscription`),
   ]);
   // Return only the fields the usage reading needs, not billing details.
-  const pick = (reply: typeof remaining, keys: string[]) => {
+  const pick = (
+    reply: typeof remaining,
+    keys: string[],
+  ): { status: number; retryAfter?: string; body?: unknown } => {
     const body = reply.body;
     if (typeof body !== "object" || body === null || Array.isArray(body)) {
-      return reply;
+      const { body: _dropped, ...rest } = reply;
+      return rest;
     }
     const record = body as Record<string, unknown>;
     const kept: Record<string, unknown> = {};

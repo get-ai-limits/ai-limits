@@ -236,6 +236,42 @@ describe("gumloop package", () => {
     ).resolves.toEqual({ ok: false, health: { kind: "temporary_error" } });
   });
 
+  it("still reads from the open page when renewal after a 401 cannot finish", async () => {
+    const deps = dependencies({
+      holder: holder({
+        credentialsFor: vi.fn(async () => ({ kind: "unavailable" as const })),
+      }),
+      openTabIds: vi.fn(async () => [4]),
+      readPageSession: vi.fn(async () => pageSession),
+      fetchReplies: vi.fn(async () => ({ project: { status: 401 } })),
+      fetchInPage: vi.fn(async () => okReplies),
+    });
+    const result = await createGumloopPackage(deps).collect(
+      instance,
+      services("forbidden"),
+    );
+    expect(result.ok).toBe(true);
+    expect(deps.fetchInPage).toHaveBeenCalledWith(4, {
+      accessToken: "id-page",
+      userId: "user-1",
+    });
+  });
+
+  it("reports a temporary error when the page also gets a 401 and renewal could not finish", async () => {
+    const deps = dependencies({
+      holder: holder({
+        credentialsFor: vi.fn(async () => ({ kind: "unavailable" as const })),
+      }),
+      openTabIds: vi.fn(async () => [4]),
+      readPageSession: vi.fn(async () => pageSession),
+      fetchReplies: vi.fn(async () => ({ project: { status: 401 } })),
+      fetchInPage: vi.fn(async () => ({ project: { status: 401 } })),
+    });
+    await expect(
+      createGumloopPackage(deps).collect(instance, services("forbidden")),
+    ).resolves.toEqual({ ok: false, health: { kind: "temporary_error" } });
+  });
+
   it("falls back to reading from the open page when Gumloop refuses the background request", async () => {
     const deps = dependencies({
       openTabIds: vi.fn(async () => [4]),
