@@ -67,6 +67,7 @@ describe("gumloop page session", () => {
         "https://api.gumloop.com",
         "id",
         "user-1",
+        1_000,
       ),
     ).resolves.toBeUndefined();
   });

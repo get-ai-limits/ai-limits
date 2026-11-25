@@ -313,9 +313,9 @@ export function localizeFailure(category: FailureCategory): string {
 }
 
 export function localizeRecoveryGuidance(providerKind: ProviderKind): string {
-  return providerKind === "kimi"
-    ? l10n.t("errors.kimiRetrySession")
-    : localizeFailure("temporary_error");
+  if (providerKind === "kimi") return l10n.t("errors.kimiRetrySession");
+  if (providerKind === "gumloop") return l10n.t("errors.gumloopRetrySession");
+  return localizeFailure("temporary_error");
 }
 
 export function localizeOperation(operation: ProviderOperation): string {

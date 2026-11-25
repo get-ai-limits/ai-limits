@@ -138,6 +138,16 @@ export async function exchangeGumloopRefreshToken({
   };
 }
 
+/** What a credential lookup found; only `rejected` means the user must sign in. */
+export type GumloopCredentialLookup =
+  | { kind: "credentials"; credentials: GumloopSessionCredentials }
+  /** No session is held. */
+  | { kind: "none" }
+  /** The token service rejected the held refresh token. */
+  | { kind: "rejected" }
+  /** Renewal could not finish now (network, service error, abort). */
+  | { kind: "unavailable" };
+
 export interface GumloopSessionHolder {
   /**
    * Credentials from the held session, renewing the ID token when the cached
@@ -147,7 +157,7 @@ export interface GumloopSessionHolder {
   credentialsFor(
     rejectedToken: string | undefined,
     signal: AbortSignal,
-  ): Promise<GumloopSessionCredentials | undefined>;
+  ): Promise<GumloopCredentialLookup>;
   /** Marks the start of a page read; pass the result to rememberPageSession. */
   beginPageRead(): number;
   /** Holds what a page read returned; a signed-out page drops the session. */
@@ -168,7 +178,7 @@ export function createGumloopSessionHolder({
   fetch: typeof globalThis.fetch;
   now?: () => number;
 }): GumloopSessionHolder {
-  let inFlight: Promise<GumloopSessionCredentials | undefined> | undefined;
+  let inFlight: Promise<GumloopCredentialLookup> | undefined;
   // Bumped by forget(), so a read or renewal that finishes after a disconnect
   // cannot bring the session back.
   let generation = 0;
@@ -190,7 +200,7 @@ export function createGumloopSessionHolder({
     session: GumloopStoredSession,
     signal: AbortSignal,
     startedIn: number,
-  ): Promise<GumloopSessionCredentials | undefined> => {
+  ): Promise<GumloopCredentialLookup> => {
     const outcome = await exchangeGumloopRefreshToken({
       fetch: injectedFetch,
       refreshToken: session.refreshToken,
@@ -204,11 +214,11 @@ export function createGumloopSessionHolder({
       if (current?.refreshToken === session.refreshToken) {
         await storage.remove(GUMLOOP_SESSION_KEY).catch(() => undefined);
       }
-      return undefined;
+      return { kind: "rejected" };
     }
-    if (outcome.kind !== "refreshed") return undefined;
+    if (outcome.kind !== "refreshed") return { kind: "unavailable" };
     if (outcome.userId !== undefined && outcome.userId !== session.userId) {
-      return undefined;
+      return { kind: "unavailable" };
     }
     const saved = await saveIfCurrent(startedIn, {
       refreshToken: outcome.refreshToken,
@@ -220,17 +230,23 @@ export function createGumloopSessionHolder({
         : {}),
     }).catch(() => false);
     return saved && !signal.aborted
-      ? { accessToken: outcome.accessToken, userId: session.userId }
-      : undefined;
+      ? {
+          kind: "credentials",
+          credentials: {
+            accessToken: outcome.accessToken,
+            userId: session.userId,
+          },
+        }
+      : { kind: "unavailable" };
   };
 
   return {
     async credentialsFor(rejectedToken, signal) {
-      if (signal.aborted) return undefined;
+      if (signal.aborted) return { kind: "unavailable" };
       // Same tick as the abort check: a disconnect aborts before it forgets.
       const startedIn = generation;
       const session = await readGumloopStoredSession(storage);
-      if (!session) return undefined;
+      if (!session) return { kind: "none" };
 
       if (
         session.accessToken !== undefined &&
@@ -238,19 +254,26 @@ export function createGumloopSessionHolder({
         session.accessExpiresAt !== undefined &&
         session.accessExpiresAt - GUMLOOP_ACCESS_EXPIRY_MARGIN_MS > now()
       ) {
-        return { accessToken: session.accessToken, userId: session.userId };
+        return {
+          kind: "credentials",
+          credentials: {
+            accessToken: session.accessToken,
+            userId: session.userId,
+          },
+        };
       }
 
       inFlight ??= renew(session, signal, startedIn).finally(() => {
         inFlight = undefined;
       });
       try {
-        const credentials = await inFlight;
-        return credentials?.accessToken === rejectedToken
-          ? undefined
-          : credentials;
+        const lookup = await inFlight;
+        return lookup.kind === "credentials" &&
+          lookup.credentials.accessToken === rejectedToken
+          ? { kind: "unavailable" }
+          : lookup;
       } catch {
-        return undefined;
+        return { kind: "unavailable" };
       }
     },
 

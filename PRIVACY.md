@@ -1,6 +1,6 @@
 # Privacy Policy
 
-Last updated: November 22, 2026
+Last updated: November 25, 2026
 
 AI Limits is a locally running browser extension for Chrome, Edge, and Firefox
 by TiantianFlow. This policy
@@ -32,7 +32,11 @@ The extension also handles provider session, usage, subscription, and
 organization-response JSON in memory. A ChatGPT account identifier derived
 from its access credential and the selected Claude organization UUID and
 capabilities are request-local and are not persisted, as are the OpenRouter
-signed-in user ID and key creator ID compared for promotional credits. A Claude organization
+signed-in user ID and key creator ID compared for promotional credits, and the
+Gumloop organization ID used to build its credit paths. The Gumloop user ID is
+held with its session in memory-backed session storage, as described below, and
+is not written to persistent storage. The raw Gumloop project, credit, and
+subscription replies are request-local and are not persisted. A Claude organization
 name may be normalized and stored as the visible plan label. The extension
 discards email-shaped account labels and does not query the current Claude or
 Cursor email endpoints. For ElevenLabs, the extension retains only normalized
@@ -155,7 +159,13 @@ page itself calls, without cookies, and keeps the new token it returns. The
 held session is dropped when that service rejects the refresh token, when a
 gumloop.com page shows the user is signed out, when Gumloop access is
 disconnected or its permission is removed, and when all local data is
-deleted.
+deleted. Signing out of Gumloop in a tab that AI Limits does not read
+afterwards drops the held session only once the token service rejects the
+refresh token or the browser exits; disconnect Gumloop in AI Limits to drop it
+immediately. After a browser restart, Gumloop needs one open gumloop.com tab or
+one manual Connect or Refresh before scheduled refresh can renew on its own
+again. When the reads fall back to an open gumloop.com page, the ID token is
+passed into that page only for those three requests.
 
 For Grok, grok.com rejects extension-background session and usage requests
 when the Origin is not `https://grok.com`. AI Limits therefore does not fetch
@@ -396,8 +406,10 @@ You can turn automatic refresh off in Settings at any time.
 AI Limits has no developer-operated backend, advertising SDK, analytics, crash
 reporting, or telemetry. The extension does not sell personal data and does not
 share it with the developer, advertisers, data brokers, or unrelated third
-parties. Provider requests go only to the provider service you selected, which
-processes those requests under its own terms and privacy policy.
+parties. Provider requests go only to the provider service you selected, or,
+for Gumloop token renewal, to Google's Firebase token service that Gumloop's
+own sign-in uses. Each processes those requests under its own terms and
+privacy policy.
 
 History remains in the local Chrome profile and is never transmitted to
 the developer.

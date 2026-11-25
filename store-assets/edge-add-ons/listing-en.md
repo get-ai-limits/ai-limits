@@ -61,7 +61,7 @@ each answer are in the [Chrome Web Store pack](../chrome-web-store/listing-en.md
 - Personally identifiable information: Yes (narrowly handled account identifiers; see the Chrome pack)
 - Health information: No
 - Financial and payment information: Yes (provider-reported credit balances and spend only)
-- Authentication information: Yes (provider API keys and sign-in sessions, sent only to that provider)
+- Authentication information: Yes (provider API keys and sign-in sessions, sent only to that provider, or for Gumloop sign-in renewal to the Google Firebase token service Gumloop uses)
 - Personal communications: No
 - Location: No
 - Web history: Yes (only whether a fixed provider tab is open; never stored or sent)
@@ -109,14 +109,14 @@ WHY AI LIMITS
 • Automatic refresh about every 15 minutes in the background for most services, even with the panel closed.
 • English and Simplified Chinese. The panel follows Edge's language or can be pinned in Settings.
 
-23 SUPPORTED SERVICES
+24 SUPPORTED SERVICES
 AI Limits supports 24 AI services: chat and coding subscriptions, API platforms with credits or balances, and self-hosted API gateways. Connect only the ones you use; every connection is opt-in and only gets the Edge access you approve for it. Subscription services use the account you're already signed in to in Edge, while API services use a key you provide through a guided setup.
 
 See every supported service and what AI Limits shows for it:
 https://get-ai-limits.com/providers/
 
 PRIVATE BY DESIGN
-• Stored locally: your usage history stays on your device and is never sent to the developer or anyone else. Requests go only to the services you connect.
+• Stored locally: your usage history stays on your device and is never sent to the developer or anyone else. Requests go only to the services you connect and the sign-in services they use.
 • AI Limits uses your sign-in session or API key only to fetch plan, usage, and balance data, and keeps only what it needs to show your limits. It never reads your prompts or conversations.
 • No ads, no AI Limits account to create, no analytics or telemetry.
 • Free and open source under the MIT license: https://get-ai-limits.com/source/
@@ -146,6 +146,6 @@ AI Limits shows the user's own usage limits for AI services in the Edge side pan
 
 No test account is supplied by the extension. To see real data, sign in to any supported subscription service in the same Edge profile (for example ChatGPT or Claude) and click Connect on it, or create a temporary read-only API key for an API service (for example OpenRouter or DeepSeek) and connect it through the guided setup. Without an account, the reviewer can still check First Run, Settings, the provider list, the permission prompts, and Delete all local data.
 
-The extension sends requests only to the providers the user connects. It has no backend, analytics, or remote code. The single declarativeNetRequest session rule only removes the Origin header from the extension's own request to Warp's usage endpoint, which Warp otherwise refuses.
+The extension sends requests only to the providers the user connects, plus Gumloop sign-in renewal to the Google Firebase token service (securetoken.googleapis.com) that Gumloop's own page uses. It has no backend, analytics, or remote code. The single declarativeNetRequest session rule only removes the Origin header from the extension's own request to Warp's usage endpoint, which Warp otherwise refuses.
 
 Source code: https://get-ai-limits.com/source/ (MIT). Privacy policy: https://get-ai-limits.com/privacy/

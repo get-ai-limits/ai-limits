@@ -33,6 +33,7 @@ import {
 import {
   createGumloopSessionHolder,
   GUMLOOP_ACCESS_EXPIRY_MARGIN_MS,
+  type GumloopCredentialLookup,
   type GumloopSessionHolder,
 } from "./session";
 
@@ -41,6 +42,44 @@ export const GUMLOOP_OWNED_TAB_LEASE_PREFIX = "gumloopSessionTabLease";
 // One deadline covers opening the inactive tab and reading its session.
 export const GUMLOOP_OWNED_TAB_TIMEOUT_MS = 15_000;
 const GUMLOOP_OWNED_READ_POLL_MS = 250;
+// Each page call gets a bound of its own, so a frozen or slow tab cannot
+// hold a refresh, or an owned tab, open past these.
+export const GUMLOOP_PAGE_READ_TIMEOUT_MS = 3_000;
+export const GUMLOOP_PAGE_FETCH_TIMEOUT_MS = 8_000;
+const PAGE_CALL_TIMED_OUT = Symbol("gumloop-page-call-timed-out");
+
+/** Resolves to the call's value, or a marker once the time or signal ends. */
+function boundedPageCall<T>(
+  call: () => Promise<T>,
+  timeoutMs: number,
+  signal: AbortSignal,
+): Promise<T | typeof PAGE_CALL_TIMED_OUT> {
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = (value: T | typeof PAGE_CALL_TIMED_OUT) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      signal.removeEventListener("abort", onAbort);
+      resolve(value);
+    };
+    const onAbort = () => finish(PAGE_CALL_TIMED_OUT);
+    const timer = setTimeout(onAbort, Math.max(0, timeoutMs));
+    signal.addEventListener("abort", onAbort, { once: true });
+    if (signal.aborted) {
+      onAbort();
+      return;
+    }
+    let started: Promise<T>;
+    try {
+      started = call();
+    } catch {
+      onAbort();
+      return;
+    }
+    started.then(finish, onAbort);
+  });
+}
 
 export interface GumloopOwnedTab {
   tabId: number;
@@ -98,25 +137,28 @@ export function createGumloopPackage(
 
   const readTab = async (
     tabId: number,
-    startedIn: number,
+    timeoutMs: number,
+    signal: AbortSignal,
   ): Promise<GumloopPageSession | undefined> => {
-    let raw: unknown;
-    try {
-      raw = await dependencies.readPageSession(tabId);
-    } catch {
+    const raw = await boundedPageCall(
       // A tab may close, navigate, or sleep while it is read.
-      return undefined;
-    }
-    const session = parseGumloopPageSession(raw);
-    if (session) {
-      await dependencies.holder
-        .rememberPageSession(session, startedIn)
-        .catch(() => undefined);
-    }
-    return session;
+      () => dependencies.readPageSession(tabId).catch(() => undefined),
+      timeoutMs,
+      signal,
+    );
+    return raw === PAGE_CALL_TIMED_OUT ? undefined : parseGumloopPageSession(raw);
   };
 
-  const readOpenTabs = async (): Promise<PageRead | undefined> => {
+  /** Holds what a read found; a signed-out read drops the held session. */
+  const remember = async (read: PageRead, startedIn: number) => {
+    await dependencies.holder
+      .rememberPageSession(read.session, startedIn)
+      .catch(() => undefined);
+  };
+
+  const readOpenTabs = async (
+    signal: AbortSignal,
+  ): Promise<PageRead | undefined> => {
     let tabIds: number[];
     try {
       tabIds = await dependencies.openTabIds();
@@ -126,11 +168,18 @@ export function createGumloopPackage(
     const startedIn = dependencies.holder.beginPageRead();
     let signedOut: PageRead | undefined;
     for (const tabId of tabIds) {
-      const session = await readTab(tabId, startedIn);
+      if (signal.aborted) break;
+      const session = await readTab(tabId, GUMLOOP_PAGE_READ_TIMEOUT_MS, signal);
       if (!session) continue;
-      if (!session.signedOut) return { tabId, session };
+      if (!session.signedOut) {
+        const read = { tabId, session };
+        await remember(read, startedIn);
+        return read;
+      }
       signedOut ??= { tabId, session };
     }
+    // Only a sign-out that no other open tab contradicts drops the session.
+    if (signedOut) await remember(signedOut, startedIn);
     return signedOut;
   };
 
@@ -141,8 +190,16 @@ export function createGumloopPackage(
     const startedIn = dependencies.holder.beginPageRead();
     // The page's sign-in storage is ready once Firebase has started.
     while (!signal.aborted && now() < owned.deadline) {
-      const session = await readTab(owned.tabId, startedIn);
-      if (session) return { tabId: owned.tabId, session };
+      const session = await readTab(
+        owned.tabId,
+        Math.min(GUMLOOP_PAGE_READ_TIMEOUT_MS, owned.deadline - now()),
+        signal,
+      );
+      if (session) {
+        const read = { tabId: owned.tabId, session };
+        await remember(read, startedIn);
+        return read;
+      }
       await delay(
         Math.min(GUMLOOP_OWNED_READ_POLL_MS, Math.max(0, owned.deadline - now())),
       );
@@ -174,12 +231,13 @@ export function createGumloopPackage(
     credentials: GumloopSessionCredentials,
     services: ProviderRuntimeServices,
   ): Promise<GumloopOutcome> => {
-    let raw: unknown;
-    try {
-      raw = await dependencies.fetchInPage(tabId, credentials);
-    } catch {
-      return { kind: "unreachable" };
-    }
+    const raw = await boundedPageCall(
+      () =>
+        dependencies.fetchInPage(tabId, credentials).catch(() => undefined),
+      GUMLOOP_PAGE_FETCH_TIMEOUT_MS,
+      services.signal,
+    );
+    if (raw === PAGE_CALL_TIMED_OUT) return { kind: "unreachable" };
     const replies = parseGumloopPageReplies(raw);
     return replies
       ? gumloopOutcomeFromReplies(replies, services.now)
@@ -192,28 +250,51 @@ export function createGumloopPackage(
     const interactive = services.interaction === "allowed";
     let owned: GumloopOwnedTab | undefined;
     try {
-      let page = await readOpenTabs();
-      if (!page && interactive && dependencies.openOwnedTab) {
+      let page = await readOpenTabs(services.signal);
+      const lookup = async (): Promise<GumloopCredentialLookup> => {
+        const fromPage = page && freshPageCredentials(page.session, now());
+        return fromPage
+          ? { kind: "credentials", credentials: fromPage }
+          : dependencies.holder.credentialsFor(undefined, services.signal);
+      };
+      let found = page?.session.signedOut ? undefined : await lookup();
+      // Open a tab only for an interactive refresh that has nothing else:
+      // no open gumloop.com page and no usable held session.
+      if (
+        !page &&
+        found?.kind !== "credentials" &&
+        found?.kind !== "rejected" &&
+        interactive &&
+        dependencies.openOwnedTab &&
+        !services.signal.aborted
+      ) {
         owned = await dependencies
           .openOwnedTab(services.signal)
           .catch(() => undefined);
-        if (owned) page = await readOwnedTab(owned, services.signal);
+        if (owned) {
+          page = await readOwnedTab(owned, services.signal);
+          if (page && !page.session.signedOut) found = await lookup();
+        }
       }
       if (services.signal.aborted) {
         return { ok: false, health: { kind: "temporary_error" } };
       }
-      if (page?.session.signedOut) {
+      if (page?.session.signedOut || found?.kind === "rejected") {
         return { ok: false, health: { kind: "signed_out" } };
       }
-
-      let credentials =
-        (page && freshPageCredentials(page.session, now())) ??
-        (await dependencies.holder.credentialsFor(undefined, services.signal));
-      if (!credentials) {
+      if (!found || found.kind !== "credentials") {
+        if (found?.kind === "unavailable") {
+          return { ok: false, health: { kind: "temporary_error" } };
+        }
+        // No session to use, and nothing says the user signed out.
         return interactive
-          ? { ok: false, health: { kind: "signed_out" } }
+          ? {
+              ok: false,
+              health: { kind: "temporary_error", guidance: "retry_session" },
+            }
           : { ok: false, deferred: { reason: "session_required" } };
       }
+      let credentials = found.credentials;
 
       let outcome = await inBackground(credentials, services);
       if (outcome.kind === "auth_rejected" && !services.signal.aborted) {
@@ -221,9 +302,11 @@ export function createGumloopPackage(
           credentials.accessToken,
           services.signal,
         );
-        if (renewed) {
-          credentials = renewed;
+        if (renewed.kind === "credentials") {
+          credentials = renewed.credentials;
           outcome = await inBackground(credentials, services);
+        } else if (renewed.kind === "rejected") {
+          return { ok: false, health: { kind: "signed_out" } };
         }
       }
       // Gumloop may refuse requests that do not come from its own site. An
@@ -256,6 +339,10 @@ export function createGumloopPackage(
     cardinality: providerDefinitions.gumloop.cardinality,
     credentialKind: providerDefinitions.gumloop.credentialKind,
     configKind: providerDefinitions.gumloop.configKind,
+    failureGuidance: {
+      retry_session:
+        "Could not read your Gumloop sign-in. Open gumloop.com, make sure you are signed in, then press Refresh.",
+    },
     normalizeConfig: normalizeFixedConfig,
     requiredPermissions: (config) =>
       normalizeFixedConfig(config)
@@ -331,7 +418,8 @@ function productionDependencies(): GumloopPackageDependencies {
       if (!granted) return [];
       const found = await browser.tabs.query({ url: `${GUMLOOP_ORIGIN}/*` });
       return found.flatMap((tab) =>
-        tab.id === undefined || tab.discarded ? [] : [tab.id],
+        // Incognito tabs have their own sign-in; skip them.
+        tab.id === undefined || tab.discarded || tab.incognito ? [] : [tab.id],
       );
     },
     async readPageSession(tabId) {
@@ -348,12 +436,14 @@ function productionDependencies(): GumloopPackageDependencies {
       const injected = await browser.scripting.executeScript({
         target: { tabId },
         world: "MAIN",
+        injectImmediately: true,
         func: fetchGumloopRepliesInPage,
         args: [
           GUMLOOP_ORIGIN,
           GUMLOOP_API_ORIGIN,
           credentials.accessToken,
           credentials.userId,
+          GUMLOOP_PAGE_FETCH_TIMEOUT_MS - 1_000,
         ],
       });
       return injected[0]?.result;

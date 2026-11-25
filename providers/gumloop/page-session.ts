@@ -48,7 +48,10 @@ export async function readGumloopPageSessionAtExpectedOrigin(
       const request = db
         .transaction(STORE, "readonly")
         .objectStore(STORE)
-        .getAll();
+        // Only the signed-in user entries, keyed "firebase:authUser:...".
+        .getAll(
+          IDBKeyRange.bound("firebase:authUser:", "firebase:authUser:\uffff"),
+        );
       request.onsuccess = () => resolve(request.result as unknown[]);
       request.onerror = () => reject(request.error);
     });
@@ -100,6 +103,7 @@ export async function fetchGumloopRepliesInPage(
   apiOrigin: string,
   accessToken: string,
   userId: string,
+  timeoutMs: number,
 ): Promise<unknown> {
   if (globalThis.location.origin !== expectedOrigin) return undefined;
   const get = async (path: string) => {
@@ -107,6 +111,7 @@ export async function fetchGumloopRepliesInPage(
       const response = await fetch(`${apiOrigin}${path}`, {
         method: "GET",
         credentials: "omit",
+        signal: AbortSignal.timeout(timeoutMs),
         headers: {
           Accept: "application/json",
           Authorization: `Bearer ${accessToken}`,
@@ -140,13 +145,23 @@ export async function fetchGumloopRepliesInPage(
       }
     }
   }
-  if (!organizationId) return { project };
+  // Return only the organization ids, not the rest of the project list.
+  const projectReply =
+    project.status === 200 && Array.isArray(project.body)
+      ? {
+          ...project,
+          body: (project.body as Array<{ organization_id?: unknown }>).map(
+            (entry) => ({ organization_id: entry?.organization_id }),
+          ),
+        }
+      : { status: project.status };
+  if (!organizationId) return { project: projectReply };
   const base = `/organization/${encodeURIComponent(organizationId)}`;
   const [remaining, subscription] = await Promise.all([
     get(`${base}/credits`),
     get(`${base}/subscription`),
   ]);
-  return { project, remaining, subscription };
+  return { project: projectReply, remaining, subscription };
 }
 
 function nonEmpty(value: unknown, max = 8_192): string | undefined {

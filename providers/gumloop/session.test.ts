@@ -127,8 +127,8 @@ describe("createGumloopSessionHolder", () => {
     const fetch = vi.fn();
     const holder = createGumloopSessionHolder({ storage, fetch, now: () => NOW });
     await expect(holder.credentialsFor(undefined, signal())).resolves.toEqual({
-      accessToken: "id-1",
-      userId: "user-1",
+      kind: "credentials",
+      credentials: { accessToken: "id-1", userId: "user-1" },
     });
     expect(fetch).not.toHaveBeenCalled();
   });
@@ -144,8 +144,8 @@ describe("createGumloopSessionHolder", () => {
     const fetch = vi.fn(async () => refreshed());
     const holder = createGumloopSessionHolder({ storage, fetch, now: () => NOW });
     await expect(holder.credentialsFor(undefined, signal())).resolves.toEqual({
-      accessToken: "id-2",
-      userId: "user-1",
+      kind: "credentials",
+      credentials: { accessToken: "id-2", userId: "user-1" },
     });
     expect(items[GUMLOOP_SESSION_KEY]).toEqual({
       ...held,
@@ -155,8 +155,8 @@ describe("createGumloopSessionHolder", () => {
     // The fresh token was the one rejected, so the next call renews again.
     fetch.mockResolvedValueOnce(refreshed({ id_token: "id-3" }));
     await expect(holder.credentialsFor("id-2", signal())).resolves.toEqual({
-      accessToken: "id-3",
-      userId: "user-1",
+      kind: "credentials",
+      credentials: { accessToken: "id-3", userId: "user-1" },
     });
   });
 
@@ -169,7 +169,9 @@ describe("createGumloopSessionHolder", () => {
       ),
     );
     const holder = createGumloopSessionHolder({ storage, fetch, now: () => NOW });
-    await expect(holder.credentialsFor(undefined, signal())).resolves.toBeUndefined();
+    await expect(holder.credentialsFor(undefined, signal())).resolves.toEqual({
+      kind: "rejected",
+    });
     expect(items[GUMLOOP_SESSION_KEY]).toBeUndefined();
   });
 
@@ -177,7 +179,9 @@ describe("createGumloopSessionHolder", () => {
     const { storage } = memoryStorage({ [GUMLOOP_SESSION_KEY]: held });
     const fetch = vi.fn(async () => refreshed({ user_id: "someone-else" }));
     const holder = createGumloopSessionHolder({ storage, fetch, now: () => NOW });
-    await expect(holder.credentialsFor(undefined, signal())).resolves.toBeUndefined();
+    await expect(holder.credentialsFor(undefined, signal())).resolves.toEqual({
+      kind: "unavailable",
+    });
   });
 
   it("holds a page session and drops it when the page is signed out", async () => {

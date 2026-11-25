@@ -653,6 +653,7 @@ errors:
   providerChanged: AI Limits 无法读取此服务的用量响应。
   temporaryError: AI Limits 无法刷新此服务。请稍后再试。
   kimiRetrySession: Kimi 仍在启动。请再点一次刷新，或打开/重新加载 Kimi。
+  gumloopRetrySession: 无法读取你的 Gumloop 登录状态。请打开 gumloop.com，确认已登录，然后点击刷新。
 
 metrics:
   scope:

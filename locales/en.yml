@@ -653,6 +653,7 @@ errors:
   providerChanged: AI Limits could not read this provider's usage response.
   temporaryError: AI Limits could not refresh this provider. Try again later.
   kimiRetrySession: Kimi was still starting. Try Refresh once more, or open or reload Kimi.
+  gumloopRetrySession: Could not read your Gumloop sign-in. Open gumloop.com, make sure you are signed in, then press Refresh.
 
 metrics:
   scope:

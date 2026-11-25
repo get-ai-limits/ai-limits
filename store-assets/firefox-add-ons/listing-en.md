@@ -65,14 +65,14 @@ WHY AI LIMITS
 • Automatic refresh about every 15 minutes in the background for most services, even with the sidebar closed.
 • English and Simplified Chinese. The sidebar follows Firefox's language or can be pinned in Settings.
 
-23 SUPPORTED SERVICES
+24 SUPPORTED SERVICES
 AI Limits supports 24 AI services: chat and coding subscriptions, API platforms with credits or balances, and self-hosted API gateways. Connect only the ones you use; every connection is opt-in and only gets the Firefox access you approve for it. Subscription services use the account you're already signed in to in Firefox, while API services use a key you provide through a guided setup.
 
 See every supported service and what AI Limits shows for it:
 https://get-ai-limits.com/providers/
 
 WHAT IT SENDS, AND WHERE
-• Requests go only to the services you connect. Your sign-in session or API key for a service is sent only to that service, to fetch its plan, usage, and balance data. That is why Firefox asks you to allow authentication information when you install.
+• Requests go only to the services you connect. Your sign-in session or API key for a service is sent only to that service (or the sign-in service it uses to renew a session), to fetch its plan, usage, and balance data. That is why Firefox asks you to allow authentication information when you install.
 • Stored locally: your usage history stays on your device and is never sent to the developer or anyone else. AI Limits never reads your prompts or conversations.
 • No ads, no AI Limits account to create, no analytics or telemetry.
 • Free and open source under the MIT license: https://get-ai-limits.com/source/
@@ -102,9 +102,9 @@ AI Limits is a locally running browser extension by TiantianFlow. It has no back
 
 What it accesses: only after you connect a service and approve its site access, AI Limits reads that service's plan, quota, usage, reset time, credit, and balance data. For services you are signed in to, it uses your existing sign-in session with that service. For API services, it uses an API key you create and enter. For OpenRouter, it also reads the promotional-credit amounts from your signed-in openrouter.ai Credits page.
 
-Where data goes: your sign-in session or API key for a service is sent only to that same service, to fetch your usage. AI Limits never sends it anywhere else. Apart from that OpenRouter credit amount, it never reads page text, prompts, conversations, or generated responses.
+Where data goes: your sign-in session or API key for a service is sent only to that same service, to fetch your usage. The one exception is Gumloop: its refresh token goes to Google's Firebase token service, which Gumloop's own page uses to renew its sign-in. AI Limits never sends it anywhere else. Apart from that OpenRouter credit amount, it never reads page text, prompts, conversations, or generated responses.
 
-What it stores, on your device only: your settings, provider order, the address and label you give any self-hosted gateway, normalized usage snapshots, and up to 30 days of usage History per connection. API keys you enter are stored in Firefox's extension storage without operating-system keychain encryption, so anyone with access to your Firefox profile may be able to read them. Sign-in cookies and session credentials are never stored on disk. Kimi's refresh tokens (current and the page's) and latest access token are the only credentials kept, and only in memory-only session storage until Firefox exits, so background refresh can renew Kimi access.
+What it stores, on your device only: your settings, provider order, the address and label you give any self-hosted gateway, normalized usage snapshots, and up to 30 days of usage History per connection. API keys you enter are stored in Firefox's extension storage without operating-system keychain encryption, so anyone with access to your Firefox profile may be able to read them. Sign-in cookies and session credentials are never stored on disk. Kimi's refresh tokens (current and the page's) and latest access token, and Gumloop's refresh token, latest ID token, user ID, and Firebase web API key, are the only credentials kept, and only in memory-only session storage until Firefox exits, so background refresh can renew Kimi and Gumloop access.
 
 Your controls: disconnect any service, turn off automatic refresh, or use Delete all local data in Settings at any time. Uninstalling the extension removes its local data.
 
@@ -122,7 +122,7 @@ Building from source: use Node 24 and the pnpm version pinned in package.json (v
 
 Test accounts: none are supplied by the extension. To see real data, sign in to any supported subscription service in the same Firefox profile (for example ChatGPT or Claude) and click Connect on it, or create a temporary read-only API key for an API service (for example OpenRouter or DeepSeek) and connect it through the guided setup. Without an account you can still check First Run, Settings, the provider list, the permission prompts, and Delete all local data.
 
-Data collection: the manifest declares authenticationInfo as required because the user's sign-in session or API key for a service is sent to that same service to read usage. Nothing is sent to the developer, and there is no remote code.
+Data collection: the manifest declares authenticationInfo as required because the user's sign-in session or API key for a service is sent to that same service to read usage (and, for Gumloop, its refresh token to the Google Firebase token service Gumloop uses). Nothing is sent to the developer, and there is no remote code.
 
 Injected code: for Kimi, Cursor, Grok, and Gumloop, scripting.executeScript runs a bundled read-only function in that provider's own page (MAIN world) to read usage responses, Kimi's access_token and refresh_token storage entries, or Gumloop's Firebase sign-in entry in IndexedDB. The Kimi refresh token is sent only to Kimi's sign-in service (auth.kimi.com), and the Gumloop refresh token only to Google's Firebase token service that Gumloop uses (securetoken.googleapis.com), without cookies, to renew access. During Connect or manual Refresh it may open one inactive provider tab and closes only that tab.
 

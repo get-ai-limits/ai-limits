@@ -47,6 +47,12 @@ Credits JSON；只有手动刷新会在没有打开的标签页时短暂打开�
 打开的 grok.com 标签页，如果没有则可能短暂打开一个非活动标签页。Grok
 定时刷新可能向已经打开的 grok.com 标签页注入代码，但绝不会新建标签页。
 
+Gumloop 与 Kimi 类似：AI Limits 会把从 gumloop.com 页面读取的登录会话保存在
+基于内存的会话存储中，在浏览器重启前无需标签页即可续期。浏览器重启或扩展更新后，
+打开一次 gumloop.com 或手动刷新即可重新开始；在此之前，Gumloop 定时刷新会延后并
+保留上次有效的数据。在 AI Limits 不会读取的标签页中退出 Gumloop，要等 Gumloop
+拒绝所保存的会话或浏览器退出后才会生效；断开 Gumloop 连接可立即丢弃该会话。
+
 Kimi 还有下述额外限制。
 
 ## 为什么 Cursor 的 Grok Bot 或额外 Credits 有时只在手动刷新后更新？
@@ -161,7 +167,9 @@ ChatGPT 使用 chatgpt.com 上已登录的浏览器会话。OpenAI 使用用户�
 **Connect** 或 **Refresh** 才可能为了恢复会话创建一个非活动 Kimi
 标签页，并最多等待 30 秒直到页面加载完成。交互式的 Cursor **Connect** 或 **Refresh** 在当前没有打开的
 `cursor.com` 标签页时，可能会短暂创建一个非活动用量页，最多等待 10 秒，
-并且只关闭它自己创建的标签页。ElevenLabs 只会在你主动开始设置或选择
+并且只关闭它自己创建的标签页。交互式的 Gumloop **Connect** 或 **Refresh**
+只有在没有打开的 gumloop.com 标签页、也没有已保存的 Gumloop 会话时，才可能创建
+一个非活动 gumloop.com 标签页，最多等待 15 秒，并且只关闭它自己创建的标签页。ElevenLabs 只会在你主动开始设置或选择
 **Open API keys page** 时打开普通 API 密钥页面。包括 New API 在内的其他
 API 密钥服务，设置和刷新都不会打开服务商标签页。
 

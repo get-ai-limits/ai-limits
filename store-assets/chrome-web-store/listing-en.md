@@ -65,14 +65,14 @@ WHY AI LIMITS
 • Automatic refresh about every 15 minutes in the background for most services, even with the panel closed.
 • English and Simplified Chinese. The panel follows Chrome's language or can be pinned in Settings.
 
-23 SUPPORTED SERVICES
+24 SUPPORTED SERVICES
 AI Limits supports 24 AI services: chat and coding subscriptions, API platforms with credits or balances, and self-hosted API gateways. Connect only the ones you use; every connection is opt-in and only gets the Chrome access you approve for it. Subscription services use the account you're already signed in to in Chrome, while API services use a key you provide through a guided setup.
 
 See every supported service and what AI Limits shows for it:
 https://get-ai-limits.com/providers/
 
 PRIVATE BY DESIGN
-• Stored locally: your usage history stays on your device and is never sent to the developer or anyone else. Requests go only to the services you connect.
+• Stored locally: your usage history stays on your device and is never sent to the developer or anyone else. Requests go only to the services you connect and the sign-in services they use.
 • AI Limits uses your sign-in session or API key only to fetch plan, usage, and balance data, and keeps only what it needs to show your limits. It never reads your prompts or conversations.
 • No ads, no AI Limits account to create, no analytics or telemetry.
 • Free and open source under the MIT license: https://get-ai-limits.com/source/
@@ -255,8 +255,11 @@ refresh may read the sign-in entry from an already-open gumloop.com tab.
 - **Account identifiers and personally identifiable information:** Yes,
   narrowly handled. A ChatGPT account identifier derived from the access
   credential, a Claude organization UUID/capabilities, and the OpenRouter
-  signed-in user ID and key creator ID (compared to confirm the same account)
-  are request-local and not persisted. A Claude organization name may be normalized and stored as the
+  signed-in user ID and key creator ID (compared to confirm the same account),
+  and the Gumloop organization ID (used only to build its credit paths) are
+  request-local and not persisted. The Gumloop user ID is held with its session
+  in memory-backed `chrome.storage.session` until the browser exits and is not
+  written to persistent storage. A Claude organization name may be normalized and stored as the
   visible plan label. Email-shaped account labels are discarded, and current
   adapters do not query Claude or Cursor email endpoints.
 - **Financial and payment information:** Yes, limited to provider-reported
@@ -318,7 +321,7 @@ The full policy is in [PRIVACY.md](../../PRIVACY.md).
   the homepage, privacy policy, and support URLs are reachable in a signed-out
   browser.
 
-## Twenty-three-provider test flow
+## Twenty-four-provider test flow
 
 1. Install the submitted build, or extract the ZIP and load its root as an
    unpacked extension. Pin AI Limits if desired, select its toolbar action, and
