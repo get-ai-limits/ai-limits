@@ -264,6 +264,16 @@ are used only to identify the corresponding provider beside its visible name.
 - Ownership: AI Limits contributors.
 - Conditions: available under this repository's MIT license.
 
+## `gumloop.svg`
+
+- Source: original AI Limits mark for the Gumloop provider: a plain "G"
+  letterform authored for this project, not a copy of Gumloop's logo.
+- Retrieved: not applicable.
+- Modified: not applicable.
+- SHA-256: `a03d5ca0045fad8fbae39dd51f3695926a3ed0ed1557f2973a103984ad3a3d9a`.
+- Ownership: AI Limits contributors.
+- Conditions: available under this repository's MIT license.
+
 ## `newapi.svg`, `litellm.svg`, `clawrouter.svg`, `sub2api.svg`, and `llmproxy.svg`
 
 - Source: original AI Limits monograms, authored for this repository because

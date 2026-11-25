@@ -22,7 +22,7 @@ panel, it reads the latest data from local extension storage.
 - At least one provider must remain connected. AI Limits removes the alarm when
   no providers are connected.
 - Chrome must still have that provider's optional permission.
-- For ChatGPT, Claude, Kimi, Cursor, Grok, Mistral, and Perplexity, the signed-in
+- For ChatGPT, Claude, Kimi, Cursor, Grok, Mistral, Perplexity, and Gumloop, the signed-in
   browser session must still be usable. API-key providers instead need a saved
   active key; configurable instances also need their exact instance permission.
 - Chrome must be running and able to run background extensions.
@@ -54,6 +54,14 @@ Connect or manual Refresh read grok.com from a page because extension-background
 requests are rejected; they prefer an already-open grok.com tab and may briefly
 open one inactive tab if none is open. Scheduled Grok refresh may inject into
 an already-open grok.com tab and never opens a new one.
+
+Gumloop works the same way as Kimi: AI Limits keeps the Gumloop sign-in it
+reads from a gumloop.com page in memory-backed session storage and renews it
+without a tab until the browser restarts. After a restart or extension update,
+open gumloop.com once or use a manual Refresh to start this again; until then
+scheduled Gumloop refresh defers and keeps the last good data. Signing out of
+Gumloop in a tab AI Limits does not read takes effect once Gumloop rejects the
+held session or the browser exits; disconnect Gumloop to drop it immediately.
 
 Kimi has an additional limitation described below.
 
@@ -194,7 +202,10 @@ an interactive Kimi **Connect** or **Refresh** may create an inactive
 Kimi tab for session recovery and wait up to 30 seconds for the page to finish
 loading. An interactive Cursor **Connect** or **Refresh**
 may briefly create one inactive spending tab when no `cursor.com` tab is already
-open, waits up to 10 seconds, and closes only the tab it created. ElevenLabs
+open, waits up to 10 seconds, and closes only the tab it created. An interactive
+Gumloop **Connect** or **Refresh** may create one inactive gumloop.com tab only
+when no gumloop.com tab is open and no held Gumloop session is available, waits
+up to 15 seconds, and closes only the tab it created. ElevenLabs
 opens its normal API-keys page only when you explicitly start setup or choose
 **Open API keys page**. Other API-key providers, including New API, do not open
 provider tabs for setup or refresh.

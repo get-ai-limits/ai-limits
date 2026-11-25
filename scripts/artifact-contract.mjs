@@ -32,6 +32,8 @@ export const EXPECTED_OPTIONAL_ORIGINS = [
   "https://api.factory.ai/*",
   "https://api.z.ai/*",
   "https://app.warp.dev/*",
+  "https://www.gumloop.com/*",
+  "https://api.gumloop.com/*",
   "https://admin.mistral.ai/*",
   "https://console.mistral.ai/*",
   "https://www.perplexity.ai/*",

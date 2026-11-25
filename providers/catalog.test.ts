@@ -25,6 +25,7 @@ describe("provider catalog", () => {
       "mistral",
       "perplexity",
     ];
+    const laterBrowserSessionKinds: BrowserSessionProviderKind[] = ["gumloop"];
     const apiKeyKinds: ApiKeyProviderKind[] = [
       "elevenlabs",
       "newapi",
@@ -43,7 +44,11 @@ describe("provider catalog", () => {
       "zai",
       "warp",
     ];
-    const allKinds: ProviderKind[] = [...browserSessionKinds, ...apiKeyKinds];
+    const allKinds: ProviderKind[] = [
+      ...browserSessionKinds,
+      ...apiKeyKinds,
+      ...laterBrowserSessionKinds,
+    ];
 
     expect(allKinds).toEqual(providerKinds);
   });
@@ -187,6 +192,11 @@ describe("provider catalog", () => {
         markPath: "/provider-marks/warp.svg",
         apiKeySetupUrl: "https://oz.warp.dev/settings",
       },
+      {
+        providerId: "gumloop",
+        markPath: "/provider-marks/gumloop.svg",
+        usagePageUrl: "https://www.gumloop.com/settings/profile/usage-limits",
+      },
     ]);
   });
 
@@ -275,6 +285,7 @@ describe("provider catalog", () => {
     expect(isApiKeyProviderKind("factory")).toBe(true);
     expect(isApiKeyProviderKind("zai")).toBe(true);
     expect(isApiKeyProviderKind("warp")).toBe(true);
+    expect(isApiKeyProviderKind("gumloop")).toBe(false);
     expect(isApiKeyProviderKind("chatgpt")).toBe(false);
     expect(isApiKeyProviderKind("unknown")).toBe(false);
     expect(isApiKeyProviderKind(undefined)).toBe(false);

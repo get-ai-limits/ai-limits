@@ -140,6 +140,9 @@ const KNOWN_METRIC_KEYS: Partial<
     included: "metrics.warp.included",
     "add-on": "metrics.warp.addOn",
   },
+  gumloop: {
+    "monthly-credits": "metrics.gumloop.monthlyCredits",
+  },
 };
 
 const KNOWN_GROUP_KEYS: Record<string, string> = {
@@ -230,6 +233,7 @@ const CAPABILITY_IDS: Record<ProviderKind, readonly string[]> = {
   factory: ["rateLimits", "extraUsage"],
   zai: ["rateLimits", "mcpTools"],
   warp: ["includedCredits", "addOnCredits"],
+  gumloop: ["monthlyCredits"],
 };
 
 const DURATION_METRIC = /^(\d+(?:\.\d+)?)-(day|hour)$/;
@@ -270,7 +274,8 @@ export function localizeManualRefreshDisclosure(
   if (
     providerKind !== "kimi" &&
     providerKind !== "cursor" &&
-    providerKind !== "grok"
+    providerKind !== "grok" &&
+    providerKind !== "gumloop"
   ) {
     return undefined;
   }
@@ -308,9 +313,9 @@ export function localizeFailure(category: FailureCategory): string {
 }
 
 export function localizeRecoveryGuidance(providerKind: ProviderKind): string {
-  return providerKind === "kimi"
-    ? l10n.t("errors.kimiRetrySession")
-    : localizeFailure("temporary_error");
+  if (providerKind === "kimi") return l10n.t("errors.kimiRetrySession");
+  if (providerKind === "gumloop") return l10n.t("errors.gumloopRetrySession");
+  return localizeFailure("temporary_error");
 }
 
 export function localizeOperation(operation: ProviderOperation): string {

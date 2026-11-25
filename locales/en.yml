@@ -653,6 +653,7 @@ errors:
   providerChanged: AI Limits could not read this provider's usage response.
   temporaryError: AI Limits could not refresh this provider. Try again later.
   kimiRetrySession: Kimi was still starting. Try Refresh once more, or open or reload Kimi.
+  gumloopRetrySession: Could not read your Gumloop sign-in. Open gumloop.com, make sure you are signed in, then press Refresh.
 
 metrics:
   scope:
@@ -814,6 +815,8 @@ metrics:
   warp:
     included: Included credits
     addOn: Add-on credits
+  gumloop:
+    monthlyCredits: Monthly credits
   grok:
     weeklyPool: Weekly usage pool
     monthlyPool: Monthly usage pool
@@ -1021,6 +1024,13 @@ providers:
     capabilities:
       includedCredits: Included credits
       addOnCredits: Add-on credits
+  gumloop:
+    name: Gumloop
+    connect: Connect Gumloop
+    connectionDisclosure: With permission, AI Limits may run bundled read-only code in a gumloop.com page to read Gumloop's sign-in tokens from that page's storage. It does not read Gumloop cookies. The tokens are held only in memory-backed session storage until the browser exits; the refresh token is sent only to Google's sign-in service that Gumloop uses (securetoken.googleapis.com) to renew access, and the access token only to api.gumloop.com. It refreshes about every 15 minutes and stores normalized usage locally.
+    manualRefreshDisclosure: Connect and manual Refresh prefer an already-open gumloop.com tab. If none is open, they may briefly open one inactive gumloop.com tab. Scheduled refresh may read an already-open gumloop.com tab and never opens one.
+    capabilities:
+      monthlyCredits: Monthly credits
 
 accessibility:
   refreshProvider: "Refresh {provider}"

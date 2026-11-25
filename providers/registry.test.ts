@@ -141,6 +141,7 @@ describe("provider registry", () => {
       "factory",
       "zai",
       "warp",
+      "gumloop",
     ]);
     expect(Object.keys(providerRegistry)).toEqual(providerKinds);
 
@@ -397,6 +398,18 @@ describe("provider registry", () => {
         rejected: undefined,
         permissions: { origins: ["https://app.warp.dev/*"] },
       },
+      {
+        kind: "gumloop",
+        cardinality: "single",
+        credentialKind: "none",
+        configKind: "fixed",
+        accepted: fixed,
+        rejected: undefined,
+        permissions: {
+          origins: ["https://www.gumloop.com/*", "https://api.gumloop.com/*"],
+          permissions: ["scripting"],
+        },
+      },
     ]);
 
     expect(providerRegistry.newapi.normalizeConfig({
@@ -592,6 +605,13 @@ describe("provider registry", () => {
         optionalOrigins: ["https://app.warp.dev/*"],
         optionalPermissions: [],
       },
+      gumloop: {
+        cardinality: "single",
+        credentialKind: "none",
+        configKind: "fixed",
+        optionalOrigins: ["https://www.gumloop.com/*", "https://api.gumloop.com/*"],
+        optionalPermissions: ["scripting"],
+      },
     });
   });
 
@@ -666,7 +686,8 @@ describe("provider registry", () => {
       } finally {
         for (const spy of pageSpies) spy.mockRestore();
       }
-      if (kind !== "cursor" && kind !== "grok") {
+      // Cursor, Grok, and Gumloop collect through their own package paths.
+      if (kind !== "cursor" && kind !== "grok" && kind !== "gumloop") {
         expect(adapterSpies[kind]).toHaveBeenCalledTimes(1);
       }
     }

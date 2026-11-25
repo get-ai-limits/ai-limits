@@ -100,6 +100,7 @@ export const PROVIDER_GROUPS = [
       ["Grok", "Weekly or monthly SuperGrok usage pool", "SuperGrok 每周或每月用量池"],
       ["Mistral", "Month-to-date spend and available credits", "本月支出和可用额度"],
       ["Perplexity", "Recurring, purchased, and promotional credits", "周期、购买和赠送的额度"],
+      ["Gumloop", "Monthly credits and reset date", "每月额度和重置日期"],
     ],
   },
   {
@@ -137,9 +138,9 @@ const COPY = {
     home: "/",
     other: { label: "简体中文", href: "/zh-CN/" },
     title: "AI Limits – Track ChatGPT, Claude, Cursor and other AI usage limits in Chrome",
-    description: "Free Chrome extension that shows usage, reset times, and pace for ChatGPT, Claude, Cursor, and 20 more AI services in one side panel. Private, local, and open source.",
+    description: "Free Chrome extension that shows usage, reset times, and pace for ChatGPT, Claude, Cursor, and 21 more AI services in one side panel. Private, local, and open source.",
     headline: "Know your AI limits before you hit them",
-    lede: "AI Limits is a free Chrome extension that shows how much of every AI plan you have left, when it resets, and whether you’re on pace, for ChatGPT, Claude, Cursor, and 20 more services, in one side panel.",
+    lede: "AI Limits is a free Chrome extension that shows how much of every AI plan you have left, when it resets, and whether you’re on pace, for ChatGPT, Claude, Cursor, and 21 more services, in one side panel.",
     install: "Add to Chrome – it’s free",
     installShort: "Add to Chrome",
     badges: ["Free", "Open source", "No account", "No tracking"],
@@ -166,7 +167,7 @@ const COPY = {
       "No account, no ads, no analytics, no telemetry. The code is open source under the MIT license.",
     ],
     privacyMore: "Read the privacy policy",
-    providersHeading: "Works with 23 AI services",
+    providersHeading: "Works with 24 AI services",
     providersMore: "See what AI Limits shows for each service",
     faqHeading: "Questions",
     faq: [
@@ -183,7 +184,7 @@ const COPY = {
     ctaText: "Free, private, and set up in a minute.",
     providersPage: {
       title: "Supported AI services",
-      description: "AI Limits tracks usage limits, credits, and balances for 23 AI services in Chrome, including ChatGPT, Claude, Cursor, Grok, OpenAI, OpenRouter, and DeepSeek.",
+      description: "AI Limits tracks usage limits, credits, and balances for 24 AI services in Chrome, including ChatGPT, Claude, Cursor, Grok, OpenAI, OpenRouter, and DeepSeek.",
       lede: "Connect only the services you use. Each one is opt-in and only gets the Chrome access you approve for it.",
       groups: {
         subscriptions: ["Subscriptions", "Sign in to the service in Chrome as usual. AI Limits uses that session; there is nothing to paste."],
@@ -213,9 +214,9 @@ const COPY = {
     home: "/zh-CN/",
     other: { label: "English", href: "/" },
     title: "AI Limits – 在 Chrome 中查看 ChatGPT、Claude、Cursor 等 AI 用量限额",
-    description: "免费的 Chrome 扩展，在一个侧边栏中查看 ChatGPT、Claude、Cursor 等 23 个 AI 服务的用量、重置时间和用量节奏。数据保存在本地，开源免费。",
+    description: "免费的 Chrome 扩展，在一个侧边栏中查看 ChatGPT、Claude、Cursor 等 24 个 AI 服务的用量、重置时间和用量节奏。数据保存在本地，开源免费。",
     headline: "用完之前，先知道还剩多少",
-    lede: "AI Limits 是一款免费的 Chrome 扩展。在一个侧边栏里查看 ChatGPT、Claude、Cursor 等 23 个 AI 服务还剩多少用量、何时重置，以及当前用量节奏是否过快。",
+    lede: "AI Limits 是一款免费的 Chrome 扩展。在一个侧边栏里查看 ChatGPT、Claude、Cursor 等 24 个 AI 服务还剩多少用量、何时重置，以及当前用量节奏是否过快。",
     install: "免费添加至 Chrome",
     installShort: "添加至 Chrome",
     badges: ["免费", "开源", "无需注册", "无追踪"],
@@ -242,7 +243,7 @@ const COPY = {
       "无需账号，没有广告、分析或遥测。代码以 MIT 许可证开源。",
     ],
     privacyMore: "阅读隐私政策（英文）",
-    providersHeading: "支持 23 个 AI 服务",
+    providersHeading: "支持 24 个 AI 服务",
     providersMore: "查看 AI Limits 为每个服务显示的内容",
     faqHeading: "常见问题",
     faq: [
@@ -259,7 +260,7 @@ const COPY = {
     ctaText: "免费、注重隐私，一分钟即可设置完成。",
     providersPage: {
       title: "支持的 AI 服务",
-      description: "AI Limits 在 Chrome 中查看 23 个 AI 服务的用量限额、额度和余额，包括 ChatGPT、Claude、Cursor、Grok、OpenAI、OpenRouter 和 DeepSeek。",
+      description: "AI Limits 在 Chrome 中查看 24 个 AI 服务的用量限额、额度和余额，包括 ChatGPT、Claude、Cursor、Grok、OpenAI、OpenRouter 和 DeepSeek。",
       lede: "只连接你在用的服务。每个服务都需要单独启用，并且只获得你为它批准的 Chrome 访问权限。",
       groups: {
         subscriptions: ["订阅服务", "像平常一样在 Chrome 中登录该服务即可。AI Limits 使用现有登录状态，无需粘贴任何内容。"],

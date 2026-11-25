@@ -13,7 +13,7 @@ Chrome Web Store releases can lag while review or publishing is pending; the
 Store badge shows the currently published version. GitHub Releases preserve
 the corresponding source and validated upload archive.
 
-AI Limits supports twenty-three providers: ChatGPT, Claude, Kimi, Cursor, Grok, Mistral, Perplexity, ElevenLabs, New API, LiteLLM, ClawRouter, sub2api, LLM Proxy, DeepSeek, Moonshot, DeepInfra, Fireworks, OpenAI, GroqCloud, OpenRouter, Droid, GLM, and Warp.
+AI Limits supports twenty-four providers: ChatGPT, Claude, Kimi, Cursor, Grok, Mistral, Perplexity, ElevenLabs, New API, LiteLLM, ClawRouter, sub2api, LLM Proxy, DeepSeek, Moonshot, DeepInfra, Fireworks, OpenAI, GroqCloud, OpenRouter, Droid, GLM, Warp, and Gumloop.
 It is a Chrome side-panel extension that shows their current
 subscription usage and local quota-history graphs in one compact view. It
 normalizes provider-specific reporting into one **Used** or **Left** display
@@ -47,6 +47,12 @@ its affiliates.
   Connect or manual Refresh may briefly open one inactive spending tab if none
   is open, to request
   Grok Bot, extra-credit, and per-model included-usage JSON.
+- Gumloop also uses the signed-in browser session. AI Limits reads the
+  Firebase sign-in tokens from an already-open `gumloop.com` page's IndexedDB
+  and reads the organization's remaining and monthly credits from
+  `api.gumloop.com` with them, like Gumloop's own Credit Usage page. Connect
+  or manual Refresh may briefly open one inactive `gumloop.com` tab when none
+  is open; scheduled refresh never opens one.
 - ElevenLabs, DeepSeek, Moonshot, DeepInfra, Fireworks, OpenAI, GroqCloud,
   OpenRouter, Droid, GLM, and Warp use user-created API keys against their fixed provider APIs. GLM
   reads the Z.ai GLM Coding Plan with that plan's own API key, and Warp reads
@@ -74,9 +80,9 @@ its affiliates.
   store raw provider responses or credentials in History.
 - Browser-session cookies and access credentials are used only for the current
   provider collection attempt and are not saved in persistent extension
-  storage, except Kimi's refresh and access tokens, which are held in
-  memory-backed `chrome.storage.session` until the browser exits (see Kimi
-  below). Successfully validated API keys are stored separately in local
+  storage, except Kimi's and Gumloop's refresh and access tokens, which are
+  held in memory-backed `chrome.storage.session` until the browser exits (see
+  Kimi below and the privacy policy for Gumloop). Successfully validated API keys are stored separately in local
   extension storage so manual and scheduled refresh can run without reopening
   the setup page.
 - Automatic refresh is enabled by default and runs about every 15 minutes only
@@ -142,7 +148,7 @@ instances share that browser-global grant only; their credentials, labels,
 usage, and History remain independent. The optional
 `scripting` permission is requested
 for Kimi page reads and interactive recovery, Cursor's page enrichment,
-and Grok page-origin session and usage reads. Fixed API-key providers receive only optional access to their own
+Grok page-origin session and usage reads, and Gumloop page sign-in reads. Fixed API-key providers receive only optional access to their own
 API origins. Public setup pages are opened normally and do not receive
 extension host access. The extension does not request the broad `tabs`
 permission.

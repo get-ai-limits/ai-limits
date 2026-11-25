@@ -90,6 +90,10 @@ assert(
   "Expected the ZIP manifest not to request auth.kimi.com.",
 );
 assert(
+  !JSON.stringify(manifest).includes("googleapis.com"),
+  "Expected the ZIP manifest not to request a googleapis.com host.",
+);
+assert(
   [16, 32, 48, 128].every((size) => {
     const iconPath = manifest.icons?.[size];
     return typeof iconPath === "string" && entries.includes(iconPath);

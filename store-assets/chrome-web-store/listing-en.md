@@ -41,7 +41,7 @@ Regeneration and validation instructions are in
 
 AI Limits gives a user one Chrome side panel for viewing current subscription
 usage as Used or Left, reset timing, pace, and local quota-history
-graphs across twenty-three supported services. Browser-session services use an account
+graphs across twenty-four supported services. Browser-session services use an account
 already signed in within the user's browser profile; API-key services use a key
 the user connects through guided setup.
 
@@ -65,14 +65,14 @@ WHY AI LIMITS
 • Automatic refresh about every 15 minutes in the background for most services, even with the panel closed.
 • English and Simplified Chinese. The panel follows Chrome's language or can be pinned in Settings.
 
-23 SUPPORTED SERVICES
-AI Limits supports 23 AI services: chat and coding subscriptions, API platforms with credits or balances, and self-hosted API gateways. Connect only the ones you use; every connection is opt-in and only gets the Chrome access you approve for it. Subscription services use the account you're already signed in to in Chrome, while API services use a key you provide through a guided setup.
+24 SUPPORTED SERVICES
+AI Limits supports 24 AI services: chat and coding subscriptions, API platforms with credits or balances, and self-hosted API gateways. Connect only the ones you use; every connection is opt-in and only gets the Chrome access you approve for it. Subscription services use the account you're already signed in to in Chrome, while API services use a key you provide through a guided setup.
 
 See every supported service and what AI Limits shows for it:
 https://get-ai-limits.com/providers/
 
 PRIVATE BY DESIGN
-• Stored locally: your usage history stays on your device and is never sent to the developer or anyone else. Requests go only to the services you connect.
+• Stored locally: your usage history stays on your device and is never sent to the developer or anyone else. Requests go only to the services you connect and the sign-in services they use.
 • AI Limits uses your sign-in session or API key only to fetch plan, usage, and balance data, and keeps only what it needs to show your limits. It never reads your prompts or conversations.
 • No ads, no AI Limits account to create, no analytics or telemetry.
 • Free and open source under the MIT license: https://get-ai-limits.com/source/
@@ -89,10 +89,11 @@ AI Limits is an independent project by TiantianFlow. It is not affiliated with, 
   Overview visibility, provider access state,
   normalized quota/counter/balance snapshots, up to 30 days of typed
   per-instance History, and sanitized refresh status in
-  `chrome.storage.local`. It also holds temporary Kimi, Cursor, and Grok tab-cleanup
-  lease metadata in `chrome.storage.session`, plus the Kimi refresh tokens (current
-  and the one read from the page) and latest Kimi access token, which the
-  browser clears when it exits. Otherwise,
+  `chrome.storage.local`. It also holds temporary Kimi, Cursor, Grok, and Gumloop
+  tab-cleanup lease metadata in `chrome.storage.session`, plus the Kimi refresh
+  tokens (current and the one read from the page) and latest Kimi access token,
+  and the Gumloop refresh token, latest ID token, user ID, and Firebase web API
+  key, which the browser clears when it exits. Otherwise,
   browser-session cookies and access credentials are not stored. After validation, each user-created provider API
   key is persisted in a separate `chrome.storage.local` credential record whose
   Chrome storage access level is restricted to trusted extension contexts. It
@@ -133,6 +134,16 @@ These origins are requested one provider at a time after the user clicks
   rate-limit, and subscription responses from an already-open grok.com page.
   During Connect or manual Refresh, if none is open, it may briefly open one
   inactive grok.com tab. This is consumer Grok on grok.com, not Cursor's Grok Bot.
+- `https://www.gumloop.com/*` and `https://api.gumloop.com/*`: reads the
+  Firebase sign-in entry from an already-open gumloop.com page (see `scripting`
+  below), then reads the organization's remaining credits and monthly
+  allotment from `api.gumloop.com` with that ID token, without cookies, the same
+  requests Gumloop's own Credit Usage page sends. If the background
+  request fails or Gumloop refuses it, the same reads run from inside the open gumloop.com page.
+  Renewing the one-hour ID token calls Google's Firebase token service at
+  `securetoken.googleapis.com`, which Gumloop's sign-in uses, with only the
+  refresh token and Gumloop's public web API key and no cookies; it does not
+  request an additional host permission.
 - `https://admin.mistral.ai/*` and `https://console.mistral.ai/*`: read
   month-to-date usage and credits from the signed-in Mistral session.
 - `https://www.perplexity.ai/*`: reads credit pools from the signed-in
@@ -161,7 +172,7 @@ These origins are requested one provider at a time after the user clicks
 
 ### Optional API permissions
 
-- `scripting`: requested with Kimi, Cursor, or Grok access. For Kimi, it reads only
+- `scripting`: requested with Kimi, Cursor, Grok, or Gumloop access. For Kimi, it reads only
   the exact `access_token` and `refresh_token` browser-storage entries from an already-open or
   recovery-created matching Kimi page. If a credential is missing or rejected,
   interactive recovery may create one inactive Kimi homepage tab. Recovery
@@ -187,13 +198,25 @@ These origins are requested one provider at a time after the user clicks
   requests and returns only those responses. It does not inspect rendered
   content, browser storage, or cookie values directly. Chrome attaches the
   signed-in Grok cookies to those same-origin requests. Scheduled refresh may
-  inject into an already-open grok.com tab and never opens a new one.
+  inject into an already-open grok.com tab and never opens a new one. For
+  Gumloop, refresh runs a bundled exact-origin function in an already-open
+  `gumloop.com` page that reads only the Firebase sign-in entry (ID token and
+  expiry, refresh token, web API key, user ID) from the page's
+  `firebaseLocalStorageDb` IndexedDB database, and, only if the background
+  request fails or Gumloop refuses it, a second function that sends the same three read-only
+  GET requests from the page and returns only their status codes and JSON. If
+  no gumloop.com page is open and no session is held, only Connect or manual
+  Refresh may create one inactive
+  `https://www.gumloop.com/settings/profile/general` tab, wait up to 15
+  seconds, and close only the tab it created. Scheduled refresh may read an
+  already-open gumloop.com tab and never opens a new one.
 
 The manifest does not request the broad `tabs` permission. Scheduled refresh
 does not create or activate provider tabs. Grok scheduled refresh may inject
 into an already-open grok.com tab; Kimi scheduled refresh may read
 `access_token`/`refresh_token` from an already-open Kimi tab; Cursor scheduled
-refresh may inject into an already-open cursor.com tab.
+refresh may inject into an already-open cursor.com tab; Gumloop scheduled
+refresh may read the sign-in entry from an already-open gumloop.com tab.
 
 ## Data-disclosure answers
 
@@ -209,6 +232,14 @@ refresh may inject into an already-open cursor.com tab.
   Kimi rejects the refresh token, a Kimi page shows a sign-out, or the user removes Kimi
   access or deletes all local data.
   The refresh token is sent only to Kimi's sign-in service at `auth.kimi.com`.
+  Gumloop is handled the same way: its refresh token, latest ID token, user ID,
+  and Firebase web API key are held in memory-backed `chrome.storage.session`
+  until the browser exits, the token service rejects the refresh token, a
+  gumloop.com page shows a sign-out, or the user removes Gumloop access or
+  deletes all local data. The Gumloop refresh token is sent only to Google's
+  Firebase token service at `securetoken.googleapis.com`, and the ID token only
+  to `api.gumloop.com`. A Gumloop organization ID is request-local and not
+  persisted.
   API keys are stored in the separate
   trusted-context credential record, sent only to the selected provider API,
   and never sent to the developer.
@@ -217,14 +248,18 @@ refresh may inject into an already-open cursor.com tab.
   `access_token` and `refresh_token` browser-storage entries and Cursor's page-context
   dashboard JSON responses (Grok Bot, credit-grant, and aggregated included
   usage), plus Grok page-origin session, usage-pool, subscription, and
-  rate-limit responses, plus the promotional credit pools in OpenRouter's
+  rate-limit responses, plus Gumloop's Firebase sign-in entry and its project,
+  credits, and subscription JSON, plus the promotional credit pools in OpenRouter's
   signed-in Credits page server-component payload. It does not read rendered page text, prompts,
   conversations, or generated responses.
 - **Account identifiers and personally identifiable information:** Yes,
   narrowly handled. A ChatGPT account identifier derived from the access
   credential, a Claude organization UUID/capabilities, and the OpenRouter
-  signed-in user ID and key creator ID (compared to confirm the same account)
-  are request-local and not persisted. A Claude organization name may be normalized and stored as the
+  signed-in user ID and key creator ID (compared to confirm the same account),
+  and the Gumloop organization ID (used only to build its credit paths) are
+  request-local and not persisted. The Gumloop user ID is held with its session
+  in memory-backed `chrome.storage.session` until the browser exits and is not
+  written to persistent storage. A Claude organization name may be normalized and stored as the
   visible plan label. Email-shaped account labels are discarded, and current
   adapters do not query Claude or Cursor email endpoints.
 - **Financial and payment information:** Yes, limited to provider-reported
@@ -237,7 +272,9 @@ refresh may inject into an already-open cursor.com tab.
   collection, AI Limits may check for an already-open tab matching the exact
   Kimi origin. During Cursor collection, it may check for one already-open tab
   matching the exact Cursor origin. During Grok collection, it
-  may check for one already-open tab matching the exact Grok origin. This
+  may check for one already-open tab matching the exact Grok origin. During
+  Gumloop collection, it may check for already-open tabs matching the exact
+  Gumloop origin. This
   reveals only whether that fixed provider-origin tab is currently open, is
   used locally for the requested provider operation, and is never retained,
   transmitted, or assembled into a list of visited pages. AI Limits does not
@@ -284,11 +321,11 @@ The full policy is in [PRIVACY.md](../../PRIVACY.md).
   the homepage, privacy policy, and support URLs are reachable in a signed-out
   browser.
 
-## Twenty-three-provider test flow
+## Twenty-four-provider test flow
 
 1. Install the submitted build, or extract the ZIP and load its root as an
    unpacked extension. Pin AI Limits if desired, select its toolbar action, and
-   confirm First Run opens with twenty-three opt-in provider rows and no prefilled usage.
+   confirm First Run opens with twenty-four opt-in provider rows and no prefilled usage.
 2. **ChatGPT:** sign in at `chatgpt.com`, click **Connect** on ChatGPT, approve
    only the ChatGPT origin, and confirm a plan plus available quota windows or
    credits appears. Use the card's **Refresh** action once.
@@ -404,7 +441,13 @@ The full policy is in [PRIVACY.md](../../PRIVACY.md).
     `https://app.warp.dev/*`, and confirm included credits with the reset time,
     plus the add-on credit balance when the account holds add-on credits. No
     Warp tab should open.
-25. Use the header refresh and confirm connected providers retain their previous
+25. **Gumloop:** sign in at `www.gumloop.com`, click **Connect** on Gumloop,
+    approve `https://www.gumloop.com/*`, `https://api.gumloop.com/*`, and
+    `scripting`, and confirm monthly credits used against the allotment with
+    the billing-period reset. With no gumloop.com tab open, an inactive
+    Gumloop tab may appear briefly and close. Close every gumloop.com tab and
+    confirm a later scheduled refresh still updates without opening a tab.
+26. Use the header refresh and confirm connected providers retain their previous
    visible data while refreshing. Open a quota window's **History** action and
    confirm the dedicated screen appears, then confirm a successful refresh adds
    quota history while counter/spend samples remain ungraphed. For a
