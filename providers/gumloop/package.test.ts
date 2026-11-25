@@ -222,6 +222,20 @@ describe("gumloop package", () => {
     );
   });
 
+  it("reports a temporary error, not signed out, when renewal after a 401 cannot finish", async () => {
+    const credentialsFor = vi
+      .fn()
+      .mockResolvedValueOnce(held("id-held"))
+      .mockResolvedValueOnce({ kind: "unavailable" });
+    const deps = dependencies({
+      holder: holder({ credentialsFor }),
+      fetchReplies: vi.fn(async () => ({ project: { status: 401 } })),
+    });
+    await expect(
+      createGumloopPackage(deps).collect(instance, services("forbidden")),
+    ).resolves.toEqual({ ok: false, health: { kind: "temporary_error" } });
+  });
+
   it("falls back to reading from the open page when Gumloop refuses the background request", async () => {
     const deps = dependencies({
       openTabIds: vi.fn(async () => [4]),

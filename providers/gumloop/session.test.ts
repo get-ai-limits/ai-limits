@@ -243,6 +243,25 @@ describe("createGumloopSessionHolder", () => {
     expect(items[GUMLOOP_SESSION_KEY]).toBeUndefined();
   });
 
+  it("does not let a write cancelled by forget delete a newer session", async () => {
+    const { storage, items } = memoryStorage();
+    const holder = createGumloopSessionHolder({
+      storage,
+      fetch: vi.fn(),
+      now: () => NOW,
+    });
+    const stale = holder.beginPageRead();
+    const newer = { ...held, refreshToken: "refresh-new" };
+    // forget() and a newer page read land while the stale write is in flight.
+    vi.mocked(storage.set).mockImplementationOnce(async (values) => {
+      Object.assign(items, values);
+      await holder.forget();
+      await holder.rememberPageSession(newer, holder.beginPageRead());
+    });
+    await holder.rememberPageSession(held, stale);
+    expect(items[GUMLOOP_SESSION_KEY]).toEqual(newer);
+  });
+
   it("ignores a page session without the parts needed to renew", async () => {
     const { storage, items } = memoryStorage();
     const holder = createGumloopSessionHolder({

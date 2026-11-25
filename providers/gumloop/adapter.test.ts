@@ -143,6 +143,28 @@ describe("gumloopOutcomeFromReplies", () => {
     ).toEqual({ cadence: "calendar", resetsAt: PERIOD_END * 1_000 });
   });
 
+  it("omits the billing start when credits reset before the billing period ends", () => {
+    const monthlyReset = Date.UTC(2026, 11, 1) / 1_000;
+    const outcome = gumloopOutcomeFromReplies(
+      replies({
+        subscription: {
+          status: 200,
+          body: {
+            allotment: 100,
+            current_period_start: PERIOD_START,
+            current_period_end: Date.UTC(2027, 10, 12) / 1_000,
+            next_reset: { allotment: 100, at: monthlyReset },
+          },
+        },
+      }),
+      NOW,
+    );
+    expect(outcome.kind === "snapshot" && outcome.snapshot.metrics[0]?.cycle).toEqual({
+      cadence: "calendar",
+      resetsAt: monthlyReset * 1_000,
+    });
+  });
+
   it("maps HTTP failures to renewal, page fallback, retry, or a changed provider", () => {
     expect(
       gumloopOutcomeFromReplies({ project: { status: 401 } }, NOW),

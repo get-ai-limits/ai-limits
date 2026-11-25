@@ -106,12 +106,14 @@ export async function fetchGumloopRepliesInPage(
   timeoutMs: number,
 ): Promise<unknown> {
   if (globalThis.location.origin !== expectedOrigin) return undefined;
+  // One deadline for all three reads, inside the caller's own bound.
+  const deadline = AbortSignal.timeout(timeoutMs);
   const get = async (path: string) => {
     try {
       const response = await fetch(`${apiOrigin}${path}`, {
         method: "GET",
         credentials: "omit",
-        signal: AbortSignal.timeout(timeoutMs),
+        signal: deadline,
         headers: {
           Accept: "application/json",
           Authorization: `Bearer ${accessToken}`,
@@ -161,7 +163,38 @@ export async function fetchGumloopRepliesInPage(
     get(`${base}/credits`),
     get(`${base}/subscription`),
   ]);
-  return { project: projectReply, remaining, subscription };
+  // Return only the fields the usage reading needs, not billing details.
+  const pick = (reply: typeof remaining, keys: string[]) => {
+    const body = reply.body;
+    if (typeof body !== "object" || body === null || Array.isArray(body)) {
+      return reply;
+    }
+    const record = body as Record<string, unknown>;
+    const kept: Record<string, unknown> = {};
+    for (const key of keys) if (key in record) kept[key] = record[key];
+    return { ...reply, body: kept };
+  };
+  const subscriptionReply = pick(subscription, [
+    "allotment",
+    "current_period_start",
+    "current_period_end",
+    "next_reset",
+    "tier",
+  ]);
+  const nextReset = (subscriptionReply.body as { next_reset?: unknown } | undefined)
+    ?.next_reset;
+  if (typeof nextReset === "object" && nextReset !== null) {
+    const { allotment, at } = nextReset as { allotment?: unknown; at?: unknown };
+    (subscriptionReply.body as Record<string, unknown>).next_reset = {
+      allotment,
+      at,
+    };
+  }
+  return {
+    project: projectReply,
+    remaining: pick(remaining, ["remaining"]),
+    subscription: subscriptionReply,
+  };
 }
 
 function nonEmpty(value: unknown, max = 8_192): string | undefined {

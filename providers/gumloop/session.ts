@@ -190,7 +190,14 @@ export function createGumloopSessionHolder({
     if (startedIn !== generation) return false;
     await storage.set({ [GUMLOOP_SESSION_KEY]: session });
     if (startedIn !== generation) {
-      await storage.remove(GUMLOOP_SESSION_KEY).catch(() => undefined);
+      // Undo only this write; a newer session may already have replaced it.
+      const current = await readGumloopStoredSession(storage);
+      if (
+        current?.refreshToken === session.refreshToken &&
+        current.accessToken === session.accessToken
+      ) {
+        await storage.remove(GUMLOOP_SESSION_KEY).catch(() => undefined);
+      }
       return false;
     }
     return true;

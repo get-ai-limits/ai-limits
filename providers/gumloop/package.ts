@@ -307,6 +307,9 @@ export function createGumloopPackage(
           outcome = await inBackground(credentials, services);
         } else if (renewed.kind === "rejected") {
           return { ok: false, health: { kind: "signed_out" } };
+        } else {
+          // The token service could not answer now; that is not a sign-out.
+          return { ok: false, health: { kind: "temporary_error" } };
         }
       }
       // Gumloop may refuse requests that do not come from its own site. An

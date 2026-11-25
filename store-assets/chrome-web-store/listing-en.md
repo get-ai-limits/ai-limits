@@ -138,8 +138,8 @@ These origins are requested one provider at a time after the user clicks
   Firebase sign-in entry from an already-open gumloop.com page (see `scripting`
   below), then reads the organization's remaining credits and monthly
   allotment from `api.gumloop.com` with that ID token, without cookies, the same
-  requests Gumloop's own Credit Usage page sends. If Gumloop refuses the
-  background request, the same reads run from inside the open gumloop.com page.
+  requests Gumloop's own Credit Usage page sends. If the background
+  request fails or Gumloop refuses it, the same reads run from inside the open gumloop.com page.
   Renewing the one-hour ID token calls Google's Firebase token service at
   `securetoken.googleapis.com`, which Gumloop's sign-in uses, with only the
   refresh token and Gumloop's public web API key and no cookies; it does not
@@ -202,8 +202,8 @@ These origins are requested one provider at a time after the user clicks
   Gumloop, refresh runs a bundled exact-origin function in an already-open
   `gumloop.com` page that reads only the Firebase sign-in entry (ID token and
   expiry, refresh token, web API key, user ID) from the page's
-  `firebaseLocalStorageDb` IndexedDB database, and, only if Gumloop refuses the
-  background request, a second function that sends the same three read-only
+  `firebaseLocalStorageDb` IndexedDB database, and, only if the background
+  request fails or Gumloop refuses it, a second function that sends the same three read-only
   GET requests from the page and returns only their status codes and JSON. If
   no gumloop.com page is open and no session is held, only Connect or manual
   Refresh may create one inactive

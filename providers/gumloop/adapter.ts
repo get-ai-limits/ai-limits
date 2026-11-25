@@ -149,11 +149,16 @@ function cycleFor(
   subscription: GumloopSubscription,
   now: number,
 ): MetricCycle | undefined {
-  const endSeconds =
-    subscription.next_reset?.at ?? subscription.current_period_end ?? undefined;
+  const periodEnd = subscription.current_period_end ?? undefined;
+  const endSeconds = subscription.next_reset?.at ?? periodEnd;
   const resetsAt = endSeconds === undefined ? undefined : endSeconds * 1_000;
   if (resetsAt === undefined || resetsAt <= now) return undefined;
-  const startSeconds = subscription.current_period_start ?? undefined;
+  // The billing period start only bounds the credit window when the credit
+  // reset is the billing period end (an annual plan may reset monthly).
+  const startSeconds =
+    endSeconds === periodEnd
+      ? (subscription.current_period_start ?? undefined)
+      : undefined;
   const startedAt = startSeconds === undefined ? undefined : startSeconds * 1_000;
   if (startedAt === undefined || startedAt > now || startedAt >= resetsAt) {
     return { cadence: "calendar", resetsAt };
