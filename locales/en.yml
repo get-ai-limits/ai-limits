@@ -101,6 +101,9 @@ connections:
   requestingPermission: Requesting permission…
   fetchingUsage: Fetching usage…
   waitingForKimi: Waiting for Kimi…
+  addAccount: Add account
+  addAccountFor: "Add another {provider} account"
+  accountsConnected: "{count} connected"
 
 overview:
   screen: Overview
@@ -601,6 +604,9 @@ apiKey:
   validating: Validating…
   submitConnect: Validate & connect
   submitReplace: Validate & replace
+  nameField: Account name
+  nameHelp: "Shown on the card so you can tell your {provider} accounts apart. You can rename it later in Settings."
+  defaultAccountName: "Account {number}"
 
 newapi:
   invalidSite: This site did not return compatible New API status and usage data. Check the URL and try again.

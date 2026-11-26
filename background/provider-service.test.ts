@@ -1733,6 +1733,61 @@ describe("generic provider instance service", () => {
     });
   });
 
+  test("a second fixed-site API-key account becomes its own instance beside the first", async () => {
+    await seed(
+      {
+        id: "openai:default",
+        providerKind: "openai",
+        config: { kind: "fixed" },
+        access: "granted",
+        createdAt: NOW,
+        history: [],
+      },
+      "first-secret",
+    );
+    const collect = vi.fn(async () => success("openai"));
+    const service = createProviderService({
+      packages: registryWith({ openai: { ...providerRegistry.openai, collect } }),
+      clock: () => NOW,
+      randomUUID: () => "550e8400-e29b-41d4-a716-446655440000",
+    });
+
+    await expect(
+      service.connectApiKeyProvider(
+        await authorizedApiRequest(service, {
+          providerKind: "openai",
+          userLabel: "Work org",
+          config: { kind: "fixed" },
+          apiKey: "second-secret",
+        }),
+      ),
+    ).resolves.toMatchObject({ result: "connected" });
+
+    const instances = (await loadInstanceAppState()).instances;
+    expect(instances.map(({ id, userLabel }) => ({ id, userLabel }))).toEqual([
+      { id: "openai:default", userLabel: undefined },
+      {
+        id: "openai:550e8400-e29b-41d4-a716-446655440000",
+        userLabel: "Work org",
+      },
+    ]);
+    await expect(readCredentialWithRevision("openai:default")).resolves.toMatchObject({
+      value: "first-secret",
+    });
+    await expect(
+      readCredentialWithRevision("openai:550e8400-e29b-41d4-a716-446655440000"),
+    ).resolves.toMatchObject({ value: "second-secret" });
+
+    const remove = vi
+      .spyOn(browser.permissions, "remove")
+      .mockResolvedValue(true as never);
+    await service.disconnectInstance("openai:default");
+    expect(remove).not.toHaveBeenCalled();
+    expect((await loadInstanceAppState()).instances.map(({ id }) => id)).toEqual([
+      "openai:550e8400-e29b-41d4-a716-446655440000",
+    ]);
+  });
+
   test("scheduled Kimi collection is noninteractive", async () => {
     await seed({
       id: "kimi:default",

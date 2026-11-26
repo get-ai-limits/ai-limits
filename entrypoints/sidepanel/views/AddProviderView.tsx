@@ -10,6 +10,7 @@ export interface AddProviderViewProps {
     providerKind: ProviderKind;
     credentialKind: "none" | "api-key";
     isReconnect?: boolean;
+    connectedCount?: number;
     operation?: ProviderOperation;
   }>;
   origin: "overview" | "settings";
@@ -42,12 +43,13 @@ export function AddProviderView({
         {providers.length ? (
           <div className="provider-list">
             {providers.map(
-              ({ providerKind, credentialKind, isReconnect, operation }) => (
+              ({ providerKind, credentialKind, isReconnect, connectedCount, operation }) => (
                 <ProviderConnectRow
                   key={providerKind}
                   providerKind={providerKind}
                   credentialKind={credentialKind}
                   isReconnect={isReconnect}
+                  connectedCount={connectedCount}
                   operation={operation}
                   onConnect={onConnectProvider}
                 />

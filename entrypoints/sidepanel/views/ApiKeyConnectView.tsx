@@ -26,7 +26,16 @@ export interface ApiKeyConnectViewProps {
   backLabel: string;
   onBack: () => void;
   onOpenSetup: () => void;
-  onSubmit: (apiKey: string) => Promise<ApiKeyConnectAttemptResult>;
+  /**
+   * Set when this provider already has an account connected: the form then
+   * asks for a name, prefilled with this suggestion, so the new card can be
+   * told apart from the existing one.
+   */
+  suggestedUserLabel?: string;
+  onSubmit: (
+    apiKey: string,
+    userLabel?: string,
+  ) => Promise<ApiKeyConnectAttemptResult>;
 }
 
 function feedbackFor(
@@ -75,9 +84,12 @@ export function ApiKeyConnectView({
   backLabel,
   onBack,
   onOpenSetup,
+  suggestedUserLabel,
   onSubmit,
 }: ApiKeyConnectViewProps) {
   const [apiKey, setApiKey] = useState("");
+  const showNameField = mode === "connect" && suggestedUserLabel !== undefined;
+  const [userLabel, setUserLabel] = useState(suggestedUserLabel ?? "");
   const [submitting, setSubmitting] = useState(false);
   const [feedback, setFeedback] = useState("");
   const replace = mode === "replace";
@@ -185,7 +197,10 @@ export function ApiKeyConnectView({
                   if (invalidLength || submitting) return;
                   setSubmitting(true);
                   setFeedback("");
-                  void onSubmit(apiKey)
+                  const trimmedLabel = userLabel.trim();
+                  void (showNameField && trimmedLabel
+                    ? onSubmit(apiKey, trimmedLabel)
+                    : onSubmit(apiKey))
                     .then((result) =>
                       setFeedback(feedbackFor(result, providerKind, guideKind)),
                     )
@@ -204,6 +219,26 @@ export function ApiKeyConnectView({
                     });
                 }}
               >
+                {showNameField ? (
+                  <>
+                    <label htmlFor={`${inputId}-user-label`}>
+                      {l10n.t("apiKey.nameField")}
+                    </label>
+                    <input
+                      id={`${inputId}-user-label`}
+                      type="text"
+                      autoComplete="off"
+                      maxLength={128}
+                      value={userLabel}
+                      disabled={submitting}
+                      aria-describedby={`${inputId}-user-label-help`}
+                      onChange={(event) => setUserLabel(event.currentTarget.value)}
+                    />
+                    <small id={`${inputId}-user-label-help`}>
+                      {l10n.t("apiKey.nameHelp", { provider })}
+                    </small>
+                  </>
+                ) : null}
                 <label htmlFor={inputId}>
                   {isElevenLabs
                     ? l10n.t("apiKey.fieldLabel")

@@ -437,6 +437,29 @@ export function providerView(
   };
 }
 
+/**
+ * When a provider that allows several accounts already has one connected, the
+ * connect form asks for a name so the new card is distinguishable. Returns
+ * the prefilled suggestion, or undefined when no name field is needed.
+ */
+function suggestedAccountLabel(
+  state: AppViewState,
+  view: { providerKind: ApiKeyProviderKind; mode: "connect" | "replace" },
+): string | undefined {
+  if (
+    view.mode !== "connect" ||
+    providerAvailability(state, view.providerKind).cardinality !== "multiple"
+  ) {
+    return undefined;
+  }
+  const existing = state.instances.filter(
+    (instance) => instance.providerKind === view.providerKind,
+  ).length;
+  return existing > 0
+    ? l10n.t("apiKey.defaultAccountName", { number: existing + 1 })
+    : undefined;
+}
+
 export function Cockpit({
   state,
   now,
@@ -599,10 +622,22 @@ export function Cockpit({
   const availableProviders = availableProviderKinds.map((providerKind) => ({
     providerKind,
     credentialKind: providerAvailability(state, providerKind).credentialKind,
-    isReconnect: state.instances.some(
-      (instance) =>
-        instance.providerKind === providerKind && instance.access === "required",
-    ),
+    isReconnect:
+      providerAvailability(state, providerKind).cardinality === "single" &&
+      state.instances.some(
+        (instance) =>
+          instance.providerKind === providerKind && instance.access === "required",
+      ),
+    // Self-hosted providers already present each site as its own instance,
+    // so only fixed-site providers say "Add account".
+    connectedCount:
+      providerAvailability(state, providerKind).configKind === "fixed"
+        ? state.instances.filter(
+            (instance) =>
+              instance.providerKind === providerKind &&
+              instance.access === "granted",
+          ).length
+        : 0,
     operation:
       providerAvailability(state, providerKind).cardinality === "single"
         ? providerOperations[`${providerKind}:default`]
@@ -826,13 +861,15 @@ export function Cockpit({
             }
             mode={view.mode}
             backLabel={apiKeyBackLabel}
+            suggestedUserLabel={suggestedAccountLabel(state, view)}
             onBack={popScreen}
             onOpenSetup={() => onOpenApiKeySetup(view.providerKind)}
-            onSubmit={async (apiKey) => {
+            onSubmit={async (apiKey, userLabel) => {
               const result = await onSubmitApiKey({
                 providerKind: view.providerKind,
                 apiKey,
                 ...(view.instanceId ? { instanceId: view.instanceId } : {}),
+                ...(userLabel ? { userLabel } : {}),
               });
               if (result === "connected") goHome();
               return result;
