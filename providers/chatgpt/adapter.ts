@@ -160,8 +160,15 @@ async function collectChatGpt({
       (typeof sessionUserId === "string" && sessionUserId.trim()
         ? sessionUserId.trim()
         : undefined);
+    // Usage is per workspace, so a login with several workspaces gets one key
+    // per workspace it reads.
     const accountKey =
-      loginId === undefined ? undefined : await accountKeyFor("chatgpt", loginId);
+      loginId === undefined
+        ? undefined
+        : await accountKeyFor(
+            "chatgpt",
+            accountId === undefined ? loginId : `${loginId}:${accountId}`,
+          );
     const headers = {
       Authorization: `Bearer ${session.data.accessToken}`,
       ...(accountId ? { "ChatGPT-Account-Id": accountId } : {}),
