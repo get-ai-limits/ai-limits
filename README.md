@@ -195,7 +195,7 @@ pnpm verify:zip
 ```
 
 The command rebuilds the extension, creates
-`.output/ai-limits-0.6.1-chrome.zip`, opens the archive, and verifies its
+`.output/ai-limits-0.7.0-chrome.zip`, opens the archive, and verifies its
 manifest, entrypoints, permissions, and forbidden-file rules.
 
 ## Build for Edge and Firefox

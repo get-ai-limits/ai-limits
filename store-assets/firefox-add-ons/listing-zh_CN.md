@@ -1,6 +1,6 @@
 # Firefox 附加组件上架说明
 
-本文档说明 AI Limits 0.6.1 版本在 Firefox 附加组件（AMO）中的简体中文商店文案。上传设置、基本信息、截图说明、隐私政策和审核备注以[英文版 Firefox 上架说明](listing-en.md)为准；完整的权限与数据处理说明见 [Chrome 应用商店上架说明](../chrome-web-store/listing-zh_CN.md)，其中的 “Chrome 侧边栏” 在 Firefox 中即为 Firefox 侧边栏。本文档并不表示任何服务提供商已批准本扩展。
+本文档说明 AI Limits 0.7.0 版本在 Firefox 附加组件（AMO）中的简体中文商店文案。上传设置、基本信息、截图说明、隐私政策和审核备注以[英文版 Firefox 上架说明](listing-en.md)为准；完整的权限与数据处理说明见 [Chrome 应用商店上架说明](../chrome-web-store/listing-zh_CN.md)，其中的 “Chrome 侧边栏” 在 Firefox 中即为 Firefox 侧边栏。本文档并不表示任何服务提供商已批准本扩展。
 
 在 AMO 开发者中心编辑商店信息时，切换到 “中文 (简体)” 语言并填写以下内容。
 

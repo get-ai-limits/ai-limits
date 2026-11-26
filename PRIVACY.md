@@ -1,10 +1,10 @@
 # Privacy Policy
 
-Last updated: November 25, 2026
+Last updated: November 26, 2026
 
 AI Limits is a locally running browser extension for Chrome, Edge, and Firefox
 by TiantianFlow. This policy
-describes version 0.6.1.
+describes version 0.7.0.
 
 AI Limits is an independent project. It is not affiliated with, endorsed by,
 or authorized by any supported provider, its parent company, or its affiliates.

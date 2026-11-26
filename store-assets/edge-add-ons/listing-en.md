@@ -1,6 +1,6 @@
 # Microsoft Edge Add-ons listing
 
-This document describes AI Limits version 0.6.1 for Microsoft Edge Add-ons
+This document describes AI Limits version 0.7.0 for Microsoft Edge Add-ons
 (Partner Center). It is the paste-ready listing copy and reviewer material for
 the Edge package built with `pnpm zip:edge`. It is not a claim that any provider
 has approved the extension.
@@ -13,7 +13,7 @@ flow; read "Chrome" there as "Edge". The writing rules in
 
 ## Package
 
-- Upload `.output/ai-limits-0.6.1-edge.zip`, built and checked with
+- Upload `.output/ai-limits-0.7.0-edge.zip`, built and checked with
   `pnpm verify:zip && pnpm verify:targets`.
 - Extension name and short description come from the package manifest
   (`manifest.name` and `manifest.descriptionEdge` in `locales/*.yml`). They can
