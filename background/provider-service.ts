@@ -254,6 +254,35 @@ export function createProviderService(
     }
   }
 
+  /**
+   * A connection that never read anything and turns out to be a login another
+   * connection already tracks is removed, so retrying Add account never piles
+   * up copies of one account.
+   */
+  async function removeEmptyDuplicates(
+    report: RefreshReport,
+  ): Promise<RefreshReport> {
+    for (const { instanceId, outcome } of report.results) {
+      if (outcome.kind !== "failure" || outcome.category !== "duplicate_account") {
+        continue;
+      }
+      try {
+        const instance = await connectionRepository.get(instanceId);
+        if (
+          instance &&
+          instance.accountKey === undefined &&
+          instance.snapshot === undefined &&
+          instance.history.length === 0
+        ) {
+          await disconnectInstance(instanceId);
+        }
+      } catch {
+        // Left for the next refresh; it never shows another account's data.
+      }
+    }
+    return report;
+  }
+
   /** Opens the sign-in page and watches for the sign-in that follows. */
   async function startSignIn(providerKind: ProviderKind): Promise<boolean> {
     const spec = packages[providerKind].savedSession;
@@ -1029,9 +1058,12 @@ export function createProviderService(
     sweepPermissionIntents,
     connectBrowserProvider,
     connectApiKeyProvider,
-    refreshInstance: (instanceId, trigger) =>
-      orchestrator.refreshInstance(instanceId, trigger),
-    refreshAll: (trigger) => orchestrator.refreshAll(trigger),
+    refreshInstance: async (instanceId, trigger) =>
+      removeEmptyDuplicates(
+        await orchestrator.refreshInstance(instanceId, trigger),
+      ),
+    refreshAll: async (trigger) =>
+      removeEmptyDuplicates(await orchestrator.refreshAll(trigger)),
     async renameInstance(instanceId, userLabel) {
       if (!(await connectionRepository.get(instanceId))) {
         throw new Error("Provider instance is unavailable.");

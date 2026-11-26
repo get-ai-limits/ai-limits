@@ -136,7 +136,10 @@ describe("collectWithSavedSession", () => {
 
   test("reads live and refreshes the saved copy when the browser is on this account", async () => {
     await saveSession(A, [{ name: "Session", value: "old-a" }], 1);
-    const api = fakeCookies([cookie("Session", "live-a"), cookie("other", "x")]);
+    const api = fakeCookies([
+      cookie("Session", "live-a"),
+      { ...cookie("_ga", "analytics"), httpOnly: false },
+    ]);
     const { env } = environment(api);
     const live = vi.fn(async () => success(KEY_A));
     const saved = vi.fn();
@@ -394,6 +397,28 @@ describe("parkLiveSession", () => {
       cookies: [{ name: "Session", value: "live-a" }],
     });
     expect(api.jar().map(({ name }) => name)).toEqual(["cf_clearance"]);
+  });
+
+  test("saves and clears every HttpOnly sign-in cookie, keeping bot protection and page cookies", async () => {
+    const api = fakeCookies([
+      cookie("Session", "live-a"),
+      cookie("restore-session", "sealed-a"),
+      cookie("cf_clearance", "device"),
+      { ...cookie("_ga", "analytics"), httpOnly: false },
+    ]);
+    const { env } = environment(api);
+
+    await expect(
+      parkLiveSession(spec(() => KEY_A), [instance(A, KEY_A)], services, env),
+    ).resolves.toBe("parked");
+
+    await expect(readSavedSession(A)).resolves.toMatchObject({
+      cookies: [
+        { name: "restore-session", value: "sealed-a" },
+        { name: "Session", value: "live-a" },
+      ],
+    });
+    expect(api.jar().map(({ name }) => name).sort()).toEqual(["_ga", "cf_clearance"]);
   });
 
   test("leaves a sign-in no connection owns alone, so the new connection takes it", async () => {

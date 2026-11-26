@@ -108,13 +108,29 @@ async function siteCookies(
   return all.filter((cookie) => onDomain(cookie, spec.cookieDomain));
 }
 
+/**
+ * Whether a cookie is part of the browser's sign-in to the site: the named
+ * sign-in cookies, plus every other HttpOnly cookie the site sets that is not
+ * bot protection. A site can keep a second, longer-lived sign-in cookie that
+ * silently restores the named one (Cursor does: removing only its
+ * `WorkosCursorSessionToken` signed the browser straight back in), so the
+ * whole set is saved and cleared together.
+ */
+function isSignInCookie(
+  spec: SavedSessionSpec,
+  cookie: Pick<Browser.cookies.Cookie, "name" | "httpOnly">,
+): boolean {
+  if (spec.isAuthCookie(cookie.name)) return true;
+  return cookie.httpOnly && !spec.isDeviceCookie(cookie.name);
+}
+
 /** The browser's current sign-in cookies for the site, in a stable order. */
 export async function captureLiveSession(
   spec: SavedSessionSpec,
   api: CookiesApi,
 ): Promise<SavedSessionCookie[]> {
   const cookies = (await siteCookies(spec, api))
-    .filter(({ name }) => spec.isAuthCookie(name))
+    .filter((cookie) => isSignInCookie(spec, cookie))
     .sort((left, right) => left.name.localeCompare(right.name));
   return cookies.map(({ name, value, expirationDate }) => ({
     name,
@@ -133,7 +149,7 @@ export async function clearLiveSession(
   api: CookiesApi,
 ): Promise<void> {
   for (const cookie of await siteCookies(spec, api)) {
-    if (!spec.isAuthCookie(cookie.name)) continue;
+    if (!isSignInCookie(spec, cookie)) continue;
     const host = cookie.domain.replace(/^\./, "");
     await api.remove({
       url: `https://${host}${cookie.path || "/"}`,

@@ -190,9 +190,12 @@ These origins are requested one provider at a time after the user clicks
 - `cookies`: requested only when the user adds a second Cursor or ChatGPT
   account (never for a first connection), and used only for `cursor.com` and
   `chatgpt.com`. A browser holds one sign-in per site, so AI Limits copies the
-  site's sign-in cookie (Cursor's `WorkosCursorSessionToken`; ChatGPT's
-  `__Secure-next-auth.session-token`, including numbered chunks, and its `_account` workspace cookie) and saves it
-  for the connection it belongs to. It then removes that cookie so the user can
+  site's sign-in cookies and saves them for the connection they belong to:
+  Cursor's `WorkosCursorSessionToken`, ChatGPT's
+  `__Secure-next-auth.session-token` (including numbered chunks) and
+  `_account` workspace cookie, and any other HttpOnly cookie on that site
+  except bot protection, since a second sign-in cookie can restore the first.
+  It then removes those cookies so the user can
   sign in to the next account, and opens the sign-in page. For 15 minutes
   after that, it watches only for that site's sign-in cookie, so it can read
   the new connection once the sign-in lands. Saved sign-ins are kept in a

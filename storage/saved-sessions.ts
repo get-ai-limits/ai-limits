@@ -8,7 +8,7 @@ import { isProviderInstanceId, type ProviderInstanceId } from "../domain/model";
 // as the Cookie header of AI Limits' own usage requests to that provider.
 
 export const SAVED_SESSION_STORAGE_KEY = "aiLimitsSavedSessions";
-const MAX_COOKIES = 8;
+const MAX_COOKIES = 32;
 const MAX_COOKIE_NAME_LENGTH = 128;
 const MAX_COOKIE_VALUE_LENGTH = 8_192;
 
