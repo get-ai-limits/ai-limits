@@ -148,10 +148,11 @@ export function gateAccountOutcome(
   if (outcome.kind !== "success") return { outcome, ...keep };
   const observed = outcome.snapshot.accountKey;
   if (observed === undefined) {
-    // Once a connection is tied to a login, an unverified reading could
-    // belong to anyone, so it is not stored.
-    return bound === undefined
-      ? { outcome }
+    // With other accounts of this provider connected, an unverified reading
+    // could belong to any of them, so it is not stored. A lone connection
+    // keeps working if the provider stops reporting the login.
+    return bound === undefined || siblings.length === 0
+      ? { outcome, ...keep }
       : { outcome: { kind: "failure", category: "temporary_error" }, ...keep };
   }
   if (bound !== undefined) {

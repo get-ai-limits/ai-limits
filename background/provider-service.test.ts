@@ -1842,11 +1842,51 @@ describe("generic provider instance service", () => {
       });
 
       signedIn.key = undefined;
-      const unverified = await service.refreshAll("manual_all");
-      expect(unverified.results[0]?.outcome).toEqual({
-        kind: "failure",
-        category: "temporary_error",
+      const lone = await service.refreshAll("manual_all");
+      expect(lone.results[0]?.outcome).toMatchObject({ kind: "success" });
+      await expect(connectionRepository.get("chatgpt:default")).resolves.toMatchObject({
+        accountKey: KEY_A,
       });
+    });
+
+    test("refuses an unverified reading once several logins are connected", async () => {
+      const signedIn: { key: string | undefined } = { key: KEY_A };
+      const service = serviceSignedIn(signedIn);
+      await connectChatGpt(service);
+      signedIn.key = KEY_B;
+      await connectChatGpt(service);
+
+      signedIn.key = undefined;
+      const report = await service.refreshAll("manual_all");
+
+      expect(report.results.map(({ outcome }) => outcome)).toEqual([
+        { kind: "failure", category: "temporary_error" },
+        { kind: "failure", category: "temporary_error" },
+      ]);
+    });
+
+    test("reads an older untied connection before a new one can claim its login", async () => {
+      await seed({
+        id: "chatgpt:default",
+        providerKind: "chatgpt",
+        config: { kind: "fixed" },
+        access: "granted",
+        createdAt: NOW,
+        history: [],
+      });
+      const signedIn: { key: string | undefined } = { key: KEY_A };
+      const service = serviceSignedIn(signedIn);
+
+      const report = await connectChatGpt(service);
+
+      expect(report.results[0]?.outcome).toEqual({
+        kind: "failure",
+        category: "duplicate_account",
+      });
+      const instances = (await loadInstanceAppState()).instances;
+      expect(instances.map(({ id, accountKey }) => ({ id, accountKey }))).toEqual([
+        { id: "chatgpt:default", accountKey: KEY_A },
+      ]);
     });
   });
 

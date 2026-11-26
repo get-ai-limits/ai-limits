@@ -88,7 +88,8 @@ AI Limits is an independent project by TiantianFlow. It is not affiliated with, 
 - `storage`: saves display, language, and refresh preferences, provider order and
   Overview visibility, provider access state,
   normalized quota/counter/balance snapshots, up to 30 days of typed
-  per-instance History, and sanitized refresh status in
+  per-instance History, sanitized refresh status, and for ChatGPT and Cursor a
+  SHA-256 hash of each connected login's user ID in
   `chrome.storage.local`. It also holds temporary Kimi, Cursor, Grok, and Gumloop
   tab-cleanup lease metadata in `chrome.storage.session`, plus the Kimi refresh
   tokens (current and the one read from the page) and latest Kimi access token,
@@ -125,7 +126,10 @@ These origins are requested one provider at a time after the user clicks
   refresh token and no cookies, and does not request an additional host
   permission. If Kimi stops accepting that request, refresh falls back to the
   page and tab paths described under `scripting` below.
-- `https://cursor.com/*`: reads the signed-in user's base Cursor usage. It can
+- `https://cursor.com/*`: reads the signed-in user's base Cursor usage, and
+  reads `/api/auth/me` only to hash the signed-in user ID so several Cursor
+  accounts stay separate; the email, name, and picture in that reply are
+  discarded. It can
   also run bundled read-only code in one already-open exact-origin page to
   request Grok Bot, credit-grant, and aggregated included-usage JSON. Only
   during Connect or manual Refresh, if none is open, it may briefly open one

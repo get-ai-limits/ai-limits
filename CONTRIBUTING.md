@@ -79,7 +79,9 @@ them independent from localized or provider-controlled labels. Successful
 quota, counter/spend, and balance observations may be retained; History graphs
 select quota metrics and the balance of balance-first providers only.
 
-Do not persist browser-session credentials, request-local account identifiers,
+Do not persist browser-session credentials, request-local account identifiers
+(the SHA-256 login key from `providers/account-key.ts` is the only allowed
+derivative),
 or raw provider responses. A reviewed API-key package keeps one key per instance
 in the dedicated trusted-context credential vault, outside application state
 and History, and binds it to the matching configuration revision. Same-origin

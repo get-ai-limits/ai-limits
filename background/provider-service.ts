@@ -571,6 +571,21 @@ export function createProviderService(
         reason: "superseded",
       });
     }
+    if (!existing && providerPackage.cardinality === "multiple") {
+      // Connections made before accounts were tracked learn their login on
+      // their next read. Read them first, so a new connection can't claim the
+      // login an older card's History belongs to.
+      const unbound = (await connectionRepository.list()).filter(
+        (instance) =>
+          instance.id !== candidate.id &&
+          instance.providerKind === providerKind &&
+          instance.access === "granted" &&
+          instance.accountKey === undefined,
+      );
+      for (const instance of unbound) {
+        await orchestrator.refreshInstance(instance.id, "manual_provider");
+      }
+    }
     const report = await orchestrator.refreshInstance(candidate.id, "connect");
     // A new connection that turned out to be a login another connection
     // already tracks is removed again, so the same account never shows twice.
