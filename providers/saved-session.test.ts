@@ -414,11 +414,26 @@ describe("parkLiveSession", () => {
 
     await expect(readSavedSession(A)).resolves.toMatchObject({
       cookies: [
-        { name: "restore-session", value: "sealed-a" },
         { name: "Session", value: "live-a" },
+        { name: "restore-session", value: "sealed-a" },
       ],
     });
     expect(api.jar().map(({ name }) => name).sort()).toEqual(["_ga", "cf_clearance"]);
+  });
+
+  test("leaves a sign-in too large to save whole in the browser", async () => {
+    const extra = Array.from({ length: 40 }, (_, index) =>
+      cookie(`extra-${index}`, "sealed"),
+    );
+    const api = fakeCookies([cookie("Session", "live-a"), ...extra]);
+    const { env } = environment(api);
+
+    await expect(
+      parkLiveSession(spec(() => KEY_A), [instance(A, KEY_A)], services, env),
+    ).resolves.toBe("unavailable");
+
+    await expect(readSavedSession(A)).resolves.toBeUndefined();
+    expect(api.jar()).toHaveLength(41);
   });
 
   test("leaves a sign-in no connection owns alone, so the new connection takes it", async () => {

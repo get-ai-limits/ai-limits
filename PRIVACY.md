@@ -376,7 +376,7 @@ state, History, logs, analytics, or a developer backend. A saved sign-in is
 deleted in these cases:
 
 - when its connection is disconnected;
-- when its cookie expires;
+- when its session cookie expires;
 - on **Delete all local data**;
 - when you remove the `cookies` permission.
 

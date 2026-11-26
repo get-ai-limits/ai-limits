@@ -4,6 +4,7 @@ import type { CollectionResult, ProviderRuntimeServices } from "./types";
 import { extensionOriginHost } from "./warp/origin-rule";
 import {
   deleteSavedSession,
+  MAX_SAVED_SESSION_COOKIES,
   readSavedSession,
   saveSession,
   type SavedSessionCookie,
@@ -11,7 +12,7 @@ import {
 
 // Cursor and ChatGPT read usage only through the browser's sign-in, and a
 // browser holds one sign-in per site. With the optional `cookies`
-// permission, AI Limits saves each connection's sign-in cookie, so a
+// permission, AI Limits saves each connection's sign-in cookies, so a
 // connection keeps refreshing after the browser signs in to another account.
 //
 // A saved sign-in is replayed only on AI Limits' own background requests to
@@ -124,14 +125,22 @@ function isSignInCookie(
   return cookie.httpOnly && !spec.isDeviceCookie(cookie.name);
 }
 
-/** The browser's current sign-in cookies for the site, in a stable order. */
+/**
+ * The browser's current sign-in cookies for the site, in a stable order: the
+ * named sign-in cookies first, so storage's cookie cap never drops them.
+ */
 export async function captureLiveSession(
   spec: SavedSessionSpec,
   api: CookiesApi,
 ): Promise<SavedSessionCookie[]> {
+  const rank = (name: string) => (spec.isAuthCookie(name) ? 0 : 1);
   const cookies = (await siteCookies(spec, api))
     .filter((cookie) => isSignInCookie(spec, cookie))
-    .sort((left, right) => left.name.localeCompare(right.name));
+    .sort(
+      (left, right) =>
+        rank(left.name) - rank(right.name) ||
+        left.name.localeCompare(right.name),
+    );
   return cookies.map(({ name, value, expirationDate }) => ({
     name,
     value,
@@ -381,6 +390,13 @@ export async function parkLiveSession(
     if (!owner) return "new_login";
     const cookies = await captureLiveSession(spec, api);
     if (cookies.length === 0) return "new_login";
+    // Never clear a sign-in that could not be saved whole.
+    if (
+      cookies.length > MAX_SAVED_SESSION_COOKIES ||
+      !cookies.some(({ name }) => spec.isSessionCookie(name))
+    ) {
+      return "unavailable";
+    }
     // Make sure the captured cookie still belongs to that account.
     if ((await spec.liveAccountKey(services.fetch, services.signal)) !== liveKey) {
       return "new_login";

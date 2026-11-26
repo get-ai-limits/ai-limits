@@ -268,7 +268,7 @@ refresh may read the sign-in entry from an already-open gumloop.com tab.
   access or deletes all local data.
   The refresh token is sent only to Kimi's sign-in service at `auth.kimi.com`.
   When the user adds a second Cursor or ChatGPT account, each such
-  connection's sign-in cookie is saved in a trusted-context
+  connection's sign-in cookies are saved in a trusted-context
   `chrome.storage.local` record (see `cookies` above). It is sent only to that
   same site and deleted with its connection.
   Gumloop is handled the same way: its refresh token, latest ID token, user ID,
