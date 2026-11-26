@@ -4,6 +4,8 @@ import type { CollectionResult, ProviderRuntimeServices } from "./types";
 import { extensionOriginHost } from "./warp/origin-rule";
 import {
   deleteSavedSession,
+  MAX_SAVED_SESSION_COOKIES,
+  normalizeSavedSession,
   readSavedSession,
   saveSession,
   type SavedSessionCookie,
@@ -11,7 +13,7 @@ import {
 
 // Cursor and ChatGPT read usage only through the browser's sign-in, and a
 // browser holds one sign-in per site. With the optional `cookies`
-// permission, AI Limits saves each connection's sign-in cookie, so a
+// permission, AI Limits saves each connection's sign-in cookies, so a
 // connection keeps refreshing after the browser signs in to another account.
 //
 // A saved sign-in is replayed only on AI Limits' own background requests to
@@ -108,14 +110,38 @@ async function siteCookies(
   return all.filter((cookie) => onDomain(cookie, spec.cookieDomain));
 }
 
-/** The browser's current sign-in cookies for the site, in a stable order. */
+/**
+ * Whether a cookie is part of the browser's sign-in to the site: the named
+ * sign-in cookies, plus every other HttpOnly cookie the site sets that is not
+ * bot protection. A site can keep a second, longer-lived sign-in cookie that
+ * silently restores the named one (Cursor does: removing only its
+ * `WorkosCursorSessionToken` signed the browser straight back in), so the
+ * whole set is saved and cleared together.
+ */
+function isSignInCookie(
+  spec: SavedSessionSpec,
+  cookie: Pick<Browser.cookies.Cookie, "name" | "httpOnly">,
+): boolean {
+  if (spec.isAuthCookie(cookie.name)) return true;
+  return cookie.httpOnly && !spec.isDeviceCookie(cookie.name);
+}
+
+/**
+ * The browser's current sign-in cookies for the site, in a stable order: the
+ * named sign-in cookies first, so storage's cookie cap never drops them.
+ */
 export async function captureLiveSession(
   spec: SavedSessionSpec,
   api: CookiesApi,
 ): Promise<SavedSessionCookie[]> {
+  const rank = (name: string) => (spec.isAuthCookie(name) ? 0 : 1);
   const cookies = (await siteCookies(spec, api))
-    .filter(({ name }) => spec.isAuthCookie(name))
-    .sort((left, right) => left.name.localeCompare(right.name));
+    .filter((cookie) => isSignInCookie(spec, cookie))
+    .sort(
+      (left, right) =>
+        rank(left.name) - rank(right.name) ||
+        left.name.localeCompare(right.name),
+    );
   return cookies.map(({ name, value, expirationDate }) => ({
     name,
     value,
@@ -131,9 +157,19 @@ export async function captureLiveSession(
 export async function clearLiveSession(
   spec: SavedSessionSpec,
   api: CookiesApi,
+  /** Only these exact cookies, so one the site rotated since is kept. */
+  only?: readonly SavedSessionCookie[],
 ): Promise<void> {
   for (const cookie of await siteCookies(spec, api)) {
-    if (!spec.isAuthCookie(cookie.name)) continue;
+    if (!isSignInCookie(spec, cookie)) continue;
+    if (
+      only &&
+      !only.some(
+        ({ name, value }) => name === cookie.name && value === cookie.value,
+      )
+    ) {
+      continue;
+    }
     const host = cookie.domain.replace(/^\./, "");
     await api.remove({
       url: `https://${host}${cookie.path || "/"}`,
@@ -363,15 +399,22 @@ export async function parkLiveSession(
     if (!liveKey) return "signed_out";
     const owner = siblings.find(({ accountKey }) => accountKey === liveKey);
     if (!owner) return "new_login";
+    // Captured after that read, so a cookie its response rotated is saved
+    // at its new value.
     const cookies = await captureLiveSession(spec, api);
     if (cookies.length === 0) return "new_login";
-    // Make sure the captured cookie still belongs to that account.
-    if ((await spec.liveAccountKey(services.fetch, services.signal)) !== liveKey) {
-      return "new_login";
+    // Never clear a sign-in that could not be saved whole.
+    if (
+      cookies.length > MAX_SAVED_SESSION_COOKIES ||
+      normalizeSavedSession({ cookies, savedAt: services.now })?.cookies
+        .length !== cookies.length ||
+      !cookies.some(({ name }) => spec.isSessionCookie(name))
+    ) {
+      return "unavailable";
     }
     if (!(await stillConnected(owner))) return "new_login";
     await saveSession(owner.id, cookies, services.now);
-    await clearLiveSession(spec, api);
+    await clearLiveSession(spec, api, cookies);
     return "parked";
   });
 }

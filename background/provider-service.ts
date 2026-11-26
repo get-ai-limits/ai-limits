@@ -254,6 +254,43 @@ export function createProviderService(
     }
   }
 
+  /**
+   * A connection that never read anything and turns out to be a login another
+   * connection already tracks is removed, so retrying Add account never piles
+   * up copies of one account.
+   */
+  const connectingInstanceIds = new Set<string>();
+
+  async function removeEmptyDuplicates(
+    report: RefreshReport,
+  ): Promise<RefreshReport> {
+    for (const { instanceId, outcome } of report.results) {
+      if (outcome.kind !== "failure" || outcome.category !== "duplicate_account") {
+        continue;
+      }
+      // The connect flow decides about a connection it is still adding.
+      if (connectingInstanceIds.has(instanceId)) continue;
+      try {
+        // Checked under the connection's locks, so a read that bound it in
+        // the meantime keeps it.
+        await disconnectInstanceIf(
+          instanceId,
+          (instance) =>
+            instance.accountKey === undefined &&
+            instance.snapshot === undefined &&
+            instance.history.length === 0 &&
+            // A later read (such as Add account's own, after signing the
+            // browser out) supersedes this report.
+            instance.lastAttempt?.outcome.kind === "failure" &&
+            instance.lastAttempt.outcome.category === "duplicate_account",
+        );
+      } catch {
+        // Left for the next refresh; it never shows another account's data.
+      }
+    }
+    return report;
+  }
+
   /** Opens the sign-in page and watches for the sign-in that follows. */
   async function startSignIn(providerKind: ProviderKind): Promise<boolean> {
     const spec = packages[providerKind].savedSession;
@@ -509,10 +546,20 @@ export function createProviderService(
   async function disconnectInstance(
     instanceId: ProviderInstanceId,
   ): Promise<DisconnectInstanceResult> {
+    const result = await disconnectInstanceIf(instanceId, () => true);
+    return result === "kept" ? { ok: true, localDataDeleted: true } : result;
+  }
+
+  /** Disconnects unless `shouldRemove`, checked under the locks, says no. */
+  async function disconnectInstanceIf(
+    instanceId: ProviderInstanceId,
+    shouldRemove: (instance: ProviderInstanceRecord) => boolean,
+  ): Promise<DisconnectInstanceResult | "kept"> {
     return withPermissionOwnershipLock("permissions", async () =>
       withInstanceConnectionLock(instanceId, async () => {
         const instance = await connectionRepository.get(instanceId);
         if (!instance) return { ok: true, localDataDeleted: true } as const;
+        if (!shouldRemove(instance)) return "kept" as const;
         const cleanup = lanes.beginCleanup(instanceId);
         orchestrator.invalidateInstance(instanceId);
         apiKeyConnections.invalidateInstance(instanceId);
@@ -609,138 +656,146 @@ export function createProviderService(
     const isCurrent = () =>
       lanes.isCurrent(operation) && isConnectionGenerationCurrent(lifecycle);
     orchestrator.invalidateInstance(candidate.id);
-    let committed = false;
-    let operationWasCurrent = false;
+    // Until this connect finishes, no other refresh may remove the new
+    // connection as an empty duplicate: it is about to be signed out and
+    // read again.
+    connectingInstanceIds.add(candidate.id);
     try {
-      await withPermissionOwnershipLock("permissions", async () => {
-        if (!(await hasInstancePermission(candidate, packages))) return;
-        await withInstanceConnectionLock(candidate.id, async () => {
-          if (existing) {
-            committed = await connectionRepository.replace(
-              existing.id,
-              (current) =>
-                isCurrent() ? { ...current, access: "granted" } : current,
-            );
-          } else {
-            committed = await connectionRepository.createIfCurrent(
-              candidate,
-              isCurrent,
-            );
-          }
-          operationWasCurrent =
-            isCurrent() && (await hasInstancePermission(candidate, packages));
-          if (committed && !operationWasCurrent) {
-            await connectionRepository.setAccess(candidate.id, "required");
-          }
-        });
-      });
-    } finally {
+      let committed = false;
+      let operationWasCurrent = false;
       try {
         await withPermissionOwnershipLock("permissions", async () => {
-          if (committed) {
-            await permissionIntents.finish(permissionIntentId);
-          } else {
-            const cleanup = await permissionIntents.abandon(permissionIntentId);
-            if (cleanup) await completePermissionCleanup(cleanup);
-          }
+          if (!(await hasInstancePermission(candidate, packages))) return;
+          await withInstanceConnectionLock(candidate.id, async () => {
+            if (existing) {
+              committed = await connectionRepository.replace(
+                existing.id,
+                (current) =>
+                  isCurrent() ? { ...current, access: "granted" } : current,
+              );
+            } else {
+              committed = await connectionRepository.createIfCurrent(
+                candidate,
+                isCurrent,
+              );
+            }
+            operationWasCurrent =
+              isCurrent() && (await hasInstancePermission(candidate, packages));
+            if (committed && !operationWasCurrent) {
+              await connectionRepository.setAccess(candidate.id, "required");
+            }
+          });
         });
       } finally {
-        lanes.finish(operation);
-      }
-    }
-    if (!committed || !operationWasCurrent) {
-      return connectReport(candidate.id, startedAt, clock(), {
-        kind: "skipped",
-        reason: "superseded",
-      });
-    }
-    if (!existing && providerPackage.cardinality === "multiple") {
-      // Connections made before accounts were tracked learn their login on
-      // their next read. Read them first, so a new connection can't claim the
-      // login an older card's History belongs to.
-      const unbound = (await connectionRepository.list()).filter(
-        (instance) =>
-          instance.id !== candidate.id &&
-          instance.providerKind === providerKind &&
-          instance.access === "granted" &&
-          instance.accountKey === undefined,
-      );
-      for (const instance of unbound) {
-        await orchestrator.refreshInstance(instance.id, "manual_provider");
-      }
-    }
-    // With saved sign-ins, adding an account saves the browser's current
-    // sign-in for the connection it belongs to and signs the browser out of
-    // the site, so the new connection waits for a fresh sign-in instead of
-    // being refused as a duplicate.
-    const spec = providerPackage.savedSession;
-    let parked: Awaited<ReturnType<typeof parkLiveSession>> = "unavailable";
-    if (spec && !existing && providerPackage.cardinality === "multiple") {
-      const siblings = (await connectionRepository.list()).filter(
-        (instance) =>
-          instance.id !== candidate.id && instance.providerKind === providerKind,
-      );
-      if (siblings.length > 0) {
-        parked = await parkLiveSession(
-          spec,
-          siblings,
-          { fetch, signal: new AbortController().signal, now: clock() },
-          savedSessionEnvironment,
-          async (owner) => (await connectionRepository.get(owner.id)) !== undefined,
-        ).catch(() => "unavailable" as const);
-      }
-    }
-    let report = await orchestrator.refreshInstance(candidate.id, "connect");
-    const candidateOutcome = () =>
-      report.results.find(({ instanceId }) => instanceId === candidate.id)
-        ?.outcome;
-    if (spec && existing) {
-      // Reconnecting a connection whose account the browser is not signed in
-      // to: save the browser's sign-in for its own connection, then sign in.
-      const outcome = candidateOutcome();
-      if (
-        outcome?.kind === "failure" &&
-        (outcome.category === "other_account" ||
-          outcome.category === "signed_out")
-      ) {
-        const siblings = (await connectionRepository.list()).filter(
-          (instance) =>
-            instance.id !== candidate.id &&
-            instance.providerKind === providerKind,
-        );
-        parked = await parkLiveSession(
-          spec,
-          siblings,
-          { fetch, signal: new AbortController().signal, now: clock() },
-          savedSessionEnvironment,
-          async (owner) => (await connectionRepository.get(owner.id)) !== undefined,
-        ).catch(() => "unavailable" as const);
-        if (parked === "parked") {
-          report = await orchestrator.refreshInstance(candidate.id, "connect");
+        try {
+          await withPermissionOwnershipLock("permissions", async () => {
+            if (committed) {
+              await permissionIntents.finish(permissionIntentId);
+            } else {
+              const cleanup = await permissionIntents.abandon(permissionIntentId);
+              if (cleanup) await completePermissionCleanup(cleanup);
+            }
+          });
+        } finally {
+          lanes.finish(operation);
         }
       }
+      if (!committed || !operationWasCurrent) {
+        return connectReport(candidate.id, startedAt, clock(), {
+          kind: "skipped",
+          reason: "superseded",
+        });
+      }
+      if (!existing && providerPackage.cardinality === "multiple") {
+        // Connections made before accounts were tracked learn their login on
+        // their next read. Read them first, so a new connection can't claim the
+        // login an older card's History belongs to.
+        const unbound = (await connectionRepository.list()).filter(
+          (instance) =>
+            instance.id !== candidate.id &&
+            instance.providerKind === providerKind &&
+            instance.access === "granted" &&
+            instance.accountKey === undefined,
+        );
+        for (const instance of unbound) {
+          await orchestrator.refreshInstance(instance.id, "manual_provider");
+        }
+      }
+      // With saved sign-ins, adding an account saves the browser's current
+      // sign-in for the connection it belongs to and signs the browser out of
+      // the site, so the new connection waits for a fresh sign-in instead of
+      // being refused as a duplicate.
+      const spec = providerPackage.savedSession;
+      let parked: Awaited<ReturnType<typeof parkLiveSession>> = "unavailable";
+      if (spec && !existing && providerPackage.cardinality === "multiple") {
+        const siblings = (await connectionRepository.list()).filter(
+          (instance) =>
+            instance.id !== candidate.id && instance.providerKind === providerKind,
+        );
+        if (siblings.length > 0) {
+          parked = await parkLiveSession(
+            spec,
+            siblings,
+            { fetch, signal: new AbortController().signal, now: clock() },
+            savedSessionEnvironment,
+            async (owner) => (await connectionRepository.get(owner.id)) !== undefined,
+          ).catch(() => "unavailable" as const);
+        }
+      }
+      let report = await orchestrator.refreshInstance(candidate.id, "connect");
+      const candidateOutcome = () =>
+        report.results.find(({ instanceId }) => instanceId === candidate.id)
+          ?.outcome;
+      if (spec && existing) {
+        // Reconnecting a connection whose account the browser is not signed in
+        // to: save the browser's sign-in for its own connection, then sign in.
+        const outcome = candidateOutcome();
+        if (
+          outcome?.kind === "failure" &&
+          (outcome.category === "other_account" ||
+            outcome.category === "signed_out")
+        ) {
+          const siblings = (await connectionRepository.list()).filter(
+            (instance) =>
+              instance.id !== candidate.id &&
+              instance.providerKind === providerKind,
+          );
+          parked = await parkLiveSession(
+            spec,
+            siblings,
+            { fetch, signal: new AbortController().signal, now: clock() },
+            savedSessionEnvironment,
+            async (owner) => (await connectionRepository.get(owner.id)) !== undefined,
+          ).catch(() => "unavailable" as const);
+          if (parked === "parked") {
+            report = await orchestrator.refreshInstance(candidate.id, "connect");
+          }
+        }
+      }
+      if (
+        spec &&
+        (parked === "parked" || parked === "signed_out") &&
+        candidateOutcome()?.kind === "failure"
+      ) {
+        await startSignIn(providerKind);
+      }
+      // A new connection that turned out to be a login another connection
+      // already tracks is removed again, so the same account never shows twice.
+      if (
+        !existing &&
+        report.results.some(
+          ({ instanceId, outcome }) =>
+            instanceId === candidate.id &&
+            outcome.kind === "failure" &&
+            outcome.category === "duplicate_account",
+        )
+      ) {
+        await disconnectInstance(candidate.id);
+      }
+      return report;
+    } finally {
+      connectingInstanceIds.delete(candidate.id);
     }
-    if (
-      spec &&
-      (parked === "parked" || parked === "signed_out") &&
-      candidateOutcome()?.kind === "failure"
-    ) {
-      await startSignIn(providerKind);
-    }
-    // A new connection that turned out to be a login another connection
-    // already tracks is removed again, so the same account never shows twice.
-    if (
-      !existing &&
-      report.results.some(
-        ({ instanceId, outcome }) =>
-          instanceId === candidate.id &&
-          outcome.kind === "failure" &&
-          outcome.category === "duplicate_account",
-      )
-    ) {
-      await disconnectInstance(candidate.id);
-    }
-    return report;
   }
 
   async function connectApiKeyProvider(
@@ -1029,9 +1084,12 @@ export function createProviderService(
     sweepPermissionIntents,
     connectBrowserProvider,
     connectApiKeyProvider,
-    refreshInstance: (instanceId, trigger) =>
-      orchestrator.refreshInstance(instanceId, trigger),
-    refreshAll: (trigger) => orchestrator.refreshAll(trigger),
+    refreshInstance: async (instanceId, trigger) =>
+      removeEmptyDuplicates(
+        await orchestrator.refreshInstance(instanceId, trigger),
+      ),
+    refreshAll: async (trigger) =>
+      removeEmptyDuplicates(await orchestrator.refreshAll(trigger)),
     async renameInstance(instanceId, userLabel) {
       if (!(await connectionRepository.get(instanceId))) {
         throw new Error("Provider instance is unavailable.");

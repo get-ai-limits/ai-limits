@@ -6,7 +6,8 @@ export const cursorSavedSession: SavedSessionSpec = {
   kind: "cursor",
   siteUrl: "https://cursor.com/",
   cookieDomain: "cursor.com",
-  signInUrl: "https://cursor.com/dashboard",
+  // Straight to the sign-in form, not a page that could restore a session.
+  signInUrl: "https://cursor.com/api/auth/login?redirect_uri=%2Fdashboard",
   ruleId: 2,
   isAuthCookie: (name) => name === "WorkosCursorSessionToken",
   isSessionCookie: (name) => name === "WorkosCursorSessionToken",

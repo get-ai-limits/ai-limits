@@ -136,7 +136,10 @@ describe("collectWithSavedSession", () => {
 
   test("reads live and refreshes the saved copy when the browser is on this account", async () => {
     await saveSession(A, [{ name: "Session", value: "old-a" }], 1);
-    const api = fakeCookies([cookie("Session", "live-a"), cookie("other", "x")]);
+    const api = fakeCookies([
+      cookie("Session", "live-a"),
+      { ...cookie("_ga", "analytics"), httpOnly: false },
+    ]);
     const { env } = environment(api);
     const live = vi.fn(async () => success(KEY_A));
     const saved = vi.fn();
@@ -396,6 +399,58 @@ describe("parkLiveSession", () => {
     expect(api.jar().map(({ name }) => name)).toEqual(["cf_clearance"]);
   });
 
+  test("saves and clears every HttpOnly sign-in cookie, keeping bot protection and page cookies", async () => {
+    const api = fakeCookies([
+      cookie("Session", "live-a"),
+      cookie("restore-session", "sealed-a"),
+      cookie("cf_clearance", "device"),
+      { ...cookie("_ga", "analytics"), httpOnly: false },
+    ]);
+    const { env } = environment(api);
+
+    await expect(
+      parkLiveSession(spec(() => KEY_A), [instance(A, KEY_A)], services, env),
+    ).resolves.toBe("parked");
+
+    await expect(readSavedSession(A)).resolves.toMatchObject({
+      cookies: [
+        { name: "Session", value: "live-a" },
+        { name: "restore-session", value: "sealed-a" },
+      ],
+    });
+    expect(api.jar().map(({ name }) => name).sort()).toEqual(["_ga", "cf_clearance"]);
+  });
+
+  test("leaves a sign-in too large to save whole in the browser", async () => {
+    const extra = Array.from({ length: 40 }, (_, index) =>
+      cookie(`extra-${index}`, "sealed"),
+    );
+    const api = fakeCookies([cookie("Session", "live-a"), ...extra]);
+    const { env } = environment(api);
+
+    await expect(
+      parkLiveSession(spec(() => KEY_A), [instance(A, KEY_A)], services, env),
+    ).resolves.toBe("unavailable");
+
+    await expect(readSavedSession(A)).resolves.toBeUndefined();
+    expect(api.jar()).toHaveLength(41);
+  });
+
+  test("leaves a sign-in with a cookie it cannot save in the browser", async () => {
+    const api = fakeCookies([
+      cookie("Session", "live-a"),
+      cookie("restore-session", '"quoted value"'),
+    ]);
+    const { env } = environment(api);
+
+    await expect(
+      parkLiveSession(spec(() => KEY_A), [instance(A, KEY_A)], services, env),
+    ).resolves.toBe("unavailable");
+
+    await expect(readSavedSession(A)).resolves.toBeUndefined();
+    expect(api.jar()).toHaveLength(2);
+  });
+
   test("leaves a sign-in no connection owns alone, so the new connection takes it", async () => {
     const api = fakeCookies([cookie("Session", "live-b")]);
     const { env } = environment(api);
@@ -423,6 +478,20 @@ describe("parkLiveSession", () => {
         environment(undefined).env,
       ),
     ).resolves.toBe("unavailable");
+  });
+
+  test("keeps a sign-in cookie the site rotated after it was saved", async () => {
+    const api = fakeCookies([
+      cookie("Session", "live-a"),
+      cookie("restore-session", "rotated"),
+    ]);
+    await clearLiveSession(spec(() => undefined), api, [
+      { name: "Session", value: "live-a" },
+      { name: "restore-session", value: "sealed-a" },
+    ]);
+    expect(api.jar().map(({ name, value }) => `${name}=${value}`)).toEqual([
+      "restore-session=rotated",
+    ]);
   });
 
   test("removes sign-in cookies on subdomains with their own host", async () => {

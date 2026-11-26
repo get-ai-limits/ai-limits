@@ -1991,6 +1991,20 @@ describe("generic provider instance service", () => {
         ).toEqual([KEY_A, KEY_B]);
       });
 
+      test("a waiting connection that turns out to be an existing login is removed", async () => {
+        const { service, signIn } = savedSignInService();
+        await connectChatGpt(service);
+        await connectChatGpt(service);
+        expect((await loadInstanceAppState()).instances).toHaveLength(2);
+
+        // The sign-in page signs the browser back in to the first account.
+        signIn(KEY_A);
+        await service.refreshAll("manual_all");
+
+        const instances = (await loadInstanceAppState()).instances;
+        expect(instances.map(({ accountKey }) => accountKey)).toEqual([KEY_A]);
+      });
+
       test("removing the connection removes its saved sign-in", async () => {
         const { service } = savedSignInService();
         await connectChatGpt(service);
