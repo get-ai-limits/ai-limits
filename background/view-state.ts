@@ -7,6 +7,7 @@ import type {
   ProviderInstanceView,
 } from "../domain/public-protocol";
 import type {
+  RefreshReport,
   MetricCycle,
   MetricHistorySample,
   ProviderAttempt,
@@ -164,6 +165,21 @@ function projectAttempt(attempt: ProviderAttempt): ProviderAttempt {
               ...(outcome.guidance === undefined ? {} : { guidance: outcome.guidance }),
               ...(outcome.retryAt === undefined ? {} : { retryAt: outcome.retryAt }),
             },
+  };
+}
+
+/**
+ * A refresh report as the side panel may see it: without the opaque account
+ * key, which stays in the background (the panel's protocol rejects it).
+ */
+export function projectRefreshReport(report: RefreshReport): RefreshReport {
+  return {
+    ...report,
+    results: report.results.map(({ instanceId, outcome }) => {
+      if (outcome.kind !== "success") return { instanceId, outcome };
+      const { accountKey: _accountKey, ...snapshot } = outcome.snapshot;
+      return { instanceId, outcome: { ...outcome, snapshot } };
+    }),
   };
 }
 
