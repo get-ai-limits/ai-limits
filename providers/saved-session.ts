@@ -5,6 +5,7 @@ import { extensionOriginHost } from "./warp/origin-rule";
 import {
   deleteSavedSession,
   MAX_SAVED_SESSION_COOKIES,
+  normalizeSavedSession,
   readSavedSession,
   saveSession,
   type SavedSessionCookie,
@@ -393,6 +394,8 @@ export async function parkLiveSession(
     // Never clear a sign-in that could not be saved whole.
     if (
       cookies.length > MAX_SAVED_SESSION_COOKIES ||
+      normalizeSavedSession({ cookies, savedAt: services.now })?.cookies
+        .length !== cookies.length ||
       !cookies.some(({ name }) => spec.isSessionCookie(name))
     ) {
       return "unavailable";

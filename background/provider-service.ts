@@ -276,7 +276,11 @@ export function createProviderService(
           instance &&
           instance.accountKey === undefined &&
           instance.snapshot === undefined &&
-          instance.history.length === 0
+          instance.history.length === 0 &&
+          // A later read (such as Add account's own, after signing the
+          // browser out) supersedes this report.
+          instance.lastAttempt?.outcome.kind === "failure" &&
+          instance.lastAttempt.outcome.category === "duplicate_account"
         ) {
           await disconnectInstance(instanceId);
         }

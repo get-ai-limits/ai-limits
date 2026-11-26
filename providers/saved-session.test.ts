@@ -436,6 +436,21 @@ describe("parkLiveSession", () => {
     expect(api.jar()).toHaveLength(41);
   });
 
+  test("leaves a sign-in with a cookie it cannot save in the browser", async () => {
+    const api = fakeCookies([
+      cookie("Session", "live-a"),
+      cookie("restore-session", '"quoted value"'),
+    ]);
+    const { env } = environment(api);
+
+    await expect(
+      parkLiveSession(spec(() => KEY_A), [instance(A, KEY_A)], services, env),
+    ).resolves.toBe("unavailable");
+
+    await expect(readSavedSession(A)).resolves.toBeUndefined();
+    expect(api.jar()).toHaveLength(2);
+  });
+
   test("leaves a sign-in no connection owns alone, so the new connection takes it", async () => {
     const api = fakeCookies([cookie("Session", "live-b")]);
     const { env } = environment(api);
