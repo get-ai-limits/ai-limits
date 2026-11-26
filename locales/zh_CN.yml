@@ -661,7 +661,7 @@ errors:
   challengeBlocked: 请打开该服务并完成安全验证后再试。
   providerChanged: AI Limits 无法读取此服务的用量响应。
   temporaryError: AI Limits 无法刷新此服务。请稍后再试。
-  otherAccount: 该服务网站当前登录的是另一个账号。重新连接此卡片即可再次登录它的账号。
+  otherAccount: 该服务网站当前登录的是另一个账号。请在网站上切换回这个账号；如果你是通过“添加账号”添加的多个账号，也可以选择重新连接，让此卡片重新登录。
   duplicateAccount: 该服务网站当前登录的账号已经连接过了。请先在网站上登录另一个账号，再添加。
   kimiRetrySession: Kimi 仍在启动。请再点一次刷新，或打开/重新加载 Kimi。
   gumloopRetrySession: 无法读取你的 Gumloop 登录状态。请打开 gumloop.com，确认已登录，然后点击刷新。

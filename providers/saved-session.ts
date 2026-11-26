@@ -3,6 +3,7 @@ import type { ProviderKind } from "./catalog";
 import type { CollectionResult, ProviderRuntimeServices } from "./types";
 import { extensionOriginHost } from "./warp/origin-rule";
 import {
+  deleteSavedSession,
   readSavedSession,
   saveSession,
   type SavedSessionCookie,
@@ -34,6 +35,11 @@ export interface SavedSessionSpec {
   readonly ruleId: number;
   /** The cookies that carry the sign-in. */
   isAuthCookie(name: string): boolean;
+  /**
+   * The cookies that are the session itself; a saved sign-in without one
+   * (only companions such as a workspace choice left) is spent.
+   */
+  isSessionCookie(name: string): boolean;
   /**
    * Cookies that belong to the browser rather than to an account (bot
    * protection), sent alongside a saved sign-in so the site accepts it.
@@ -252,9 +258,16 @@ export async function collectWithSavedSession({
     // A rule left behind by a stopped service worker must never reach a live
     // read.
     await removeSavedSessionRule(spec, environment.rules).catch(() => undefined);
-    const savedSession = instance.accountKey
+    let savedSession = instance.accountKey
       ? await readSavedSession(instance.id, services.now)
       : undefined;
+    if (
+      savedSession &&
+      !savedSession.cookies.some(({ name }) => spec.isSessionCookie(name))
+    ) {
+      await deleteSavedSession(instance.id);
+      savedSession = undefined;
+    }
     if (instance.accountKey && savedSession) {
       const liveKey = await spec.liveAccountKey(services.fetch, services.signal);
       if (liveKey !== instance.accountKey) {
@@ -338,6 +351,9 @@ export async function parkLiveSession(
   siblings: readonly ProviderInstanceRecord[],
   services: Pick<ProviderRuntimeServices, "fetch" | "signal" | "now">,
   environment: SavedSessionEnvironment = browserSavedSessionEnvironment,
+  /** Whether the owning connection still exists; checked right before saving. */
+  stillConnected: (owner: ProviderInstanceRecord) => Promise<boolean> = async () =>
+    true,
 ): Promise<ParkResult> {
   const api = await environment.cookies();
   if (!api) return "unavailable";
@@ -353,6 +369,7 @@ export async function parkLiveSession(
     if ((await spec.liveAccountKey(services.fetch, services.signal)) !== liveKey) {
       return "new_login";
     }
+    if (!(await stillConnected(owner))) return "new_login";
     await saveSession(owner.id, cookies, services.now);
     await clearLiveSession(spec, api);
     return "parked";

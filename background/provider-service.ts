@@ -686,6 +686,7 @@ export function createProviderService(
           siblings,
           { fetch, signal: new AbortController().signal, now: clock() },
           savedSessionEnvironment,
+          async (owner) => (await connectionRepository.get(owner.id)) !== undefined,
         ).catch(() => "unavailable" as const);
       }
     }
@@ -712,6 +713,7 @@ export function createProviderService(
           siblings,
           { fetch, signal: new AbortController().signal, now: clock() },
           savedSessionEnvironment,
+          async (owner) => (await connectionRepository.get(owner.id)) !== undefined,
         ).catch(() => "unavailable" as const);
         if (parked === "parked") {
           report = await orchestrator.refreshInstance(candidate.id, "connect");

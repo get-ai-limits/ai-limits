@@ -77,6 +77,7 @@ function spec(liveKey: () => string | undefined): SavedSessionSpec {
     signInUrl: "https://cursor.com/dashboard",
     ruleId: 2,
     isAuthCookie: (name) => name === "Session",
+    isSessionCookie: (name) => name === "Session",
     isDeviceCookie: (name) => name === "cf_clearance",
     liveAccountKey: vi.fn(async () => liveKey()),
   };
@@ -234,6 +235,36 @@ describe("collectWithSavedSession", () => {
     expect(updateSessionRules).toHaveBeenLastCalledWith({ removeRuleIds: [2] });
     // The browser's own sign-in is untouched.
     expect(api.jar().map(({ name }) => name)).toContain("Session");
+  });
+
+  test("drops a saved sign-in whose session cookie is gone", async () => {
+    await saveSession(A, [{ name: "_account", value: "workspace" }], 1);
+    const live = vi.fn(async () => success(KEY_B));
+    await collectWithSavedSession({
+      spec: spec(() => KEY_B),
+      instance: instance(A, KEY_A),
+      services,
+      live,
+      saved: vi.fn(),
+      environment: environment(fakeCookies([])).env,
+    });
+    expect(live).toHaveBeenCalled();
+    await expect(readSavedSession(A)).resolves.toBeUndefined();
+  });
+
+  test("does not park for a connection removed meanwhile", async () => {
+    const api = fakeCookies([cookie("Session", "live-a")]);
+    await expect(
+      parkLiveSession(
+        spec(() => KEY_A),
+        [instance(A, KEY_A)],
+        services,
+        environment(api).env,
+        async () => false,
+      ),
+    ).resolves.toBe("new_login");
+    await expect(readSavedSession(A)).resolves.toBeUndefined();
+    expect(api.jar()).toHaveLength(1);
   });
 
   test("removes the rule even when the request fails", async () => {

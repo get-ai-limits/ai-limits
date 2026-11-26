@@ -1932,6 +1932,7 @@ describe("generic provider instance service", () => {
         const savedSession: SavedSessionSpec = {
           ...providerRegistry.chatgpt.savedSession!,
           isAuthCookie: (name) => name === "Session",
+          isSessionCookie: (name) => name === "Session",
           liveAccountKey: async () => browserState.key,
         };
         const openSignInTab = vi.fn(async () => undefined);

@@ -661,7 +661,7 @@ errors:
   challengeBlocked: Open the provider and complete its security check before trying again.
   providerChanged: AI Limits could not read this provider's usage response.
   temporaryError: AI Limits could not refresh this provider. Try again later.
-  otherAccount: A different account is signed in on this provider's site. Reconnect this card to sign in to its account again.
+  otherAccount: A different account is signed in on this provider's site. Switch back to this account there, or, if you added accounts with Add account, choose Reconnect to sign this card in again.
   duplicateAccount: The account signed in on this provider's site is already connected. Sign in to a different account there, then add it.
   kimiRetrySession: Kimi was still starting. Try Refresh once more, or open or reload Kimi.
   gumloopRetrySession: Could not read your Gumloop sign-in. Open gumloop.com, make sure you are signed in, then press Refresh.

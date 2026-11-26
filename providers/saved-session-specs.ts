@@ -9,6 +9,7 @@ export const cursorSavedSession: SavedSessionSpec = {
   signInUrl: "https://cursor.com/dashboard",
   ruleId: 2,
   isAuthCookie: (name) => name === "WorkosCursorSessionToken",
+  isSessionCookie: (name) => name === "WorkosCursorSessionToken",
   isDeviceCookie: cloudflareCookie,
   liveAccountKey: cursorAccountKey,
 };
@@ -26,6 +27,9 @@ export const chatGptSavedSession: SavedSessionSpec = {
   isAuthCookie: (name) =>
     name === CHATGPT_SESSION_COOKIE ||
     name === "_account" ||
+    /^__Secure-next-auth\.session-token\.\d+$/.test(name),
+  isSessionCookie: (name) =>
+    name === CHATGPT_SESSION_COOKIE ||
     /^__Secure-next-auth\.session-token\.\d+$/.test(name),
   isDeviceCookie: (name) => cloudflareCookie(name) || name === "oai-did",
   liveAccountKey: chatGptLiveAccountKey,
