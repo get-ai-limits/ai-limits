@@ -16,6 +16,9 @@ optional Chrome permissions. Depending on what that provider returns, the
 extension reads and normalizes:
 
 - provider and access status;
+- after you add a second Cursor or ChatGPT account, that site's sign-in
+  cookie, which is saved for its connection, and the site's bot-protection
+  cookies, which are sent with it and not saved (see "Saved sign-ins" below);
 - plan, subscription, or organization labels;
 - quota labels, usage or remaining ratios and amounts, limit units, window
   start times, reset times, durations, and segments;
@@ -214,7 +217,8 @@ body only to the Grok Bot, credit-grant, and aggregated-usage dashboard
 endpoints, and returns only their JSON responses for schema validation in the
 extension context. It
 does not read rendered page content, local or session storage, or cookie
-values directly. Chrome does attach the signed-in Cursor cookies to these
+values directly (saved sign-ins, described below, are separate from this
+page function). Chrome does attach the signed-in Cursor cookies to these
 fixed same-origin requests. AI Limits never activates a Cursor tab. Scheduled
 refresh may run the same function in an already-open `cursor.com` tab and never
 opens a new one. If no tab is open or the read does not finish, page-only Grok Bot and extra-credit
@@ -327,7 +331,7 @@ and it is used only for `cursor.com` and `chatgpt.com`.
 
 With it, AI Limits copies the sign-in cookie the browser holds for that site
 (Cursor's `WorkosCursorSessionToken`; ChatGPT's
-`__Secure-next-auth.session-token`, including any numbered chunks) and saves
+`__Secure-next-auth.session-token`, including any numbered chunks, and its `_account` workspace cookie) and saves
 it for the connection whose account it belongs to. That connection is
 identified by the opaque login key described above. AI Limits then removes
 that cookie from the browser, so the browser is signed out of that site on
@@ -335,8 +339,12 @@ this device. It does not use the site's own Log out, which would end the
 session on the provider's servers. It then opens the provider's sign-in page,
 so you can sign in to the other account. For 15 minutes after opening that
 page, it watches for that site's sign-in cookie to change, and then reads the
-waiting connection. Each connection's saved copy is refreshed from the browser
-whenever the browser is signed in to that connection's account.
+waiting connection. A connection's saved copy, once it has one, is refreshed
+from the browser whenever the browser is signed in to that connection's
+account. A connection that never had a sign-in saved this way never gets one.
+Choosing **Reconnect** on a card whose account is not signed in does the same
+saving and local sign-out for the account that is signed in, but only after
+the `cookies` permission was granted through **Add account**.
 
 When the browser is signed in to a different account, AI Limits reads a
 connection with its saved sign-in instead. For each such request from its
@@ -354,22 +362,28 @@ values are read only for the account the browser is signed in to. Other
 Cursor connections keep their last values for those.
 
 Saved sign-ins are stored in `chrome.storage.local` under a separate record
-from usage state, with the same trusted-context restriction as API keys
-(described below). They are sent only to the site they came from, as the
-Cookie header described above. They are never included in usage state,
-History, logs, analytics, or a developer backend. A saved sign-in is deleted
-in these cases:
+from usage state. In Chromium builds they have the same trusted-context
+restriction as API keys (described below); Firefox has no such setting. Like
+saved API keys, they are not OS-keychain encrypted and may be inspectable by
+someone with access to the unlocked browser profile, extension DevTools, or
+profile files. A saved sign-in gives access to that provider account, as the
+site's own sign-in cookie does. They are sent only to the site they came
+from, as the Cookie header described above. They are never included in usage
+state, History, logs, analytics, or a developer backend. A saved sign-in is
+deleted in these cases:
 
 - when its connection is disconnected;
-- when the site no longer accepts it;
+- when its cookie expires;
 - on **Delete all local data**;
 - when you remove the `cookies` permission.
 
 When no Cursor or ChatGPT connection remains, AI Limits also gives the
-`cookies` permission back. Sessions end on the provider's own schedule.
-Cursor's last 60 days from sign-in, after which that connection asks you to
-sign in again. Using the site's Log out while signed in to an account also
-ends that account's saved sign-in.
+`cookies` permission back. Sessions end on the provider's own schedule. In
+November 2026, Cursor's web sessions lasted 60 days from sign-in. After that,
+the connection asks you to sign in again. Using the site's Log out while
+signed in to an account also ends that account's saved sign-in. A sign-in
+the site stops accepting is kept until one of the cases above, so a brief
+failure never loses an account; the connection shows that it is signed out.
 
 ## Local storage and retention
 

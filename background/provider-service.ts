@@ -59,6 +59,7 @@ import { isProviderRefreshEligible } from "./provider-access";
 import {
   browserSavedSessionEnvironment,
   parkLiveSession,
+  removeSavedSessionRule,
   SAVED_SESSION_PERMISSION,
   type SavedSessionEnvironment,
 } from "../providers/saved-session";
@@ -233,11 +234,23 @@ export function createProviderService(
         return;
       }
       await deleteAllSavedSessions();
+      await dropSavedSessionRules();
       if (await savedSessionEnvironment.cookies()) {
         await removeSavedSessionPermission();
       }
     } catch {
       // Best effort: a saved sign-in is also dropped with its connection.
+    }
+  }
+
+  /** Drops any replay rule a stopped service worker left behind. */
+  async function dropSavedSessionRules(): Promise<void> {
+    for (const kind of Object.keys(packages) as ProviderKind[]) {
+      const spec = packages[kind].savedSession;
+      if (!spec) continue;
+      await removeSavedSessionRule(spec, savedSessionEnvironment.rules).catch(
+        () => undefined,
+      );
     }
   }
 
@@ -509,6 +522,9 @@ export function createProviderService(
           );
           await deleteCredential(instanceId);
           await deleteSavedSession(instanceId);
+          if (packages[instance.providerKind].savedSession) {
+            await dropSavedSessionRules();
+          }
           await forgetPackageSession(instance.providerKind);
           await usageRepository.clear(instanceId);
           await connectionRepository.delete(instanceId);
@@ -946,6 +962,7 @@ export function createProviderService(
       try {
         if (!(await savedSessionEnvironment.cookies())) {
           await deleteAllSavedSessions();
+          await dropSavedSessionRules();
         }
       } catch {
         // Kept until the next reconciliation; they are unusable without it.

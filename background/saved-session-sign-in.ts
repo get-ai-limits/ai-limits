@@ -88,6 +88,9 @@ export function createSignInWatcher({
 
   const complete = async (spec: SavedSessionSpec) => {
     if (!(await isAwaitingSignIn(spec.kind, now()))) return;
+    // One read per sign-in: some sites rewrite their sign-in cookie on every
+    // request, including the read made here, which must not start another.
+    await clearAwaitingSignIn(spec.kind);
     const waiting = (await listInstances()).filter(
       (instance) => instance.providerKind === spec.kind && waitsForSignIn(instance),
     );
@@ -98,13 +101,6 @@ export function createSignInWatcher({
         // The next scheduled refresh reads it instead.
       }
     }
-    const still = (await listInstances()).some(
-      (instance) =>
-        instance.providerKind === spec.kind &&
-        instance.accountKey === undefined &&
-        instance.access === "granted",
-    );
-    if (!still) await clearAwaitingSignIn(spec.kind);
   };
 
   return ({ removed, cookie }) => {

@@ -104,7 +104,7 @@ connections:
   addAccount: 添加账号
   addAccountFor: "再添加一个 {provider} 账号"
   accountsConnected: "已连接 {count} 个"
-  addAccountSavedSignInHint: "AI Limits 会为当前卡片保存此浏览器正在使用的 {provider} 登录，让此浏览器退出 {provider}，并打开登录页面。在那里登录另一个账号后，每个账号都会持续刷新。请不要在 {provider} 网站上点击退出登录：那样会让保存的登录也失效。"
+  addAccountSavedSignInHint: "添加账号时会请求使用 {provider} cookie 的权限。AI Limits 会在此设备上为当前卡片保存此浏览器正在使用的 {provider} 登录 cookie，只发送给 {provider}，并在你断开该卡片时删除它。随后它会让此浏览器退出 {provider}，并打开登录页面。在那里登录另一个账号后，每个账号都会持续刷新。请不要在 {provider} 网站上点击退出登录：那样会让保存的登录也失效。"
   signInAnotherAccount: "请在刚打开的标签页中登录另一个 {provider} 账号。其他 {provider} 卡片会继续刷新。"
   addAccountSessionHint: "请先在 {provider} 网站上登录要添加的账号。只有当前在网站上登录的账号会刷新，其他账号会保留上次的数据，切换回去后再更新。"
 

@@ -268,8 +268,10 @@ its own card, History, and name, which you can change in Settings.
   every account keeps refreshing, whichever one the browser is signed in to.
   Don't use **Log out** on the ChatGPT or Cursor site to switch accounts,
   because that ends the saved sign-in too. A saved sign-in lasts as long as
-  the provider allows (60 days for Cursor). After that, that card asks you to
-  sign in again: choose **Reconnect** and sign in to that account. ChatGPT
+  the provider allows (about 60 days for Cursor). After that, that card asks you to
+  sign in again: choose **Reconnect** and sign in to that account. Saved
+  sign-ins stay on this device, unencrypted like saved API keys, and are
+  deleted when you disconnect that card. ChatGPT
   tracks each workspace separately. See [Privacy](PRIVACY.md) for how saved
   sign-ins are kept and used.
 

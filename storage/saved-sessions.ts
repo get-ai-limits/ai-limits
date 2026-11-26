@@ -114,7 +114,12 @@ export async function readSavedSession(
     ({ expirationDate }) =>
       expirationDate === undefined || expirationDate * 1000 > nowMs,
   );
-  return live.length > 0 ? { ...session, cookies: live } : undefined;
+  if (live.length === 0) {
+    // An expired sign-in can never be used again, so it is not kept.
+    await deleteSavedSession(instanceId);
+    return undefined;
+  }
+  return { ...session, cookies: live };
 }
 
 function sameCookies(
@@ -136,12 +141,14 @@ export function saveSession(
   instanceId: ProviderInstanceId,
   cookies: readonly SavedSessionCookie[],
   savedAt: number,
+  { onlyIfSaved = false }: { onlyIfSaved?: boolean } = {},
 ): Promise<void> {
   const session = normalizeSavedSession({ cookies, savedAt });
   if (!isProviderInstanceId(instanceId) || !session) return Promise.resolve();
   return enqueue(async () => {
     const state = await readState();
     const current = state.sessions[instanceId];
+    if (onlyIfSaved && !current) return;
     if (current && sameCookies(current.cookies, session.cookies)) return;
     await browser.storage.local.set({
       [SAVED_SESSION_STORAGE_KEY]: {

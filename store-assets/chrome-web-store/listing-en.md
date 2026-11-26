@@ -191,7 +191,7 @@ These origins are requested one provider at a time after the user clicks
   account (never for a first connection), and used only for `cursor.com` and
   `chatgpt.com`. A browser holds one sign-in per site, so AI Limits copies the
   site's sign-in cookie (Cursor's `WorkosCursorSessionToken`; ChatGPT's
-  `__Secure-next-auth.session-token`, including numbered chunks) and saves it
+  `__Secure-next-auth.session-token`, including numbered chunks, and its `_account` workspace cookie) and saves it
   for the connection it belongs to. It then removes that cookie so the user can
   sign in to the next account, and opens the sign-in page. For 15 minutes
   after that, it watches only for that site's sign-in cookie, so it can read
@@ -200,7 +200,10 @@ These origins are requested one provider at a time after the user clicks
   are sent only to the site they came from, as described under
   `declarativeNetRequestWithHostAccess`. They are deleted with their connection, on Delete all
   local data, or when this permission is removed, and the permission is given
-  back when no Cursor or ChatGPT connection remains.
+  back when no Cursor or ChatGPT connection remains. It also reads that
+  site's bot-protection cookies (Cloudflare `__cf_bm`, `cf_clearance`,
+  `_cfuvid`, `__cflb`; ChatGPT `oai-did`) to send alongside a saved sign-in;
+  those are not saved.
 - `scripting`: requested with Kimi, Cursor, Grok, or Gumloop access. For Kimi, it reads only
   the exact `access_token` and `refresh_token` browser-storage entries from an already-open or
   recovery-created matching Kimi page. If a credential is missing or rejected,
@@ -259,11 +262,12 @@ refresh may read the sign-in entry from an already-open gumloop.com tab.
   token are held in memory-backed
   `chrome.storage.session` across scheduled refreshes until the browser exits,
   Kimi rejects the refresh token, a Kimi page shows a sign-out, or the user removes Kimi
-  access or deletes all local data. When the user adds a second Cursor or
-  ChatGPT account, each such connection's sign-in cookie is saved in a
-  trusted-context `chrome.storage.local` record (see `cookies` above). It is
-  sent only to that same site and deleted with its connection.
+  access or deletes all local data.
   The refresh token is sent only to Kimi's sign-in service at `auth.kimi.com`.
+  When the user adds a second Cursor or ChatGPT account, each such
+  connection's sign-in cookie is saved in a trusted-context
+  `chrome.storage.local` record (see `cookies` above). It is sent only to that
+  same site and deleted with its connection.
   Gumloop is handled the same way: its refresh token, latest ID token, user ID,
   and Firebase web API key are held in memory-backed `chrome.storage.session`
   until the browser exits, the token service rejects the refresh token, a

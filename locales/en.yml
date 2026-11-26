@@ -104,7 +104,7 @@ connections:
   addAccount: Add account
   addAccountFor: "Add another {provider} account"
   accountsConnected: "{count} connected"
-  addAccountSavedSignInHint: "AI Limits saves the {provider} sign-in this browser uses now for its card, signs this browser out of {provider}, and opens the sign-in page. Sign in to the other account there, and every account keeps refreshing. Avoid Log out on the {provider} site: it ends the saved sign-in too."
+  addAccountSavedSignInHint: "Adding an account asks for permission to use {provider} cookies. AI Limits saves the {provider} sign-in cookie this browser uses now on this device, for its card, sends it only to {provider}, and deletes it when you disconnect that card. It then signs this browser out of {provider} and opens the sign-in page. Sign in to the other account there, and every account keeps refreshing. Avoid Log out on the {provider} site: it ends the saved sign-in too."
   signInAnotherAccount: "Sign in to the other {provider} account in the tab that just opened. Your other {provider} cards keep refreshing."
   addAccountSessionHint: "First sign in to the account you want to add on the {provider} site. Only the account signed in there refreshes; the others keep their last numbers until you switch back."
 

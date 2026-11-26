@@ -22,8 +22,10 @@ export const chatGptSavedSession: SavedSessionSpec = {
   signInUrl: "https://chatgpt.com/auth/login",
   ruleId: 3,
   // Large sessions are split into numbered chunks (`.0`, `.1`, ...).
+  // `_account` selects the workspace the session reads.
   isAuthCookie: (name) =>
     name === CHATGPT_SESSION_COOKIE ||
+    name === "_account" ||
     /^__Secure-next-auth\.session-token\.\d+$/.test(name),
   isDeviceCookie: (name) => cloudflareCookie(name) || name === "oai-did",
   liveAccountKey: chatGptLiveAccountKey,

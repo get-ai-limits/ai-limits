@@ -3,7 +3,6 @@ import type { ProviderKind } from "./catalog";
 import type { CollectionResult, ProviderRuntimeServices } from "./types";
 import { extensionOriginHost } from "./warp/origin-rule";
 import {
-  deleteSavedSession,
   readSavedSession,
   saveSession,
   type SavedSessionCookie,
@@ -224,10 +223,6 @@ export async function withSiteLock<T>(
   }
 }
 
-function signedOut(result: CollectionResult): boolean {
-  return !result.ok && "health" in result && result.health.kind === "signed_out";
-}
-
 export interface SavedSessionCollectOptions {
   spec: SavedSessionSpec;
   instance: ProviderInstanceRecord;
@@ -277,18 +272,22 @@ export async function collectWithSavedSession({
             cookieHeader(savedSession.cookies, device),
           ),
         );
-        // The saved sign-in ended (expired or signed out elsewhere): forget it.
-        if (signedOut(result)) await deleteSavedSession(instance.id);
+        // A signed-out answer is kept, not deleted: it may be a brief or
+        // replay-specific failure, and the browser is no longer signed in to
+        // this account to recover it. Disconnect or expiry removes it.
         return result;
       }
     }
     const result = await live();
+    // Only a sign-in saved when another account was added is kept fresh; a
+    // connection that never had one saved never gets one here.
     if (
       result.ok &&
+      savedSession &&
       instance.accountKey !== undefined &&
       result.snapshot.accountKey === instance.accountKey
     ) {
-      await refreshSavedCopy(spec, instance, services.now, environment);
+      await refreshSavedCopy(spec, instance, services, environment);
     }
     return result;
   });
@@ -297,14 +296,24 @@ export async function collectWithSavedSession({
 async function refreshSavedCopy(
   spec: SavedSessionSpec,
   instance: ProviderInstanceRecord,
-  now: number,
+  { fetch, signal, now }: Pick<ProviderRuntimeServices, "fetch" | "signal" | "now">,
   environment: SavedSessionEnvironment,
 ): Promise<void> {
   try {
     const api = await environment.cookies();
     if (!api) return;
     const cookies = await captureLiveSession(spec, api);
-    if (cookies.length > 0) await saveSession(instance.id, cookies, now);
+    // The browser could have switched account since the read; save only if
+    // it is still on this connection's account.
+    if (
+      cookies.length === 0 ||
+      (await spec.liveAccountKey(fetch, signal)) !== instance.accountKey
+    ) {
+      return;
+    }
+    // Only an existing copy is refreshed, so a read that finishes after its
+    // connection was removed cannot bring a deleted sign-in back.
+    await saveSession(instance.id, cookies, now, { onlyIfSaved: true });
   } catch {
     // Saving a copy is best effort; the reading itself already succeeded.
   }
@@ -340,6 +349,10 @@ export async function parkLiveSession(
     if (!owner) return "new_login";
     const cookies = await captureLiveSession(spec, api);
     if (cookies.length === 0) return "new_login";
+    // Make sure the captured cookie still belongs to that account.
+    if ((await spec.liveAccountKey(services.fetch, services.signal)) !== liveKey) {
+      return "new_login";
+    }
     await saveSession(owner.id, cookies, services.now);
     await clearLiveSession(spec, api);
     return "parked";

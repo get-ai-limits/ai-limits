@@ -120,7 +120,21 @@ beforeEach(async () => {
 });
 
 describe("collectWithSavedSession", () => {
-  test("reads live and saves a fresh copy when the browser is on this account", async () => {
+  test("does not create a saved copy for a connection that never had one", async () => {
+    const api = fakeCookies([cookie("Session", "live-a")]);
+    await collectWithSavedSession({
+      spec: spec(() => KEY_A),
+      instance: instance(A, KEY_A),
+      services,
+      live: async () => success(KEY_A),
+      saved: vi.fn(),
+      environment: environment(api).env,
+    });
+    await expect(readSavedSession(A)).resolves.toBeUndefined();
+  });
+
+  test("reads live and refreshes the saved copy when the browser is on this account", async () => {
+    await saveSession(A, [{ name: "Session", value: "old-a" }], 1);
     const api = fakeCookies([cookie("Session", "live-a"), cookie("other", "x")]);
     const { env } = environment(api);
     const live = vi.fn(async () => success(KEY_A));
@@ -222,7 +236,49 @@ describe("collectWithSavedSession", () => {
     expect(api.jar().map(({ name }) => name)).toContain("Session");
   });
 
-  test("forgets a saved sign-in the site no longer accepts", async () => {
+  test("removes the rule even when the request fails", async () => {
+    await saveSession(A, [{ name: "Session", value: "saved-a" }], 1);
+    const { env, updateSessionRules } = environment(fakeCookies([]));
+    await expect(
+      collectWithSavedSession({
+        spec: spec(() => KEY_B),
+        instance: instance(A, KEY_A),
+        services: {
+          ...services,
+          fetch: vi.fn(async () => {
+            throw new Error("network");
+          }),
+        },
+        live: vi.fn(),
+        saved: async (fetch) => {
+          await fetch("https://cursor.com/api/usage-summary");
+          return success(KEY_A);
+        },
+        environment: env,
+      }),
+    ).rejects.toThrow("network");
+    expect(updateSessionRules).toHaveBeenLastCalledWith({ removeRuleIds: [2] });
+  });
+
+  test("does not refresh the copy if the browser switched account during the read", async () => {
+    await saveSession(A, [{ name: "Session", value: "old-a" }], 1);
+    const api = fakeCookies([cookie("Session", "live-b")]);
+    let calls = 0;
+    await collectWithSavedSession({
+      // A at the start, B by the time the cookie is captured.
+      spec: spec(() => (calls++ === 0 ? KEY_A : KEY_B)),
+      instance: instance(A, KEY_A),
+      services,
+      live: async () => success(KEY_A),
+      saved: vi.fn(),
+      environment: environment(api).env,
+    });
+    await expect(readSavedSession(A)).resolves.toMatchObject({
+      cookies: [{ name: "Session", value: "old-a" }],
+    });
+  });
+
+  test("keeps a saved sign-in through a signed-out answer", async () => {
     await saveSession(A, [{ name: "Session", value: "saved-a" }], 1);
     const { env } = environment(fakeCookies([]));
 
@@ -236,7 +292,7 @@ describe("collectWithSavedSession", () => {
     });
 
     expect(result).toEqual({ ok: false, health: { kind: "signed_out" } });
-    await expect(readSavedSession(A)).resolves.toBeUndefined();
+    await expect(readSavedSession(A)).resolves.toBeDefined();
   });
 
   test("is exactly the live read without a saved sign-in or the cookies permission", async () => {

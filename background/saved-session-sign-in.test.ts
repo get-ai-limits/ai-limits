@@ -63,6 +63,16 @@ describe("sign-in watcher", () => {
     expect(refreshInstance).toHaveBeenCalledTimes(1);
   });
 
+  test("reads once per sign-in, even if the read rewrites the cookie", async () => {
+    await markAwaitingSignIn("cursor", 1_000);
+    const { watcher, refreshInstance, flush } = setup();
+    watcher(signInCookie);
+    await flush();
+    watcher(signInCookie);
+    await flush();
+    expect(refreshInstance).toHaveBeenCalledTimes(1);
+  });
+
   test("ignores sign-ins nobody waits for, removals, and unrelated cookies", async () => {
     const { watcher, refreshInstance, flush } = setup();
     watcher(signInCookie);

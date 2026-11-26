@@ -55,6 +55,8 @@ describe("saved sign-ins", () => {
 
     await expect(readSavedSession(C, 99_000)).resolves.toBeDefined();
     await expect(readSavedSession(C, 100_000)).resolves.toBeUndefined();
+    // And it is removed, not just hidden.
+    await expect(hasSavedSessions()).resolves.toBe(false);
   });
 
   test("drops cookies that could break or inject into a Cookie header", () => {
