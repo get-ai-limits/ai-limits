@@ -28,7 +28,8 @@ extension reads and normalizes:
 - refresh timestamps and sanitized success, retry, sign-in, challenge,
   temporary-error, response-change, or other-account status; and
 - for ChatGPT and Cursor connections, an opaque login key: a SHA-256 hash of
-  the provider's stable user ID, used only to keep each connection on its own
+  the provider's stable user ID (for ChatGPT, together with the workspace ID),
+  used only to keep each connection on its own
   account when you connect more than one.
 
 The extension also handles provider session, usage, subscription, and
@@ -42,8 +43,8 @@ is not written to persistent storage. The raw Gumloop project, credit, and
 subscription replies are request-local and are not persisted. A Claude organization
 name may be normalized and stored as the visible plan label. The extension
 discards email-shaped account labels and does not query the Claude email
-endpoint. To tell several accounts apart, the ChatGPT user ID (`sub`) from the
-access credential and the Cursor user ID (`sub`) from `cursor.com/api/auth/me`
+endpoint. To tell several accounts apart, the ChatGPT user ID (`sub` from the
+access credential, or the session reply's user ID) with the workspace ID and the Cursor user ID (`sub`) from `cursor.com/api/auth/me`
 are hashed into the login key described above; the raw IDs are not persisted.
 That Cursor reply also contains the account's email, name, and picture, which
 are discarded in memory and never stored or shown. For ElevenLabs, the extension retains only normalized

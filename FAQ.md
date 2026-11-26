@@ -264,7 +264,8 @@ its own card, History, and name, which you can change in Settings.
   cursor.com. Before adding another account, sign in to it on that site. Each
   connection remembers its own login, so only the account signed in there
   refreshes; the others keep their last numbers and say that a different
-  account is signed in, until you switch back.
+  account is signed in, until you switch back. ChatGPT tracks each workspace
+  separately, so switching workspace counts as switching account.
 
 Claude, Kimi, Grok, Mistral, Perplexity, and Gumloop still connect one account.
 

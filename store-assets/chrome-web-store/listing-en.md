@@ -89,7 +89,8 @@ AI Limits is an independent project by TiantianFlow. It is not affiliated with, 
   Overview visibility, provider access state,
   normalized quota/counter/balance snapshots, up to 30 days of typed
   per-instance History, sanitized refresh status, and for ChatGPT and Cursor a
-  SHA-256 hash of each connected login's user ID in
+  SHA-256 hash of each connected login's user ID (for ChatGPT, with the
+  workspace ID) in
   `chrome.storage.local`. It also holds temporary Kimi, Cursor, Grok, and Gumloop
   tab-cleanup lease metadata in `chrome.storage.session`, plus the Kimi refresh
   tokens (current and the one read from the page) and latest Kimi access token,
@@ -267,7 +268,7 @@ refresh may read the sign-in entry from an already-open gumloop.com tab.
   visible plan label. Email-shaped account labels are discarded, and current
   adapters do not query the Claude email endpoint. To keep several ChatGPT or
   Cursor accounts apart, the extension stores only a SHA-256 hash of each
-  login's stable user ID; it reads Cursor's user ID from `/api/auth/me` and
+  login's stable user ID (for ChatGPT, with the workspace ID); it reads Cursor's user ID from `/api/auth/me` and
   discards the email, name, and picture in that reply without storing them.
 - **Financial and payment information:** Yes, limited to provider-reported
   usage-credit balances, extra-usage amounts or limits, and on-demand spend
