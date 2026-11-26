@@ -1,6 +1,6 @@
 # Microsoft Edge 加载项上架说明
 
-本文档说明 AI Limits 0.6.1 版本在 Microsoft Edge 加载项（Partner Center）中的上架内容，包含可直接粘贴的简体中文商店文案。本文档并不表示任何服务提供商已批准本扩展。
+本文档说明 AI Limits 0.7.0 版本在 Microsoft Edge 加载项（Partner Center）中的上架内容，包含可直接粘贴的简体中文商店文案。本文档并不表示任何服务提供商已批准本扩展。
 
 Edge 包与 Chrome 应用商店包运行相同的代码。商店配置、隐私页面答案和认证说明以[英文版 Edge 上架说明](listing-en.md)为准；完整的权限与数据处理说明见 [Chrome 应用商店上架说明](../chrome-web-store/listing-zh_CN.md)，其中的 “Chrome” 在 Edge 中即指 Edge。
 

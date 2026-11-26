@@ -4,6 +4,7 @@ import type {
   CollectionResult,
   ProviderCollector,
 } from "../types";
+import { accountKeyFor } from "../account-key";
 import { retryAtFromResponse } from "../retry-after";
 import {
   chatGptCreditsSchema,
@@ -92,11 +93,29 @@ function decodeBase64Url(value: string): string {
   return new TextDecoder().decode(bytes);
 }
 
+function tokenPayload(accessToken: string): Record<string, unknown> | undefined {
+  try {
+    const payload: unknown = JSON.parse(
+      decodeBase64Url(accessToken.split(".")[1] ?? ""),
+    );
+    return typeof payload === "object" && payload !== null
+      ? (payload as Record<string, unknown>)
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** The signed-in ChatGPT login's stable user id (the token's `sub`). */
+function chatGptLoginId(accessToken: string): string | undefined {
+  const sub = tokenPayload(accessToken)?.sub;
+  return typeof sub === "string" && sub.trim() ? sub.trim() : undefined;
+}
+
 function chatGptAccountId(accessToken: string): string | undefined {
   try {
-    const payload = JSON.parse(
-      decodeBase64Url(accessToken.split(".")[1] ?? ""),
-    ) as Record<string, unknown>;
+    const payload = tokenPayload(accessToken);
+    if (!payload) return undefined;
     const auth = payload["https://api.openai.com/auth"];
     const nested =
       typeof auth === "object" && auth !== null
@@ -104,6 +123,61 @@ function chatGptAccountId(accessToken: string): string | undefined {
         : undefined;
     const value = nested ?? payload.chatgpt_account_id;
     return typeof value === "string" && value.trim() ? value.trim() : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * The opaque key for the login and workspace a session belongs to. Usage is
+ * per workspace, so a login with several workspaces gets one key per
+ * workspace it reads.
+ */
+async function chatGptSessionAccountKey(
+  session: { accessToken?: string | null } & Record<string, unknown>,
+): Promise<string | undefined> {
+  const accessToken = session.accessToken;
+  if (!accessToken) return undefined;
+  const accountId = chatGptAccountId(accessToken);
+  const sessionUser = session.user;
+  const sessionUserId =
+    typeof sessionUser === "object" && sessionUser !== null
+      ? (sessionUser as Record<string, unknown>).id
+      : undefined;
+  const loginId =
+    chatGptLoginId(accessToken) ??
+    (typeof sessionUserId === "string" && sessionUserId.trim()
+      ? sessionUserId.trim()
+      : undefined);
+  return loginId === undefined
+    ? undefined
+    : accountKeyFor(
+        "chatgpt",
+        accountId === undefined ? loginId : `${loginId}:${accountId}`,
+      );
+}
+
+/**
+ * Reads which login the browser is signed in to, as the same opaque key a
+ * reading carries. Undefined when signed out or unreadable.
+ */
+export async function chatGptLiveAccountKey(
+  fetch: typeof globalThis.fetch,
+  signal: AbortSignal,
+): Promise<string | undefined> {
+  try {
+    const response = await fetch(SESSION_ENDPOINT, {
+      method: "GET",
+      credentials: "include",
+      signal,
+    });
+    if (!response.ok) return undefined;
+    const session = chatGptSessionSchema.safeParse(await parseJson(response));
+    return session.success
+      ? await chatGptSessionAccountKey(
+          session.data as { accessToken?: string } & Record<string, unknown>,
+        )
+      : undefined;
   } catch {
     return undefined;
   }
@@ -131,6 +205,7 @@ async function collectChatGpt({
     }
 
     const accountId = chatGptAccountId(session.data.accessToken);
+    const accountKey = await chatGptSessionAccountKey(session.data);
     const headers = {
       Authorization: `Bearer ${session.data.accessToken}`,
       ...(accountId ? { "ChatGPT-Account-Id": accountId } : {}),
@@ -182,6 +257,7 @@ async function collectChatGpt({
       ok: true,
       snapshot: {
         providerKind: "chatgpt",
+        ...(accountKey === undefined ? {} : { accountKey }),
         planLabel: usage.data.plan_type,
         source: "web-session",
         fetchedAt: now,

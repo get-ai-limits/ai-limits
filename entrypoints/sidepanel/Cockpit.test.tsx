@@ -1789,8 +1789,14 @@ describe("Cockpit", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Add provider" }));
 
-    expect(screen.getByText("Available · 18")).toBeVisible();
+    expect(screen.getByText("Available · 21")).toBeVisible();
     expect(screen.getByRole("button", { name: "Connect New API" })).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: "Add another ElevenLabs account" }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: "Add another Cursor account" }),
+    ).toBeVisible();
     expect(screen.getByRole("button", { name: "Connect LiteLLM" })).toBeVisible();
     expect(screen.getByRole("button", { name: "Connect ClawRouter" })).toBeVisible();
     expect(screen.getByRole("button", { name: "Connect sub2api" })).toBeVisible();
@@ -3172,7 +3178,7 @@ describe("Cockpit", () => {
       within(cursorRow).getByRole("button", { name: "Reconnect Cursor" }),
     );
 
-    expect(onConnectProvider).toHaveBeenCalledWith("cursor");
+    expect(onConnectProvider).toHaveBeenCalledWith("cursor", "cursor:default");
     expect(
       state.instances.find((instance) => instance.providerKind === "cursor"),
     ).toEqual(cursorBefore);

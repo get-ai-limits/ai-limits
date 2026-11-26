@@ -21,6 +21,10 @@ export interface ProviderConnectRowProps {
   providerKind: ProviderKind;
   credentialKind: "none" | "api-key";
   isReconnect?: boolean;
+  /** Accounts of this provider already connected; above zero offers "Add account". */
+  connectedCount?: number;
+  /** Each account keeps its own saved sign-in. */
+  savedSignIns?: boolean;
   operation?: ProviderOperation;
   onConnect: (providerKind: ProviderKind) => void;
 }
@@ -29,6 +33,8 @@ export function ProviderConnectRow({
   providerKind,
   credentialKind,
   isReconnect = false,
+  connectedCount = 0,
+  savedSignIns = false,
   operation,
   onConnect,
 }: ProviderConnectRowProps) {
@@ -44,9 +50,12 @@ export function ProviderConnectRow({
     ),
   );
   const manualDisclosure = localizeManualRefreshDisclosure(providerKind);
+  const addsAccount = !isReconnect && connectedCount > 0;
   const actionLabel = isReconnect
     ? l10n.t("connections.reconnectProvider", { provider: name })
-    : localizeConnectLabel(providerKind);
+    : addsAccount
+      ? l10n.t("connections.addAccountFor", { provider: name })
+      : localizeConnectLabel(providerKind);
 
   return (
     <article className="provider-connect-row" aria-labelledby={headingId}>
@@ -55,7 +64,13 @@ export function ProviderConnectRow({
           <ProviderMark providerId={providerKind} size="md" />
           <div>
             <h3 id={headingId}>{name}</h3>
-            <p>{l10n.t("connections.canShow", { capabilities })}</p>
+            <p>
+              {addsAccount
+                ? l10n.t("connections.accountsConnected", {
+                    count: connectedCount,
+                  })
+                : l10n.t("connections.canShow", { capabilities })}
+            </p>
           </div>
         </div>
         <button
@@ -73,7 +88,11 @@ export function ProviderConnectRow({
             className="provider-connect-row__action-surface"
             style={{ height: 32 }}
           >
-            {isReconnect ? l10n.t("common.reconnect") : l10n.t("common.connect")}
+            {isReconnect
+              ? l10n.t("common.reconnect")
+              : addsAccount
+                ? l10n.t("connections.addAccount")
+                : l10n.t("common.connect")}
           </span>
         </button>
       </div>
@@ -81,6 +100,13 @@ export function ProviderConnectRow({
         <strong>{connectionMethod}</strong> —{" "}
         <span>{localizeConnectionDisclosure(providerKind)}</span>
       </p>
+      {addsAccount && credentialKind === "none" ? (
+        <p className="provider-connect-row__manual-disclosure">
+          {savedSignIns
+            ? l10n.t("connections.addAccountSavedSignInHint", { provider: name })
+            : l10n.t("connections.addAccountSessionHint", { provider: name })}
+        </p>
+      ) : null}
       {manualDisclosure ? (
         <p className="provider-connect-row__manual-disclosure">
           {manualDisclosure}

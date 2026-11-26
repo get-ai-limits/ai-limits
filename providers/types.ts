@@ -1,3 +1,4 @@
+import type { SavedSessionSpec } from "./saved-session";
 import type {
   DeferredReason,
   FailureGuidance,
@@ -62,6 +63,8 @@ export interface ProviderPackage {
     credentialOverride?: ProviderCredential,
   ): Promise<CollectionResult>;
   startup?(): Promise<void>;
+  /** Present when each connection can keep its own saved sign-in. */
+  readonly savedSession?: SavedSessionSpec;
   /** Drops any in-memory session the package holds, on disconnect or delete. */
   forgetSession?(): Promise<void>;
 }

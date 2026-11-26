@@ -77,31 +77,61 @@ describe("queued instance repositories", () => {
   });
 
   test("rejects duplicate IDs and singleton cardinality without leaking config", async () => {
-    const chatgpt: ProviderInstanceRecord = {
-      id: "chatgpt:default",
-      providerKind: "chatgpt",
+    const kimi: ProviderInstanceRecord = {
+      id: "kimi:default",
+      providerKind: "kimi",
       config: { kind: "fixed" },
       access: "granted",
       createdAt: now,
       history: [],
     };
-    await repository.connectionRepository.create(chatgpt);
+    await repository.connectionRepository.create(kimi);
 
     await expect(
       repository.connectionRepository.create({
-        ...chatgpt,
+        ...kimi,
         userLabel: "Duplicate ID",
       }),
-    ).rejects.not.toThrow(/chatgpt:default/);
+    ).rejects.not.toThrow(/kimi:default/);
     await expect(
       repository.connectionRepository.create({
-        ...chatgpt,
-        id: "chatgpt:550e8400-e29b-41d4-a716-446655440000",
+        ...kimi,
+        id: "kimi:550e8400-e29b-41d4-a716-446655440000",
       }),
-    ).rejects.not.toThrow(/chatgpt:550e8400/);
+    ).rejects.not.toThrow(/kimi:550e8400/);
     await expect(repository.connectionRepository.list()).resolves.toEqual([
-      chatgpt,
+      kimi,
     ]);
+  });
+
+  test("hands a usage commit the same-provider siblings and keeps its login key", async () => {
+    const base: ProviderInstanceRecord = {
+      id: "cursor:default",
+      providerKind: "cursor",
+      config: { kind: "fixed" },
+      access: "granted",
+      createdAt: now,
+      history: [],
+    };
+    const sibling = {
+      ...base,
+      id: "cursor:550e8400-e29b-41d4-a716-446655440000",
+      accountKey: "b".repeat(64),
+    };
+    await repository.connectionRepository.create(base);
+    await repository.connectionRepository.create(sibling);
+    await repository.connectionRepository.create(newApiInstance("newapi:default", "Relay"));
+    let seen: string[] = [];
+
+    await repository.usageRepository.commit(base.id, (instance, siblings) => {
+      seen = siblings.map(({ id }) => id);
+      return { ...instance, accountKey: "a".repeat(64) };
+    });
+
+    expect(seen).toEqual([sibling.id]);
+    await expect(repository.connectionRepository.get(base.id)).resolves.toMatchObject({
+      accountKey: "a".repeat(64),
+    });
   });
 
   test("renames and changes access while preserving immutable identity and config", async () => {

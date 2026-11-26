@@ -1,13 +1,13 @@
 # Firefox Add-ons listing
 
-This document describes AI Limits version 0.6.1 for Firefox Add-ons (AMO). It
+This document describes AI Limits version 0.7.0 for Firefox Add-ons (AMO). It
 is the paste-ready listing copy and reviewer material for the Firefox package
 built with `pnpm zip:firefox`. It is not a claim that any provider has approved
 the extension.
 
 The Firefox package runs the same code as the Chrome Web Store package, except
-that the panel opens as a Firefox sidebar and the API-key record is not
-restricted with `storage.setAccessLevel`, which Firefox lacks. The
+that the panel opens as a Firefox sidebar and the API-key and saved sign-in
+records are not restricted with `storage.setAccessLevel`, which Firefox lacks. The
 [Chrome Web Store pack](../chrome-web-store/listing-en.md) holds the full
 permission and data-handling reference and the twenty-four-provider test
 flow; read "Chrome side panel" there as "Firefox sidebar". The writing rules in
@@ -15,11 +15,11 @@ flow; read "Chrome side panel" there as "Firefox sidebar". The writing rules in
 
 ## Upload
 
-- Add-on file: `.output/ai-limits-0.6.1-firefox.zip`, built and checked with
+- Add-on file: `.output/ai-limits-0.7.0-firefox.zip`, built and checked with
   `pnpm verify:zip && pnpm verify:targets`.
 - Compatibility: Firefox for desktop only. Leave Firefox for Android
   unchecked; Android has no sidebar.
-- Source code: Yes. Upload `.output/ai-limits-0.6.1-sources.zip`. The build
+- Source code: Yes. Upload `.output/ai-limits-0.7.0-sources.zip`. The build
   output is bundled and minified, not obfuscated.
 - The add-on ID `ai-limits@get-ai-limits.com` is permanent. Never change it.
 - At install, Firefox shows the data collection declared in the manifest
@@ -104,7 +104,7 @@ What it accesses: only after you connect a service and approve its site access, 
 
 Where data goes: your sign-in session or API key for a service is sent only to that same service, to fetch your usage. The one exception is Gumloop: its refresh token goes to Google's Firebase token service, which Gumloop's own page uses to renew its sign-in. AI Limits never sends it anywhere else. Apart from that OpenRouter credit amount, it never reads page text, prompts, conversations, or generated responses.
 
-What it stores, on your device only: your settings, provider order, the address and label you give any self-hosted gateway, normalized usage snapshots, and up to 30 days of usage History per connection. API keys you enter are stored in Firefox's extension storage without operating-system keychain encryption, so anyone with access to your Firefox profile may be able to read them. Sign-in cookies and session credentials are never stored on disk. Kimi's refresh tokens (current and the page's) and latest access token, and Gumloop's refresh token, latest ID token, user ID, and Firebase web API key, are the only credentials kept, and only in memory-only session storage until Firefox exits, so background refresh can renew Kimi and Gumloop access.
+What it stores, on your device only: your settings, provider order, the address and label you give any self-hosted gateway, normalized usage snapshots, up to 30 days of usage History per connection, and for ChatGPT and Cursor a SHA-256 hash of each connected login's user ID. API keys you enter are stored in Firefox's extension storage without operating-system keychain encryption, so anyone with access to your Firefox profile may be able to read them. Sign-in cookies and session credentials are never stored on disk, with one exception: when you add a second Cursor or ChatGPT account, AI Limits asks for the optional cookies permission and saves each of those accounts' sign-in cookie on your device, like API keys without operating-system keychain encryption. It sends that cookie only to the same site, and deletes it when you disconnect that account, when it expires, when you use Delete all local data, or when you remove the permission. Kimi's refresh tokens (current and the page's) and latest access token, and Gumloop's refresh token, latest ID token, user ID, and Firebase web API key, are the only credentials kept, and only in memory-only session storage until Firefox exits, so background refresh can renew Kimi and Gumloop access.
 
 Your controls: disconnect any service, turn off automatic refresh, or use Delete all local data in Settings at any time. Uninstalling the extension removes its local data.
 
@@ -122,10 +122,12 @@ Building from source: use Node 24 and the pnpm version pinned in package.json (v
 
 Test accounts: none are supplied by the extension. To see real data, sign in to any supported subscription service in the same Firefox profile (for example ChatGPT or Claude) and click Connect on it, or create a temporary read-only API key for an API service (for example OpenRouter or DeepSeek) and connect it through the guided setup. Without an account you can still check First Run, Settings, the provider list, the permission prompts, and Delete all local data.
 
-Data collection: the manifest declares authenticationInfo as required because the user's sign-in session or API key for a service is sent to that same service to read usage (and, for Gumloop, its refresh token to the Google Firebase token service Gumloop uses). Nothing is sent to the developer, and there is no remote code.
+Data collection: the manifest declares authenticationInfo as required because the user's sign-in session or API key for a service is sent to that same service to read usage. For Gumloop, its refresh token also goes to the Google Firebase token service Gumloop uses. After the user adds a second Cursor or ChatGPT account, each such account's saved sign-in cookie is kept in local extension storage and sent only to that same site. Nothing is sent to the developer, and there is no remote code.
 
 Injected code: for Kimi, Cursor, Grok, and Gumloop, scripting.executeScript runs a bundled read-only function in that provider's own page (MAIN world) to read usage responses, Kimi's access_token and refresh_token storage entries, or Gumloop's Firebase sign-in entry in IndexedDB. The Kimi refresh token is sent only to Kimi's sign-in service (auth.kimi.com), and the Gumloop refresh token only to Google's Firebase token service that Gumloop uses (securetoken.googleapis.com), without cookies, to renew access. During Connect or manual Refresh it may open one inactive provider tab and closes only that tab.
 
-declarativeNetRequest: one session rule removes the Origin header from the extension's own POST to https://app.warp.dev/graphql/v2?op=GetRequestLimitInfo, because Warp refuses requests carrying an extension origin. It is active only after the user grants app.warp.dev access.
+declarativeNetRequest: one session rule removes the Origin header from the extension's own POST to https://app.warp.dev/graphql/v2?op=GetRequestLimitInfo, because Warp refuses requests carrying an extension origin. It is active only after the user grants app.warp.dev access. When the user adds a second Cursor or ChatGPT account, a session rule sets the Cookie header of the extension's own background request to cursor.com or chatgpt.com to that connection's saved sign-in, only for that one request, and drops any cookie the site returns.
 
-Firefox has no storage.setAccessLevel, so unlike the Chromium build the API-key record is not restricted with it. The extension declares no content scripts.
+cookies (optional): requested only when the user adds a second Cursor or ChatGPT account, and used only for cursor.com and chatgpt.com. The extension saves the current sign-in cookie for its connection in local extension storage and removes it from the browser, so the user can sign in to the next account. It then opens the sign-in page. For 15 minutes after that, it watches only for that site's sign-in cookie, to read the new account once it signs in. A saved sign-in is sent only to the same site and deleted when its connection is disconnected, when it expires, on Delete all local data, or when the permission is removed. It also reads that site's bot-protection cookies (Cloudflare `__cf_bm`, `cf_clearance`, `_cfuvid`, `__cflb`; ChatGPT `oai-did`) to send alongside a saved sign-in; those are not saved.
+
+Firefox has no storage.setAccessLevel, so unlike the Chromium build the API-key record and the saved Cursor/ChatGPT sign-in record are not restricted with it. The extension declares no content scripts.

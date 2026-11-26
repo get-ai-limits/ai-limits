@@ -7,6 +7,13 @@ import type {
 import type { CollectionResult, ProviderPackage } from "../providers/types";
 import { providerRegistry } from "../providers/registry";
 import {
+  collectWithSavedSession,
+  type CookiesApi,
+  type SavedSessionEnvironment,
+  type SavedSessionSpec,
+} from "../providers/saved-session";
+import { readSavedSession } from "../storage/saved-sessions";
+import {
   initializeCredentialVault,
   readCredentialWithRevision,
   saveApiKeyIfCurrent,
@@ -115,7 +122,7 @@ async function authorizedApiRequest(
 
 async function authorizedBrowserIntent(
   service: ProviderService,
-  providerKind: "chatgpt",
+  providerKind: "chatgpt" | "claude" | "cursor",
 ): Promise<string> {
   const prepared = await service.prepareProviderPermission({
     providerKind,
@@ -1709,28 +1716,348 @@ describe("generic provider instance service", () => {
   });
 
   test("permission-only browser connect creates one singleton instance", async () => {
-    const collect = vi.fn(async () => success("chatgpt"));
+    const collect = vi.fn(async () => success("claude"));
     const service = createProviderService({
-      packages: registryWith({ chatgpt: { ...providerRegistry.chatgpt, collect } }),
+      packages: registryWith({ claude: { ...providerRegistry.claude, collect } }),
       clock: () => NOW,
     });
 
     await service.connectBrowserProvider(
-      "chatgpt",
-      await authorizedBrowserIntent(service, "chatgpt"),
+      "claude",
+      await authorizedBrowserIntent(service, "claude"),
     );
     await service.connectBrowserProvider(
-      "chatgpt",
-      await authorizedBrowserIntent(service, "chatgpt"),
+      "claude",
+      await authorizedBrowserIntent(service, "claude"),
     );
 
     const instances = (await loadInstanceAppState()).instances;
     expect(instances).toHaveLength(1);
     expect(instances[0]).toMatchObject({
-      id: "chatgpt:default",
-      providerKind: "chatgpt",
+      id: "claude:default",
+      providerKind: "claude",
       access: "granted",
     });
+  });
+
+  describe("browser-session accounts", () => {
+    const KEY_A = "a".repeat(64);
+    const KEY_B = "b".repeat(64);
+
+    function signedInAs(accountKey: string | undefined, usedRatio = 0.25) {
+      return async (): Promise<CollectionResult> => {
+        const result = success("chatgpt");
+        if (!result.ok) return result;
+        return {
+          ok: true,
+          snapshot: {
+            ...result.snapshot,
+            ...(accountKey === undefined ? {} : { accountKey }),
+            metrics: [{ ...result.snapshot.metrics[0]!, usedRatio } as never],
+          },
+        };
+      };
+    }
+
+    function serviceSignedIn(signedIn: { key: string | undefined; ratio?: number }) {
+      const collect = vi.fn((async () =>
+        signedInAs(signedIn.key, signedIn.ratio)()) as ProviderPackage["collect"]);
+      return createProviderService({
+        packages: registryWith({ chatgpt: { ...providerRegistry.chatgpt, collect } }),
+        clock: () => NOW,
+        randomUUID: sequentialUuid(),
+      });
+    }
+
+    async function connectChatGpt(service: ProviderService) {
+      return service.connectBrowserProvider(
+        "chatgpt",
+        await authorizedBrowserIntent(service, "chatgpt"),
+      );
+    }
+
+    test("adds one connection per login and refuses the same login twice", async () => {
+      const signedIn: { key: string | undefined } = { key: KEY_A };
+      const service = serviceSignedIn(signedIn);
+
+      await connectChatGpt(service);
+      const duplicate = await connectChatGpt(service);
+      expect(duplicate.results[0]?.outcome).toEqual({
+        kind: "failure",
+        category: "duplicate_account",
+      });
+      expect((await loadInstanceAppState()).instances).toHaveLength(1);
+
+      signedIn.key = KEY_B;
+      await connectChatGpt(service);
+
+      const instances = (await loadInstanceAppState()).instances;
+      expect(instances.map(({ accountKey }) => accountKey)).toEqual([KEY_A, KEY_B]);
+      expect(new Set(instances.map(({ id }) => id)).size).toBe(2);
+      expect(instances.every(({ id }) => id.startsWith("chatgpt:"))).toBe(true);
+    });
+
+    test("refreshes only the signed-in login and keeps the other's last reading", async () => {
+      const signedIn: { key: string | undefined; ratio: number } = {
+        key: KEY_A,
+        ratio: 0.1,
+      };
+      const service = serviceSignedIn(signedIn);
+      await connectChatGpt(service);
+      signedIn.key = KEY_B;
+      signedIn.ratio = 0.6;
+      await connectChatGpt(service);
+      const [first, second] = (await loadInstanceAppState()).instances;
+
+      signedIn.ratio = 0.9;
+      const report = await service.refreshAll("manual_all");
+
+      expect(
+        Object.fromEntries(report.results.map(({ instanceId, outcome }) => [
+          instanceId,
+          outcome.kind === "failure" ? outcome.category : outcome.kind,
+        ])),
+      ).toEqual({ [first!.id]: "other_account", [second!.id]: "success" });
+      const after = (await loadInstanceAppState()).instances;
+      const firstAfter = after.find(({ id }) => id === first!.id)!;
+      const secondAfter = after.find(({ id }) => id === second!.id)!;
+      expect(firstAfter.snapshot?.metrics[0]).toMatchObject({ usedRatio: 0.1 });
+      expect(firstAfter.history).toHaveLength(1);
+      expect(firstAfter.lastAttempt?.outcome).toEqual({
+        kind: "failure",
+        category: "other_account",
+      });
+      expect(firstAfter.accountKey).toBe(KEY_A);
+      expect(secondAfter.snapshot?.metrics[0]).toMatchObject({ usedRatio: 0.9 });
+    });
+
+    test("an existing connection binds to its login on the next refresh", async () => {
+      await seed({
+        id: "chatgpt:default",
+        providerKind: "chatgpt",
+        config: { kind: "fixed" },
+        access: "granted",
+        createdAt: NOW,
+        history: [],
+      });
+      const signedIn: { key: string | undefined } = { key: KEY_A };
+      const service = serviceSignedIn(signedIn);
+
+      await service.refreshAll("manual_all");
+      await expect(connectionRepository.get("chatgpt:default")).resolves.toMatchObject({
+        accountKey: KEY_A,
+      });
+
+      signedIn.key = undefined;
+      const lone = await service.refreshAll("manual_all");
+      expect(lone.results[0]?.outcome).toMatchObject({ kind: "success" });
+      await expect(connectionRepository.get("chatgpt:default")).resolves.toMatchObject({
+        accountKey: KEY_A,
+      });
+    });
+
+    test("refuses an unverified reading once several logins are connected", async () => {
+      const signedIn: { key: string | undefined } = { key: KEY_A };
+      const service = serviceSignedIn(signedIn);
+      await connectChatGpt(service);
+      signedIn.key = KEY_B;
+      await connectChatGpt(service);
+
+      signedIn.key = undefined;
+      const report = await service.refreshAll("manual_all");
+
+      expect(report.results.map(({ outcome }) => outcome)).toEqual([
+        { kind: "failure", category: "temporary_error" },
+        { kind: "failure", category: "temporary_error" },
+      ]);
+    });
+
+    test("reads an older untied connection before a new one can claim its login", async () => {
+      await seed({
+        id: "chatgpt:default",
+        providerKind: "chatgpt",
+        config: { kind: "fixed" },
+        access: "granted",
+        createdAt: NOW,
+        history: [],
+      });
+      const signedIn: { key: string | undefined } = { key: KEY_A };
+      const service = serviceSignedIn(signedIn);
+
+      const report = await connectChatGpt(service);
+
+      expect(report.results[0]?.outcome).toEqual({
+        kind: "failure",
+        category: "duplicate_account",
+      });
+      const instances = (await loadInstanceAppState()).instances;
+      expect(instances.map(({ id, accountKey }) => ({ id, accountKey }))).toEqual([
+        { id: "chatgpt:default", accountKey: KEY_A },
+      ]);
+    });
+
+    describe("with saved sign-ins", () => {
+      function savedSignInService() {
+        const browserState: { key: string | undefined } = { key: KEY_A };
+        let jar: Browser.cookies.Cookie[] = [];
+        const signIn = (key: string) => {
+          browserState.key = key;
+          jar = [{
+            name: "Session",
+            value: `synthetic-${key.slice(0, 1)}`,
+            domain: "chatgpt.com",
+            path: "/",
+            hostOnly: true,
+            httpOnly: true,
+            secure: true,
+            session: true,
+            sameSite: "lax",
+            storeId: "0",
+          }];
+        };
+        signIn(KEY_A);
+        const cookies: CookiesApi = {
+          getAll: async () => jar,
+          remove: async ({ name }) => {
+            jar = jar.filter((cookie) => cookie.name !== name);
+            browserState.key = undefined;
+            return {};
+          },
+        };
+        const savedSessionEnvironment: SavedSessionEnvironment = {
+          cookies: async () => cookies,
+          rules: { updateSessionRules: async () => undefined },
+          extensionHost: () => "extension-id",
+        };
+        const savedSession: SavedSessionSpec = {
+          ...providerRegistry.chatgpt.savedSession!,
+          isAuthCookie: (name) => name === "Session",
+          isSessionCookie: (name) => name === "Session",
+          liveAccountKey: async () => browserState.key,
+        };
+        const openSignInTab = vi.fn(async () => undefined);
+        const collect = vi.fn((async (instance, services) =>
+          collectWithSavedSession({
+            spec: savedSession,
+            instance,
+            services,
+            environment: savedSessionEnvironment,
+            live: async () =>
+              browserState.key === undefined
+                ? { ok: false, health: { kind: "signed_out" } }
+                : signedInAs(browserState.key)(),
+            saved: signedInAs(instance.accountKey),
+          })) as ProviderPackage["collect"]);
+        const service = createProviderService({
+          packages: registryWith({
+            chatgpt: { ...providerRegistry.chatgpt, savedSession, collect },
+          }),
+          clock: () => NOW,
+          randomUUID: sequentialUuid(),
+          savedSessionEnvironment,
+          openSignInTab,
+          removeSavedSessionPermission: async () => undefined,
+        });
+        return { service, signIn, openSignInTab, browserState };
+      }
+
+      test("adding an account saves the current sign-in, signs the browser out, and opens sign-in", async () => {
+        const { service, signIn, openSignInTab, browserState } =
+          savedSignInService();
+        await connectChatGpt(service);
+        const [first] = (await loadInstanceAppState()).instances;
+
+        const report = await connectChatGpt(service);
+
+        expect(browserState.key).toBeUndefined();
+        await expect(readSavedSession(first!.id)).resolves.toMatchObject({
+          cookies: [{ name: "Session", value: "synthetic-a" }],
+        });
+        expect(report.results.at(-1)?.outcome).toMatchObject({
+          kind: "failure",
+          category: "signed_out",
+        });
+        expect(openSignInTab).toHaveBeenCalledWith("https://chatgpt.com/auth/login");
+        expect((await loadInstanceAppState()).instances).toHaveLength(2);
+
+        // The other account signs in; both connections now refresh.
+        signIn(KEY_B);
+        const refreshed = await service.refreshAll("manual_all");
+        expect(
+          refreshed.results.map(({ outcome }) => outcome.kind),
+        ).toEqual(["success", "success"]);
+        expect(
+          (await loadInstanceAppState()).instances.map(({ accountKey }) => accountKey),
+        ).toEqual([KEY_A, KEY_B]);
+      });
+
+      test("removing the connection removes its saved sign-in", async () => {
+        const { service } = savedSignInService();
+        await connectChatGpt(service);
+        await connectChatGpt(service);
+        const [first] = (await loadInstanceAppState()).instances;
+        await expect(readSavedSession(first!.id)).resolves.toBeDefined();
+
+        await service.disconnectInstance(first!.id);
+
+        await expect(readSavedSession(first!.id)).resolves.toBeUndefined();
+      });
+    });
+  });
+
+  test("a second fixed-site API-key account becomes its own instance beside the first", async () => {
+    await seed(
+      {
+        id: "openai:default",
+        providerKind: "openai",
+        config: { kind: "fixed" },
+        access: "granted",
+        createdAt: NOW,
+        history: [],
+      },
+      "first-secret",
+    );
+    const collect = vi.fn(async () => success("openai"));
+    const service = createProviderService({
+      packages: registryWith({ openai: { ...providerRegistry.openai, collect } }),
+      clock: () => NOW,
+      randomUUID: () => "550e8400-e29b-41d4-a716-446655440000",
+    });
+
+    await expect(
+      service.connectApiKeyProvider(
+        await authorizedApiRequest(service, {
+          providerKind: "openai",
+          userLabel: "Work org",
+          config: { kind: "fixed" },
+          apiKey: "second-secret",
+        }),
+      ),
+    ).resolves.toMatchObject({ result: "connected" });
+
+    const instances = (await loadInstanceAppState()).instances;
+    expect(instances.map(({ id, userLabel }) => ({ id, userLabel }))).toEqual([
+      { id: "openai:default", userLabel: undefined },
+      {
+        id: "openai:550e8400-e29b-41d4-a716-446655440000",
+        userLabel: "Work org",
+      },
+    ]);
+    await expect(readCredentialWithRevision("openai:default")).resolves.toMatchObject({
+      value: "first-secret",
+    });
+    await expect(
+      readCredentialWithRevision("openai:550e8400-e29b-41d4-a716-446655440000"),
+    ).resolves.toMatchObject({ value: "second-secret" });
+
+    const remove = vi
+      .spyOn(browser.permissions, "remove")
+      .mockResolvedValue(true as never);
+    await service.disconnectInstance("openai:default");
+    expect(remove).not.toHaveBeenCalled();
+    expect((await loadInstanceAppState()).instances.map(({ id }) => id)).toEqual([
+      "openai:550e8400-e29b-41d4-a716-446655440000",
+    ]);
   });
 
   test("scheduled Kimi collection is noninteractive", async () => {

@@ -349,6 +349,10 @@ function normalizeDetailTables(value: unknown): DetailTable[] | undefined {
   return tables as DetailTable[];
 }
 
+export function isAccountKey(value: unknown): value is string {
+  return typeof value === "string" && /^[0-9a-f]{64}$/.test(value);
+}
+
 export function normalizeUsageSnapshot(
   value: unknown,
   providerKind: ProviderKind,
@@ -384,6 +388,7 @@ export function normalizeUsageSnapshot(
     ...(value.accountLabel !== undefined && !looksLikeEmail(value.accountLabel)
       ? { accountLabel: value.accountLabel }
       : {}),
+    ...(isAccountKey(value.accountKey) ? { accountKey: value.accountKey } : {}),
     ...(value.planLabel === undefined ? {} : { planLabel: value.planLabel }),
     source: value.source as UsageSnapshot["source"],
     fetchedAt: value.fetchedAt,
@@ -515,6 +520,8 @@ function normalizeAttemptOutcome(
     "challenge_blocked",
     "provider_changed",
     "temporary_error",
+    "other_account",
+    "duplicate_account",
   ] as const;
   if (
     value.kind !== "failure" ||
@@ -598,6 +605,7 @@ function normalizeInstance(
     createdAt: value.createdAt,
     history: normalizeHistory(value.history, now),
     ...(snapshot === undefined ? {} : { snapshot }),
+    ...(isAccountKey(value.accountKey) ? { accountKey: value.accountKey } : {}),
     ...(lastAttempt === undefined ? {} : { lastAttempt }),
   };
 }

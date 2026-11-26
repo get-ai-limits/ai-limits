@@ -201,6 +201,8 @@ const FAILURE_KEYS: Record<FailureCategory, string> = {
   challenge_blocked: "errors.challengeBlocked",
   provider_changed: "errors.providerChanged",
   temporary_error: "errors.temporaryError",
+  other_account: "errors.otherAccount",
+  duplicate_account: "errors.duplicateAccount",
 };
 
 const OPERATION_KEYS: Record<ProviderOperation, string> = {

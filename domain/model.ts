@@ -25,6 +25,12 @@ export interface ProviderInstanceRecord {
   history: UsageHistoryObservation[];
   snapshot?: UsageSnapshot;
   lastAttempt?: ProviderAttempt;
+  /**
+   * Opaque hash of the provider login this connection belongs to. Set on the
+   * first successful read for providers that report a login identity, then
+   * used to keep another signed-in account's usage out of this connection.
+   */
+  accountKey?: string;
 }
 
 export interface InstanceAppState {
@@ -162,6 +168,8 @@ export interface DetailTable {
 export interface UsageSnapshot {
   providerKind: ProviderKind;
   accountLabel?: string;
+  /** Opaque hash of the signed-in login that produced this reading. */
+  accountKey?: string;
   planLabel?: string;
   source: "web-session" | "oauth" | "api-key" | "fixture";
   fetchedAt: number;
@@ -194,7 +202,9 @@ export type FailureCategory =
   | "credential_scope_required"
   | "challenge_blocked"
   | "provider_changed"
-  | "temporary_error";
+  | "temporary_error"
+  | "other_account"
+  | "duplicate_account";
 
 export type FailureGuidance = "retry_session";
 
@@ -236,6 +246,10 @@ export function sanitizedFailureMessage(
       return "AI Limits could not read this provider's usage response.";
     case "temporary_error":
       return "AI Limits could not refresh this provider. Try again later.";
+    case "other_account":
+      return "A different account is signed in. Switch to this account on the provider's site to refresh it.";
+    case "duplicate_account":
+      return "The signed-in account is already connected. Sign in to a different account first.";
   }
 }
 
@@ -276,4 +290,6 @@ export type ProviderHealth =
   | { kind: "credential_scope_required"; message?: string; guidance?: FailureGuidance }
   | { kind: "challenge_blocked"; message?: string; guidance?: FailureGuidance }
   | { kind: "provider_changed"; message?: string; guidance?: FailureGuidance }
-  | { kind: "temporary_error"; message?: string; guidance?: FailureGuidance; retryAt?: number };
+  | { kind: "temporary_error"; message?: string; guidance?: FailureGuidance; retryAt?: number }
+  | { kind: "other_account"; message?: string; guidance?: FailureGuidance }
+  | { kind: "duplicate_account"; message?: string; guidance?: FailureGuidance };

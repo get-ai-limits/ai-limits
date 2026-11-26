@@ -101,6 +101,12 @@ connections:
   requestingPermission: Requesting permission…
   fetchingUsage: Fetching usage…
   waitingForKimi: Waiting for Kimi…
+  addAccount: Add account
+  addAccountFor: "Add another {provider} account"
+  accountsConnected: "{count} connected"
+  addAccountSavedSignInHint: "Adding an account asks for permission to use {provider} cookies. AI Limits saves the {provider} sign-in cookie this browser uses now on this device, for its card, sends it only to {provider}, and deletes it when you disconnect that card. It then signs this browser out of {provider} and opens the sign-in page. Sign in to the other account there, and every account keeps refreshing. Avoid Log out on the {provider} site: it ends the saved sign-in too."
+  signInAnotherAccount: "Sign in to the other {provider} account in the tab that just opened. Your other {provider} cards keep refreshing."
+  addAccountSessionHint: "First sign in to the account you want to add on the {provider} site. Only the account signed in there refreshes; the others keep their last numbers until you switch back."
 
 overview:
   screen: Overview
@@ -601,6 +607,9 @@ apiKey:
   validating: Validating…
   submitConnect: Validate & connect
   submitReplace: Validate & replace
+  nameField: Account name
+  nameHelp: "Shown on the card so you can tell your {provider} accounts apart. You can rename it later in Settings."
+  defaultAccountName: "Account {number}"
 
 newapi:
   invalidSite: This site did not return compatible New API status and usage data. Check the URL and try again.
@@ -652,6 +661,8 @@ errors:
   challengeBlocked: Open the provider and complete its security check before trying again.
   providerChanged: AI Limits could not read this provider's usage response.
   temporaryError: AI Limits could not refresh this provider. Try again later.
+  otherAccount: A different account is signed in on this provider's site. Switch back to this account there, or, if you added accounts with Add account, choose Reconnect to sign this card in again.
+  duplicateAccount: The account signed in on this provider's site is already connected. Sign in to a different account there, then add it.
   kimiRetrySession: Kimi was still starting. Try Refresh once more, or open or reload Kimi.
   gumloopRetrySession: Could not read your Gumloop sign-in. Open gumloop.com, make sure you are signed in, then press Refresh.
 

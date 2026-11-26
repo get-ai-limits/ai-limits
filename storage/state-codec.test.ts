@@ -193,7 +193,50 @@ describe("V5 instance state codec", () => {
   });
 
   test("drops duplicate IDs, singleton siblings, and connection-mode mismatches independently", () => {
-    const firstChatGpt: ProviderInstanceRecord = {
+    const firstKimi: ProviderInstanceRecord = {
+      id: "kimi:default",
+      providerKind: "kimi",
+      config: { kind: "fixed" },
+      access: "granted",
+      createdAt: now,
+      history: [],
+    };
+    const state = normalizeInstanceAppState(
+      {
+        version: 5,
+        preferences: { displayMode: "used", autoRefresh: true },
+        instances: [
+          firstKimi,
+          { ...firstKimi, id: "kimi:550e8400-e29b-41d4-a716-446655440000" },
+          newApiInstance("newapi:default", "First"),
+          newApiInstance("newapi:default", "Duplicate ID"),
+          {
+            ...newApiInstance(
+              "newapi:0c5f2af7-21d4-4cd1-bcd8-09005c65e45f",
+              "Wrong config",
+            ),
+            config: { kind: "fixed" },
+          },
+          {
+            ...firstKimi,
+            id: "claude:default",
+            providerKind: "claude",
+            config: { kind: "dynamic-origin", baseUrl: "https://relay.example" },
+          },
+        ],
+      },
+      now,
+    );
+
+    expect(state.instances.map(({ id }) => id)).toEqual([
+      "kimi:default",
+      "newapi:default",
+    ]);
+  });
+
+  test("keeps only a well-formed login key on instances and snapshots", () => {
+    const key = "a".repeat(64);
+    const base: ProviderInstanceRecord = {
       id: "chatgpt:default",
       providerKind: "chatgpt",
       config: { kind: "fixed" },
@@ -206,31 +249,23 @@ describe("V5 instance state codec", () => {
         version: 5,
         preferences: { displayMode: "used", autoRefresh: true },
         instances: [
-          firstChatGpt,
-          { ...firstChatGpt, id: "chatgpt:550e8400-e29b-41d4-a716-446655440000" },
-          newApiInstance("newapi:default", "First"),
-          newApiInstance("newapi:default", "Duplicate ID"),
+          { ...base, accountKey: key },
           {
-            ...newApiInstance(
-              "newapi:0c5f2af7-21d4-4cd1-bcd8-09005c65e45f",
-              "Wrong config",
-            ),
-            config: { kind: "fixed" },
-          },
-          {
-            ...firstChatGpt,
-            id: "claude:default",
-            providerKind: "claude",
-            config: { kind: "dynamic-origin", baseUrl: "https://relay.example" },
+            ...base,
+            id: "chatgpt:550e8400-e29b-41d4-a716-446655440000",
+            accountKey: "someone@example.com",
           },
         ],
       },
       now,
     );
 
-    expect(state.instances.map(({ id }) => id)).toEqual([
-      "chatgpt:default",
-      "newapi:default",
+    expect(state.instances.map(({ id, accountKey }) => ({ id, accountKey }))).toEqual([
+      { id: "chatgpt:default", accountKey: key },
+      {
+        id: "chatgpt:550e8400-e29b-41d4-a716-446655440000",
+        accountKey: undefined,
+      },
     ]);
   });
 

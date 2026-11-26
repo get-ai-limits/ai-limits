@@ -163,6 +163,8 @@ export interface ProviderAvailabilityView {
   credentialKind: "none" | "api-key";
   configKind: ProviderInstanceConfig["kind"];
   recoveryGuidance?: string;
+  /** Each connection keeps its own saved sign-in, so accounts refresh at once. */
+  savedSignIns?: true;
 }
 
 export type ApiKeyConnectionStatus =
@@ -767,6 +769,8 @@ const failureCategories = new Set<FailureCategory>([
   "challenge_blocked",
   "provider_changed",
   "temporary_error",
+  "other_account",
+  "duplicate_account",
 ]);
 const failureGuidance = new Set<FailureGuidance>(["retry_session"]);
 
@@ -935,7 +939,8 @@ function parseProviderAvailability(value: unknown): ProviderAvailabilityView {
       "cardinality",
       "credentialKind",
       "configKind",
-    ], ["recoveryGuidance"]) ||
+    ], ["recoveryGuidance", "savedSignIns"]) ||
+    (value.savedSignIns !== undefined && value.savedSignIns !== true) ||
     !isProviderKind(value.providerKind) ||
     (value.cardinality !== "single" && value.cardinality !== "multiple") ||
     (value.credentialKind !== "none" && value.credentialKind !== "api-key") ||
@@ -953,6 +958,7 @@ function parseProviderAvailability(value: unknown): ProviderAvailabilityView {
     ...(value.recoveryGuidance === undefined
       ? {}
       : { recoveryGuidance: value.recoveryGuidance }),
+    ...(value.savedSignIns === true ? { savedSignIns: true as const } : {}),
   };
 }
 

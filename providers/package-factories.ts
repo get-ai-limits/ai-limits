@@ -1,3 +1,7 @@
+import {
+  collectWithSavedSession,
+  type SavedSessionSpec,
+} from "./saved-session";
 import type {
   ProviderInstanceConfig,
   ProviderInstanceRecord,
@@ -52,6 +56,7 @@ export function createBrowserSessionPackage<
   adapter,
   cardinality,
   requiredPermissions,
+  savedSession,
 }: {
   kind: Kind;
   adapter: ProviderCollector<Kind>;
@@ -59,6 +64,8 @@ export function createBrowserSessionPackage<
   requiredPermissions: (
     config: ProviderInstanceConfig,
   ) => Browser.permissions.Permissions | undefined;
+  /** Lets each connection keep its own saved sign-in. */
+  savedSession?: SavedSessionSpec;
 }): ProviderPackage {
   return {
     kind,
@@ -67,6 +74,7 @@ export function createBrowserSessionPackage<
     configKind: "fixed",
     normalizeConfig: normalizeFixedConfig,
     requiredPermissions,
+    ...(savedSession ? { savedSession } : {}),
     collect(instance, services): Promise<CollectionResult> {
       if (!matchesPackage(kind, instance, normalizeFixedConfig)) {
         return Promise.resolve({
@@ -74,7 +82,14 @@ export function createBrowserSessionPackage<
           health: { kind: "provider_changed" },
         });
       }
-      return adapter.collect(adapterContext(services));
+      if (!savedSession) return adapter.collect(adapterContext(services));
+      return collectWithSavedSession({
+        spec: savedSession,
+        instance,
+        services,
+        live: () => adapter.collect(adapterContext(services)),
+        saved: (fetch) => adapter.collect({ ...adapterContext(services), fetch }),
+      });
     },
   };
 }

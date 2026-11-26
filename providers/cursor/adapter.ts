@@ -9,6 +9,7 @@ import type {
   CollectionResult,
   ProviderCollector,
 } from "../types";
+import { accountKeyFor } from "../account-key";
 import { retryAtFromResponse } from "../retry-after";
 import type { CursorDashboardJson } from "./page-dashboard";
 import {
@@ -25,6 +26,7 @@ import {
 } from "./schema";
 
 const USAGE_ENDPOINT = "https://cursor.com/api/usage-summary";
+const IDENTITY_ENDPOINT = "https://cursor.com/api/auth/me";
 
 const REQUEST_INIT = {
   method: "GET",
@@ -327,6 +329,29 @@ export function normalizeExtraUsageCredits(
   };
 }
 
+/**
+ * Reads which Cursor login is signed in, as an opaque key. Only the stable
+ * `sub` is used, and only its hash leaves this function. Undefined when the
+ * identity cannot be read, which keeps unbound connections working.
+ */
+export async function cursorAccountKey(
+  fetch: typeof globalThis.fetch,
+  signal: AbortSignal,
+): Promise<string | undefined> {
+  try {
+    const response = await fetch(IDENTITY_ENDPOINT, { ...REQUEST_INIT, signal });
+    if (!response.ok) return undefined;
+    const body = await parseJson(response);
+    const sub =
+      typeof body === "object" && body !== null
+        ? (body as Record<string, unknown>).sub
+        : undefined;
+    return typeof sub === "string" ? accountKeyFor("cursor", sub) : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export async function collectCursor(
   { fetch, now, signal }: CollectionContext,
   dashboard: CursorDashboardJson = {},
@@ -362,10 +387,12 @@ export async function collectCursor(
       ...(grok === undefined ? [] : [grok]),
       ...(extraUsageCredits === undefined ? [] : [extraUsageCredits]),
     ];
+    const accountKey = await cursorAccountKey(fetch, signal);
     return {
       ok: true,
       snapshot: {
         providerKind: "cursor",
+        ...(accountKey === undefined ? {} : { accountKey }),
         planLabel: parsed.data.membershipType,
         source: "web-session",
         fetchedAt: now,

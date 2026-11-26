@@ -1043,6 +1043,33 @@ describe("side-panel App", () => {
     expect(screen.getByRole("status")).toHaveTextContent("Updated 1 provider.");
   });
 
+  test("explains when the signed-in login is already connected", async () => {
+    const state = createEmptyFixtureState();
+    vi.spyOn(browser.permissions, "request").mockResolvedValue(true as never);
+    installMessageHandler((message, respond) => {
+      if (message.type === "CONNECT_BROWSER_PROVIDER") {
+        respond({
+          state,
+          report: report(
+            { chatgpt: { kind: "failure", category: "duplicate_account" } as const },
+            "connect",
+          ),
+        });
+        return;
+      }
+      respond(state);
+    });
+
+    render(<App />);
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Connect ChatGPT" }),
+    );
+
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      "already connected. Sign in to a different account",
+    );
+  });
+
   test("announces a declined permission decision", async () => {
     const state = createEmptyFixtureState();
     vi.spyOn(browser.permissions, "request").mockResolvedValue(false as never);

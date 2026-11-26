@@ -128,6 +128,29 @@ describe("ChatGPT adapter", () => {
     expect(JSON.stringify(result)).not.toContain("account-test");
   });
 
+  test("keys each login and workspace by a hash, never the raw ids", async () => {
+    const read = async (payload: Record<string, unknown>) => {
+      const injectedFetch = vi
+        .fn<typeof globalThis.fetch>()
+        .mockResolvedValueOnce(response({ accessToken: jwt(payload) }))
+        .mockResolvedValueOnce(response(usageFixture()));
+      const result = await chatGptAdapter.collect(context(injectedFetch));
+      expect(JSON.stringify(result)).not.toContain("user-EXAMPLE");
+      return result.ok ? result.snapshot.accountKey : undefined;
+    };
+    const workspace = (id: string) => ({
+      sub: "user-EXAMPLE",
+      "https://api.openai.com/auth": { chatgpt_account_id: id },
+    });
+
+    const personal = await read(workspace("workspace-1"));
+    expect(personal).toMatch(/^[0-9a-f]{64}$/);
+    expect(await read(workspace("workspace-1"))).toBe(personal);
+    expect(await read(workspace("workspace-2"))).not.toBe(personal);
+    expect(await read({ sub: "user-OTHER" })).toMatch(/^[0-9a-f]{64}$/);
+    expect(await read({})).toBeUndefined();
+  });
+
   test("keeps a valid primary window when the optional secondary window is null", async () => {
     const accessToken = jwt({ chatgpt_account_id: "account-test" });
     const usage = usageFixture();

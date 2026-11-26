@@ -32,7 +32,7 @@ import {
   type AnnouncementTone,
   type SupportedLocale,
 } from "../../i18n/index";
-import { localizeProviderName } from "../../i18n/presentation";
+import { localizeFailure, localizeProviderName } from "../../i18n/presentation";
 import { Cockpit } from "./Cockpit";
 import type { ApiKeySubmission } from "./Cockpit";
 import { instanceLabels } from "./instance-label";
@@ -446,13 +446,18 @@ export function App() {
 
   const requestPreparedPermission = async (
     prepared: PermissionIntentResponse,
+    alreadyAsked = false,
   ): Promise<boolean> => {
     try {
       const required =
         (prepared.permissions.origins?.length ?? 0) > 0 ||
         (prepared.permissions.permissions?.length ?? 0) > 0;
+      // Already-held access needs no second prompt (one may follow the
+      // saved sign-in prompt, after the click's user activation is spent).
       const granted = required
-        ? Boolean(await browser.permissions.request(prepared.permissions))
+        ? (alreadyAsked &&
+            Boolean(await browser.permissions.contains(prepared.permissions))) ||
+          Boolean(await browser.permissions.request(prepared.permissions))
         : true;
       commitViewState(
         parseAppViewState(
@@ -470,7 +475,10 @@ export function App() {
     }
   };
 
-  const handleConnectProvider = async (providerKind: ProviderKind) => {
+  const handleConnectProvider = async (
+    providerKind: ProviderKind,
+    instanceId?: ProviderInstanceId,
+  ) => {
     const currentState = viewStateRef.current;
     if (
       !currentState ||
@@ -478,12 +486,44 @@ export function App() {
     ) return;
     clearAnnouncement();
     const config = rawProviderConfig(currentState, providerKind);
-    const existingInstanceId = currentState.instances.find(
-      (instance) => instance.providerKind === providerKind,
-    )?.id;
+    // A provider with several accounts adds a new connection unless a
+    // specific one is being reconnected.
+    const existingInstanceId =
+      instanceId ??
+      (providerAvailability(currentState, providerKind).cardinality === "single"
+        ? currentState.instances.find(
+            (instance) => instance.providerKind === providerKind,
+          )?.id
+        : undefined);
+    // Adding a second Cursor or ChatGPT account saves each card's own
+    // sign-in; that needs the cookies permission, asked for in the same
+    // prompt, after the Add account row explained it. Reconnect never asks
+    // for it, and saves sign-ins only if it was already granted that way.
+    const usesSavedSignIn =
+      existingInstanceId === undefined &&
+      providerAvailability(currentState, providerKind).savedSignIns === true &&
+      currentState.instances.some(
+        (instance) =>
+          instance.providerKind === providerKind &&
+          instance.id !== existingInstanceId,
+      );
     let prepared: PermissionIntentResponse;
     try {
       prepared = await preparePermission(providerKind, config, existingInstanceId);
+      if (usesSavedSignIn) {
+        prepared = {
+          ...prepared,
+          permissions: {
+            ...prepared.permissions,
+            permissions: [
+              ...new Set([
+                ...(prepared.permissions.permissions ?? []),
+                "cookies" as const,
+              ]),
+            ],
+          },
+        };
+      }
     } catch {
       announce(
         l10n.t("announcements.connectFailed", {
@@ -495,8 +535,33 @@ export function App() {
     }
     setProviderOperation(prepared.instanceId, "requesting_permission");
     let granted: boolean;
+    let savedSignIn = usesSavedSignIn;
     try {
-      granted = await requestPreparedPermission(prepared);
+      if (usesSavedSignIn) {
+        // Declining cookies still adds the account the old way: only the
+        // account signed in on the site refreshes.
+        let withCookies = false;
+        try {
+          withCookies = Boolean(
+            await browser.permissions.request(prepared.permissions),
+          );
+        } catch {
+          withCookies = false;
+        }
+        if (!withCookies) {
+          savedSignIn = false;
+          prepared = {
+            ...prepared,
+            permissions: {
+              ...prepared.permissions,
+              permissions: (prepared.permissions.permissions ?? []).filter(
+                (permission) => permission !== "cookies",
+              ),
+            },
+          };
+        }
+      }
+      granted = await requestPreparedPermission(prepared, usesSavedSignIn);
     } catch {
       announce(
         l10n.t("announcements.connectFailed", {
@@ -528,8 +593,31 @@ export function App() {
         } satisfies RuntimeCommand),
       );
       commitViewState(response.state);
-      const summary = manualSummary(response.report, response.state);
-      announce(summary.message, summary.tone);
+      const duplicate = response.report.results.some(
+        ({ outcome }) =>
+          outcome.kind === "failure" && outcome.category === "duplicate_account",
+      );
+      const waitsForSignIn =
+        savedSignIn &&
+        response.report.results.some(
+          ({ instanceId: resultId, outcome }) =>
+            resultId === prepared.instanceId &&
+            outcome.kind === "failure" &&
+            outcome.category === "signed_out",
+        );
+      if (duplicate) {
+        announce(localizeFailure("duplicate_account"), "attention");
+      } else if (waitsForSignIn) {
+        announce(
+          l10n.t("connections.signInAnotherAccount", {
+            provider: localizeProviderName(providerKind),
+          }),
+          "attention",
+        );
+      } else {
+        const summary = manualSummary(response.report, response.state);
+        announce(summary.message, summary.tone);
+      }
     } catch {
       await abandonPermissionIntent(prepared.permissionIntentId);
       announce(
@@ -883,7 +971,9 @@ export function App() {
       providerOperations={providerOperations}
       onDisplayModeChange={handleDisplayModeChange}
       onRefresh={() => void handleRefresh()}
-      onConnectProvider={(providerId) => void handleConnectProvider(providerId)}
+      onConnectProvider={(providerId, instanceId) =>
+        void handleConnectProvider(providerId, instanceId)
+      }
       onOpenApiKeySetup={handleOpenApiKeySetup}
       onSubmitApiKey={handleSubmitApiKey}
       onRefreshInstance={(instanceId) => void handleRefreshInstance(instanceId)}

@@ -31,6 +31,39 @@ function renderView(
 }
 
 describe("ApiKeyConnectView", () => {
+  it("asks for an account name only when adding another account", async () => {
+    const onSubmit = vi.fn(async () => "connected" as const);
+    renderView({
+      providerKind: "openai",
+      guideKind: undefined,
+      suggestedUserLabel: "Account 2",
+      onSubmit,
+    });
+
+    const name = screen.getByLabelText("Account name");
+    expect(name).toHaveValue("Account 2");
+    fireEvent.change(name, { target: { value: "  Work org  " } });
+    fireEvent.change(screen.getByLabelText("OpenAI API key"), {
+      target: { value: "sk-test" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Validate & connect" }));
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledWith("sk-test", "Work org"));
+  });
+
+  it("omits the account name for a first connection and for key replacement", () => {
+    renderView({ providerKind: "openai", guideKind: undefined });
+    expect(screen.queryByLabelText("Account name")).not.toBeInTheDocument();
+    cleanup();
+    renderView({
+      providerKind: "openai",
+      guideKind: undefined,
+      mode: "replace",
+      suggestedUserLabel: "Account 2",
+    });
+    expect(screen.queryByLabelText("Account name")).not.toBeInTheDocument();
+  });
+
   it("renders fixed-key onboarding for the selected provider identity", () => {
     renderView({ providerKind: "openrouter", guideKind: undefined });
 

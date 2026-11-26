@@ -1,6 +1,6 @@
 # Chrome 应用商店上架说明
 
-本文档说明 AI Limits 0.6.1 版本。这是完整的 Chrome 应用商店提交包，包含可直接粘贴的上架文案以及审核参考材料。本文档并不表示任何服务提供商已批准本扩展。
+本文档说明 AI Limits 0.7.0 版本。这是完整的 Chrome 应用商店提交包，包含可直接粘贴的上架文案以及审核参考材料。本文档并不表示任何服务提供商已批准本扩展。
 
 ## 商店配置
 
@@ -70,10 +70,10 @@ AI Limits 是 TiantianFlow 独立开发的项目，与任何已连接的服务�
 
 ### 必需权限
 
-- `storage`：在 `chrome.storage.local` 中保存显示、语言和刷新偏好、服务顺序与总览可见性、服务访问状态、标准化后的配额/计数/余额快照、最多 30 天的按类型分实例 History，以及经过清理的刷新状态。它还会在 `chrome.storage.session` 中保存临时的 Kimi、Cursor、Grok 和 Gumloop 标签页清理租约元数据，Kimi 刷新令牌（当前令牌及从页面读取的令牌）和最新的 Kimi 访问令牌，以及 Gumloop 的刷新令牌、最新的 ID 令牌、用户 ID 和 Firebase Web API 密钥；浏览器退出时会清除这些数据。除此之外，浏览器会话 cookie 和访问凭据不会被保存。验证通过后，用户创建的服务商 API 密钥会保存在单独的 `chrome.storage.local` 凭据记录中，其 Chrome 存储访问级别仅限于受信任的扩展上下文。该记录不受操作系统钥匙串加密保护，因此从已解锁的 Chrome 配置文件、扩展 DevTools 或配置文件文件中仍可能被检查到。
+- `storage`：在 `chrome.storage.local` 中保存显示、语言和刷新偏好、服务顺序与总览可见性、服务访问状态、标准化后的配额/计数/余额快照、最多 30 天的按类型分实例 History、经过清理的刷新状态，以及 ChatGPT 和 Cursor 每个已连接登录账号用户 ID（ChatGPT 还包括工作区 ID）的 SHA-256 哈希。它还会在 `chrome.storage.session` 中保存临时的 Kimi、Cursor、Grok 和 Gumloop 标签页清理租约元数据，Kimi 刷新令牌（当前令牌及从页面读取的令牌）和最新的 Kimi 访问令牌，以及 Gumloop 的刷新令牌、最新的 ID 令牌、用户 ID 和 Firebase Web API 密钥；浏览器退出时会清除这些数据。除此之外，浏览器会话 cookie 和访问凭据不会被保存；例外是用户添加第二个账号时保存的 Cursor 和 ChatGPT 登录（见下方 `cookies`）。验证通过后，用户创建的服务商 API 密钥会保存在单独的 `chrome.storage.local` 凭据记录中，其 Chrome 存储访问级别仅限于受信任的扩展上下文。该记录不受操作系统钥匙串加密保护，因此从已解锁的 Chrome 配置文件、扩展 DevTools 或配置文件文件中仍可能被检查到。
 - `alarms`：仅在启用自动刷新且至少有一个服务已连接时，安排大约每 15 分钟一次的刷新周期。
 - `sidePanel`：在 Chrome 侧边栏中显示本扩展的唯一应用界面。
-- `declarativeNetRequestWithHostAccess`：从本扩展发往 `https://app.warp.dev/graphql/v2?op=GetRequestLimitInfo` 的 POST 请求中移除 `Origin` 请求头，因为 Warp 服务器会拒绝带有扩展来源的请求。这条会话规则只匹配该 URL 和本扩展 Service Worker 发出的请求，并且只有在用户授予可选的 `https://app.warp.dev/*` 主机权限后才会生效。不会修改任何其他请求。
+- `declarativeNetRequestWithHostAccess`：从本扩展发往 `https://app.warp.dev/graphql/v2?op=GetRequestLimitInfo` 的 POST 请求中移除 `Origin` 请求头，因为 Warp 服务器会拒绝带有扩展来源的请求。这条会话规则只匹配该 URL 和本扩展 Service Worker 发出的请求，并且只有在用户授予可选的 `https://app.warp.dev/*` 主机权限后才会生效。当用户添加了第二个 Cursor 或 ChatGPT 账号时（见下方 `cookies`），另一类会话规则会把本扩展发往该网站的后台请求的 Cookie 请求头设为正在读取的连接所保存的登录，并丢弃网站返回的任何 cookie；该请求不携带浏览器自身的 cookie。每条规则只在这一次请求期间存在，只匹配本扩展 Service Worker 在任何标签页之外发往 `cursor.com` 或 `chatgpt.com` 的请求，绝不会影响页面或浏览器自身的登录。不会修改任何其他请求。
 
 ### 可选主机权限
 
@@ -82,7 +82,7 @@ AI Limits 是 TiantianFlow 独立开发的项目，与任何已连接的服务�
 - `https://chatgpt.com/*`：读取已登录用户的 ChatGPT 会话和用量响应。
 - `https://claude.ai/*`：读取已登录用户的 Claude 组织用量响应。
 - `https://www.kimi.com/*`：读取 Kimi 用量/订阅响应，并支持有边界的交互式会话访问与恢复流程。续期 Kimi 访问令牌时，会只携带刷新令牌、不带 cookie 调用 Kimi 登录服务 `auth.kimi.com`；不会申请额外的主机权限。如果 Kimi 不再接受此请求，刷新会回退到下方 `scripting` 中所述的页面和标签页路径。
-- `https://cursor.com/*`：读取已登录用户的 Cursor 基础用量。还可以在一个已经打开的精确来源页面中运行捆绑的只读代码，以请求 Grok Bot、额度授予和汇总包含用量 JSON。仅在 **连接** 或手动 **刷新** 期间，如果当前没有打开的标签页，可能会短暂打开一个非活动用量页。
+- `https://cursor.com/*`：读取已登录用户的 Cursor 基础用量，并读取 `/api/auth/me`，仅用于对已登录用户 ID 做哈希，以区分多个 Cursor 账号；该响应中的邮箱、姓名和头像会被丢弃。还可以在一个已经打开的精确来源页面中运行捆绑的只读代码，以请求 Grok Bot、额度授予和汇总包含用量 JSON。仅在 **连接** 或手动 **刷新** 期间，如果当前没有打开的标签页，可能会短暂打开一个非活动用量页。
 - `https://grok.com/*`：从已经打开的 grok.com 页面读取已登录用户的 Grok 会话、用量池、速率限制和订阅响应。仅在 **连接** 或手动 **刷新** 期间，如果当前没有打开的标签页，可能会短暂打开一个非活动 grok.com 标签页。这是 grok.com 上的消费者版 Grok，不是 Cursor 的 Grok Bot。
 - `https://www.gumloop.com/*` 和 `https://api.gumloop.com/*`：从已经打开的 gumloop.com 页面读取 Firebase 登录条目（见下方 `scripting`），然后使用该 ID 令牌、不带 Cookie 地从 `api.gumloop.com` 读取组织的剩余额度和每月额度，与 Gumloop 自己的额度用量页面发送的请求相同。如果后台请求失败或被 Gumloop 拒绝，则在已打开的 gumloop.com 页面内发起相同的读取。续期一小时有效的 ID 令牌时，会调用 Gumloop 登录所使用的 Google Firebase 令牌服务 `securetoken.googleapis.com`，只发送刷新令牌和 Gumloop 公开的 Web API 密钥，不带 Cookie，也不会请求额外的主机权限。
 - `https://admin.mistral.ai/*` 和 `https://console.mistral.ai/*`：从已登录的 Mistral 会话读取本月用量和额度。
@@ -94,15 +94,16 @@ AI Limits 是 TiantianFlow 独立开发的项目，与任何已连接的服务�
 
 ### 可选 API 权限
 
+- `cookies`：仅在用户添加第二个 Cursor 或 ChatGPT 账号时请求（首次连接绝不会请求），且只用于 `cursor.com` 和 `chatgpt.com`。浏览器在每个网站只能登录一个账号，因此 AI Limits 会复制该网站的登录 cookie（Cursor 的 `WorkosCursorSessionToken`；ChatGPT 的 `__Secure-next-auth.session-token`，包括带编号的分块，以及其 `_account` 工作区 cookie），为其所属的连接保存，然后移除该 cookie，让用户登录下一个账号，并打开登录页面。此后 15 分钟内，它只关注该网站的登录 cookie，以便登录完成后读取新连接。保存的登录存放在仅限受信任扩展上下文访问的 `chrome.storage.local` 记录中，只按 `declarativeNetRequestWithHostAccess` 中所述发送到其来源网站；断开对应连接、删除全部本地数据或移除此权限时会被删除；当不再有 Cursor 或 ChatGPT 连接时，扩展会交还此权限。它还会读取该网站的防机器人 cookie（Cloudflare 的 `__cf_bm`、`cf_clearance`、`_cfuvid`、`__cflb`；ChatGPT 的 `oai-did`），与保存的登录一起发送；这些 cookie 不会被保存。
 - `scripting`：在获得 Kimi、Cursor、Grok 或 Gumloop 访问权限时请求。对于 Kimi，它只从一个已经打开或由恢复流程创建的匹配 Kimi 页面中，读取精确的 `access_token` 和 `refresh_token` 浏览器存储条目。如果凭据缺失或被拒绝，交互式恢复可能会创建一个不活动的 Kimi 首页标签页。恢复流程会等到 Kimi 客户端应用完成挂载，在 30 秒后停止等待，并仅对其自己创建的标签页尝试尽力清理；关闭过程或浏览器 API 错误可能延迟或阻止清理。对于 Cursor，刷新可以在一个已经打开的 `cursor.com` 页面中运行捆绑的精确来源函数。如果当前没有打开的标签页，只有 **连接** 或手动 **刷新** 可能会创建一个不活动的 `https://cursor.com/dashboard/spending` 标签页，最多等待 10 秒，并且只关闭它自己创建的标签页。它绝不会激活标签页，也绝不会关闭用户自己打开的标签页。该函数仅向 Grok Bot、额度授予和汇总用量仪表板端点发送固定正文为 `{}` 的 POST 请求，只返回它们的 JSON，并且不会直接检查渲染内容、浏览器存储或 cookie 值。Chrome 会把已登录的 Cursor cookie 附加到这些同源请求。定时刷新可能向已经打开的 cursor.com 标签页注入代码，但绝不会新建标签页。对于 Grok，**连接** 或手动 **刷新** 可以在一个已经打开的 `grok.com` 页面中运行捆绑的精确来源函数。如果当前没有打开的标签页，该交互路径可能会创建一个不活动的 `https://grok.com/` 标签页，最多等待 10 秒，并且只关闭它自己创建的标签页。它绝不会激活标签页，也绝不会关闭用户自己打开的标签页。该函数发送已登录的会话、用量池、订阅和聊天模式速率限制请求，只返回这些响应，并且不会直接检查渲染内容、浏览器存储或 cookie 值。Chrome 会把已登录的 Grok cookie 附加到这些同源请求。定时刷新可能向已经打开的 grok.com 标签页注入代码，但绝不会新建标签页。对于 Gumloop，刷新会在一个已经打开的 `gumloop.com` 页面中运行捆绑的精确来源函数，只从页面的 `firebaseLocalStorageDb` IndexedDB 数据库读取 Firebase 登录条目（ID 令牌及其过期时间、刷新令牌、Web API 密钥、用户 ID）；仅当后台请求失败或被 Gumloop 拒绝时，才运行第二个函数，从页面发送相同的三个只读 GET 请求，并只返回状态码和 JSON。如果没有打开的 gumloop.com 页面且没有保存的会话，只有连接或手动刷新可能创建一个非活动的 `https://www.gumloop.com/settings/profile/general` 标签页，最多等待 15 秒，并且只关闭它自己创建的标签页。定时刷新可能读取已经打开的 gumloop.com 标签页，绝不会打开新的标签页。
 
 清单不会请求范围更广的 `tabs` 权限。定时刷新不会创建或激活服务标签页。Grok 定时刷新可能向已经打开的 grok.com 标签页注入代码；Kimi 定时刷新可能从已经打开的 Kimi 标签页读取 `access_token`/`refresh_token`；Cursor 定时刷新可能向已经打开的 cursor.com 标签页注入代码。Gumloop 定时刷新可能从已经打开的 gumloop.com 标签页读取登录条目。
 
 ## 数据披露答案
 
-- **身份验证信息：** 是。这包括用户创建、并在验证成功后由 AI Limits 保存在本地的服务商 API 密钥。其他服务的浏览器会话 JSON、cookie 和访问凭据，以及 Chrome 为 OpenRouter 促销额度页面读取附带的 openrouter.ai 会话 cookie，仅在所选采集序列期间使用，不会被持久化。Kimi 是例外：Kimi 刷新令牌（当前令牌及从页面读取的令牌）和最新的 Kimi 访问令牌会保存在基于内存的 `chrome.storage.session` 中，在多次定时刷新之间保留，直到浏览器退出、Kimi 拒绝该刷新令牌、Kimi 页面显示已退出登录，或用户移除 Kimi 访问权限或删除所有本地数据。刷新令牌只会发送到 Kimi 登录服务 `auth.kimi.com`。API 密钥保存在单独的受信任上下文凭据记录中，只发送到所选服务的 API，绝不会发送给开发者。Gumloop 的处理方式相同：其刷新令牌、最新的 ID 令牌、用户 ID 和 Firebase Web API 密钥保存在基于内存的 `chrome.storage.session` 中，直到浏览器退出、令牌服务拒绝刷新令牌、gumloop.com 页面显示已退出登录，或用户移除 Gumloop 访问权限或删除全部本地数据。Gumloop 刷新令牌只发送到 Google 的 Firebase 令牌服务 `securetoken.googleapis.com`，ID 令牌只发送到 `api.gumloop.com`。Gumloop 组织 ID 只在请求期间使用，不会持久保存。
+- **身份验证信息：** 是。这包括用户创建、并在验证成功后由 AI Limits 保存在本地的服务商 API 密钥。其他服务的浏览器会话 JSON、cookie 和访问凭据，以及 Chrome 为 OpenRouter 促销额度页面读取附带的 openrouter.ai 会话 cookie，仅在所选采集序列期间使用，不会被持久化。Kimi 是例外：Kimi 刷新令牌（当前令牌及从页面读取的令牌）和最新的 Kimi 访问令牌会保存在基于内存的 `chrome.storage.session` 中，在多次定时刷新之间保留，直到浏览器退出、Kimi 拒绝该刷新令牌、Kimi 页面显示已退出登录，或用户移除 Kimi 访问权限或删除所有本地数据。刷新令牌只会发送到 Kimi 登录服务 `auth.kimi.com`。当用户添加第二个 Cursor 或 ChatGPT 账号时，每个此类连接的登录 cookie 会保存在受信任上下文的 `chrome.storage.local` 记录中（见上方 `cookies`），只发送到同一网站，并随其连接一起删除。API 密钥保存在单独的受信任上下文凭据记录中，只发送到所选服务的 API，绝不会发送给开发者。Gumloop 的处理方式相同：其刷新令牌、最新的 ID 令牌、用户 ID 和 Firebase Web API 密钥保存在基于内存的 `chrome.storage.session` 中，直到浏览器退出、令牌服务拒绝刷新令牌、gumloop.com 页面显示已退出登录，或用户移除 Gumloop 访问权限或删除全部本地数据。Gumloop 刷新令牌只发送到 Google 的 Firebase 令牌服务 `securetoken.googleapis.com`，ID 令牌只发送到 `api.gumloop.com`。Gumloop 组织 ID 只在请求期间使用，不会持久保存。
 - **网站内容：** 是。AI Limits 会处理私有的服务会话、用量、订阅和组织响应 JSON，以及 Kimi 精确的 `access_token` 和 `refresh_token` 浏览器存储条目、Cursor 的页面上下文仪表板 JSON 响应（Grok Bot、额度授予和汇总包含用量），以及 Grok 页面来源的会话、用量池、订阅和速率限制响应，还有 OpenRouter 已登录 Credits 页面服务端组件载荷中的促销额度池。它不会读取已渲染的页面文本、提示词、对话或生成的回复。 它还会处理 Gumloop 的 Firebase 登录条目，以及 Gumloop 的项目、额度和订阅 JSON。
-- **账户标识符和个人身份信息：** 是，但处理范围很窄。从访问凭据派生的 ChatGPT 账户标识，Claude 的组织 UUID/能力信息，OpenRouter 已登录用户 ID 和密钥创建者 ID（用于确认是同一账号），以及用于构建额度请求路径的 Gumloop 组织 ID，仅在请求期间使用，不会被持久化。Gumloop 用户 ID 与其会话一起保存在基于内存的 `chrome.storage.session` 中，浏览器退出时清除，不会写入持久化存储。Claude 的组织名称可能会被标准化并存储为可见的套餐标签。类似电子邮件形态的账户标签会被丢弃，当前适配器不会查询 Claude 或 Cursor 的电子邮件端点。
+- **账户标识符和个人身份信息：** 是，但处理范围很窄。从访问凭据派生的 ChatGPT 账户标识，Claude 的组织 UUID/能力信息，OpenRouter 已登录用户 ID 和密钥创建者 ID（用于确认是同一账号），以及用于构建额度请求路径的 Gumloop 组织 ID，仅在请求期间使用，不会被持久化。Gumloop 用户 ID 与其会话一起保存在基于内存的 `chrome.storage.session` 中，浏览器退出时清除，不会写入持久化存储。Claude 的组织名称可能会被标准化并存储为可见的套餐标签。类似电子邮件形态的账户标签会被丢弃，当前适配器不会查询 Claude 的电子邮件端点。为区分多个 ChatGPT 或 Cursor 账号，扩展只保存每个登录账号稳定用户 ID（ChatGPT 还包括工作区 ID）的 SHA-256 哈希；它从 Cursor 的 `/api/auth/me` 读取用户 ID，并丢弃该响应中的邮箱、姓名和头像，不会保存。
 - **财务和支付信息：** 是，仅限于用量响应中包含的、由服务商报告的用量额度余额、额外用量金额或限额，以及按需支出数值/限额。这些标准化计数和余额可能会保留在本地的分实例 History 中。不会访问或保留支付卡、银行信息、原始服务响应或交易历史。
 - **网络历史：** 是，分类范围很窄且偏保守。在 Kimi 采集期间，AI Limits 可能会检查是否已有匹配 Kimi 精确来源的已打开标签页。在 Cursor 采集期间，它可能会检查是否已有一个匹配 Cursor 精确来源的已打开标签页。在 Grok 采集期间，它可能会检查是否已有一个匹配 Grok 精确来源的已打开标签页。在 Gumloop 采集期间，它可能会检查是否已有匹配 Gumloop 精确来源的已打开标签页。这只会揭示该固定服务来源的标签页当前是否打开，仅在本地用于所请求的服务操作，绝不会被保留、传输或汇编成已访问页面列表。AI Limits 不会查询任意页面网址、标题或 Chrome 浏览历史。
 - **用户活动：** 不会监控点击、按键、指针移动、滚动或一般浏览活动。
@@ -117,7 +118,7 @@ AI Limits 是 TiantianFlow 独立开发的项目，与任何已连接的服务�
 ## 审核前提条件
 
 - Chrome 116 或更高版本。
-- 经过校验的 `ai-limits-0.6.1-chrome.zip` 上传产物。
+- 经过校验的 `ai-limits-0.7.0-chrome.zip` 上传产物。
 - 审核人员自有的测试账号，并已在同一 Chrome 配置文件中登录所需的浏览器会话服务站点；还需为待测 API 密钥服务创建临时密钥。ElevenLabs 应使用 **User → Read**。扩展不内置、也不提供任何凭据或服务账号。
 - 能够访问各服务来源的网络。私有端点行为和账号权益可能影响哪些用量窗口会显示。
 - 仓库公开之后、提交 Chrome 应用商店之前，请在未登录的浏览器中确认主页、隐私政策和支持网址均可访问。
@@ -128,7 +129,7 @@ AI Limits 是 TiantianFlow 独立开发的项目，与任何已连接的服务�
 2. **ChatGPT：** 在 `chatgpt.com` 登录，在 ChatGPT 上点击 **连接**，只批准 ChatGPT 来源，并确认出现套餐以及可用的配额窗口或额度。使用该卡片的 **刷新** 操作一次。
 3. **Claude：** 在 `claude.ai` 登录，在 Claude 上点击 **连接**，只批准 Claude 来源，并确认出现组织套餐以及可用的用量窗口或额外用量额度。使用该卡片的 **刷新** 操作一次。
 4. **Kimi：** 在 `www.kimi.com` 登录，在 Kimi 上点击 **连接**，批准 Kimi 来源以及 `scripting`，并确认出现可用用量和订阅数据。如果在交互式刷新期间需要会话恢复，可能会出现一个不活动的 Kimi 标签页。确认恢复流程会等到 Kimi 页面加载完成，在 30 秒后停止等待凭据并尝试尽力清理；不要把关闭过程或浏览器 API 错误期间的延迟清理当作保证被违反。
-5. **Cursor：** 在 `cursor.com` 登录。**不必**预先打开一个 Cursor 标签页。在 Cursor 上点击 **连接**，并批准 Cursor 来源以及 `scripting`。确认可能会出现 Cursor 模型与其他模型的月度限额、Grok Bot 每周用量，以及按 Cursor Models 和 Other Models 分组的包含用量明细（输入、输出、费用和服务商合计）。如果当时没有已经打开的 `cursor.com` 标签页，可能会出现一个不活动的 `https://cursor.com/dashboard/spending` 标签页，读取后关闭；确认它不会被激活，并且审核人员自己打开的标签页不会被关闭。在已经打开一个 Cursor 标签页的情况下再使用该卡片的 **刷新** 操作一次，确认会复用现有标签页而不会再创建第二个。然后关闭所有 Cursor 标签页并启动一次**定时**周期（或等待自动刷新）：基础的每月/按需用量应仍然可用，并且不应打开 Cursor 标签页。此前采集到的 Grok Bot、额外额度和明细可能作为更早的页面数值继续显示，直到 Grok Bot 的每周重置，并且卡片应说明为何未能刷新。
+5. **Cursor：** 在 `cursor.com` 登录。**不必**预先打开一个 Cursor 标签页。在 Cursor 上点击 **连接**，并批准 Cursor 来源以及 `scripting`。确认可能会出现 Cursor 模型与其他模型的月度限额、Grok Bot 每周用量，以及按 Cursor Models 和 Other Models 分组的包含用量明细（输入、输出、费用和服务商合计）。如果当时没有已经打开的 `cursor.com` 标签页，可能会出现一个不活动的 `https://cursor.com/dashboard/spending` 标签页，读取后关闭；确认它不会被激活，并且审核人员自己打开的标签页不会被关闭。在已经打开一个 Cursor 标签页的情况下再使用该卡片的 **刷新** 操作一次，确认会复用现有标签页而不会再创建第二个。然后关闭所有 Cursor 标签页并启动一次**定时**周期（或等待自动刷新）：基础的每月/按需用量应仍然可用，并且不应打开 Cursor 标签页。此前采集到的 Grok Bot、额外额度和明细可能作为更早的页面数值继续显示，直到 Grok Bot 的每周重置，并且卡片应说明为何未能刷新。**第二个账号（可选 `cookies`）：** 使用审核人员拥有的第二个 Cursor 账号，打开**添加服务**，在 Cursor 旁选择**添加账号**。阅读提示，批准 `cookies`，确认浏览器已退出 cursor.com 并打开登录标签页。在该页登录第二个账号，确认出现第二张卡片并显示其自己的用量，同时第一张卡片继续刷新。断开其中一张卡片，确认另一张仍在；两张都断开后，确认 `cookies` 不再被授予。ChatGPT 的流程相同。
 6. **Grok：** 在 `grok.com` 登录。**不必**预先打开一个 Grok 标签页。在 Grok 上点击 **连接**，批准 Grok 来源以及 `scripting`，并确认出现 SuperGrok 系列或 Free 套餐以及所报告的用量池。如果当时没有已经打开的 `grok.com` 标签页，可能会出现一个不活动的 `https://grok.com/` 标签页，读取后关闭；确认它不会被激活，并且审核人员自己打开的标签页不会被关闭。在已经打开一个 grok.com 标签页的情况下再使用该卡片的 **刷新** 操作一次，确认会复用现有标签页而不会再创建第二个。然后关闭所有 grok.com 标签页并启动一次**定时**周期（或等待自动刷新）：不应打开 Grok 标签页。重新打开 grok.com 后，确认定时或手动刷新可以从该现有标签页更新用量。
 7. **Mistral：** 在 `admin.mistral.ai` 登录，连接 Mistral，仅批准 Mistral 来源，并确认显示本月至今支出和可用额度。记录服务是否接受缺少 `X-CSRFTOKEN` 请求头的请求。
 8. **Perplexity：** 在 `www.perplexity.ai` 登录，连接 Perplexity，仅批准该来源，并确认显示周期性、已购买和促销额度池。

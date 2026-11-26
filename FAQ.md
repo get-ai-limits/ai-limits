@@ -252,12 +252,40 @@ No. AI Limits stores one canonical used ratio. **Used** displays that ratio;
 **Left** displays its complement. The preference changes presentation only, not
 the stored observation.
 
+## Can I track more than one account of the same provider?
+
+Yes, for ChatGPT, Cursor, and every API-key provider. Open **Add provider** and
+choose **Add account** next to a provider you already use. Each account gets
+its own card, History, and name, which you can change in Settings.
+
+- **API-key providers** (OpenAI, OpenRouter, DeepSeek, and the rest): each
+  account has its own key, so all of them refresh.
+- **ChatGPT and Cursor** read the account signed in on chatgpt.com or
+  cursor.com, and a browser holds only one at a time. When you choose **Add
+  account**, AI Limits asks for the optional `cookies` permission. It saves
+  the current sign-in for its card, signs the browser out of that site on
+  this device, and opens the sign-in page for the next account. After that,
+  every account keeps refreshing, whichever one the browser is signed in to.
+  Don't use **Log out** on the ChatGPT or Cursor site to switch accounts,
+  because that ends the saved sign-in too. A saved sign-in lasts as long as
+  the provider allows (about 60 days for Cursor). After that, that card asks you to
+  sign in again: choose **Reconnect** and sign in to that account. Saved
+  sign-ins stay on this device, unencrypted like saved API keys, and are
+  deleted when you disconnect that card. ChatGPT
+  tracks each workspace separately. See [Privacy](PRIVACY.md) for how saved
+  sign-ins are kept and used.
+
+Claude, Kimi, Grok, Mistral, Perplexity, and Gumloop still connect one account.
+
 ## What should I do before switching provider accounts?
 
-Disconnect that provider instance in AI Limits before changing accounts.
-History is scoped to the provider instance and stable metric identifier, not a
-persistent provider account identifier. Disconnecting clears that instance's
-history and prevents same-plan accounts from being combined.
+For ChatGPT and Cursor you don't need to do anything: each connection keeps to
+the login it was first read from, and a different signed-in account never lands
+in its History. For other browser-session providers, disconnect that provider
+instance in AI Limits before changing accounts. Their History is scoped to the
+provider instance and stable metric identifier, not a provider account
+identifier, so disconnecting clears that instance's history and prevents
+same-plan accounts from being combined.
 
 For data handling details, see [Privacy](PRIVACY.md). To report a problem, use
 [GitHub Issues](https://github.com/get-ai-limits/ai-limits/issues) without including

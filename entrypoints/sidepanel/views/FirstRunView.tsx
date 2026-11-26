@@ -1,7 +1,11 @@
 import React from "react";
 
 import { l10n } from "../../../i18n/index";
-import type { ProviderKind, ProviderOperation } from "../../../domain/public-protocol";
+import type {
+  ProviderInstanceId,
+  ProviderKind,
+  ProviderOperation,
+} from "../../../domain/public-protocol";
 import { OpenSourceFooter } from "../components/OpenSourceFooter";
 import { ProviderConnectRow } from "../components/ProviderConnectRow";
 
@@ -10,9 +14,13 @@ export interface FirstRunViewProps {
     providerKind: ProviderKind;
     credentialKind: "none" | "api-key";
     isReconnect?: boolean;
+    reconnectInstanceId?: ProviderInstanceId;
     operation?: ProviderOperation;
   }>;
-  onConnectProvider: (providerKind: ProviderKind) => void;
+  onConnectProvider: (
+    providerKind: ProviderKind,
+    instanceId?: ProviderInstanceId,
+  ) => void;
 }
 
 export function FirstRunView({
@@ -37,14 +45,24 @@ export function FirstRunView({
         </h2>
         <div className="provider-list">
           {providers.map(
-            ({ providerKind, credentialKind, isReconnect, operation }) => (
+            ({
+              providerKind,
+              credentialKind,
+              isReconnect,
+              reconnectInstanceId,
+              operation,
+            }) => (
               <ProviderConnectRow
                 key={providerKind}
                 providerKind={providerKind}
                 credentialKind={credentialKind}
                 isReconnect={isReconnect}
                 operation={operation}
-                onConnect={onConnectProvider}
+                onConnect={(kind) =>
+                  reconnectInstanceId
+                    ? onConnectProvider(kind, reconnectInstanceId)
+                    : onConnectProvider(kind)
+                }
               />
             ),
           )}

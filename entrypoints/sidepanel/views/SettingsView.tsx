@@ -41,7 +41,10 @@ export interface SettingsViewProps {
   onAddProvider: () => void;
   onAutoRefreshChange: (enabled: boolean) => void;
   onLocaleOverrideChange: (locale: SupportedLocale | undefined) => void;
-  onReconnectProvider: (providerKind: ProviderKind) => void;
+  onReconnectProvider: (
+    providerKind: ProviderKind,
+    instanceId: ProviderInstanceId,
+  ) => void;
   onDisconnectInstance: (instanceId: ProviderInstanceId) => void;
   onReplaceApiKey: (
     providerKind: ApiKeyProviderKind,
@@ -460,7 +463,7 @@ export function SettingsView({
                             aria-label={l10n.t("settings.reconnectNamed", { label })}
                             data-focus-key={`settings-reconnect-${instance.id}`}
                             onClick={() =>
-                              onReconnectProvider(instance.providerKind)
+                              onReconnectProvider(instance.providerKind, instance.id)
                             }
                           >
                             <span aria-hidden="true">{l10n.t("common.reconnect")}</span>
