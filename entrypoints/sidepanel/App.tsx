@@ -32,7 +32,7 @@ import {
   type AnnouncementTone,
   type SupportedLocale,
 } from "../../i18n/index";
-import { localizeProviderName } from "../../i18n/presentation";
+import { localizeFailure, localizeProviderName } from "../../i18n/presentation";
 import { Cockpit } from "./Cockpit";
 import type { ApiKeySubmission } from "./Cockpit";
 import { instanceLabels } from "./instance-label";
@@ -470,7 +470,10 @@ export function App() {
     }
   };
 
-  const handleConnectProvider = async (providerKind: ProviderKind) => {
+  const handleConnectProvider = async (
+    providerKind: ProviderKind,
+    instanceId?: ProviderInstanceId,
+  ) => {
     const currentState = viewStateRef.current;
     if (
       !currentState ||
@@ -478,9 +481,15 @@ export function App() {
     ) return;
     clearAnnouncement();
     const config = rawProviderConfig(currentState, providerKind);
-    const existingInstanceId = currentState.instances.find(
-      (instance) => instance.providerKind === providerKind,
-    )?.id;
+    // A provider with several accounts adds a new connection unless a
+    // specific one is being reconnected.
+    const existingInstanceId =
+      instanceId ??
+      (providerAvailability(currentState, providerKind).cardinality === "single"
+        ? currentState.instances.find(
+            (instance) => instance.providerKind === providerKind,
+          )?.id
+        : undefined);
     let prepared: PermissionIntentResponse;
     try {
       prepared = await preparePermission(providerKind, config, existingInstanceId);
@@ -528,8 +537,16 @@ export function App() {
         } satisfies RuntimeCommand),
       );
       commitViewState(response.state);
-      const summary = manualSummary(response.report, response.state);
-      announce(summary.message, summary.tone);
+      const duplicate = response.report.results.some(
+        ({ outcome }) =>
+          outcome.kind === "failure" && outcome.category === "duplicate_account",
+      );
+      if (duplicate) {
+        announce(localizeFailure("duplicate_account"), "attention");
+      } else {
+        const summary = manualSummary(response.report, response.state);
+        announce(summary.message, summary.tone);
+      }
     } catch {
       await abandonPermissionIntent(prepared.permissionIntentId);
       announce(
@@ -883,7 +900,9 @@ export function App() {
       providerOperations={providerOperations}
       onDisplayModeChange={handleDisplayModeChange}
       onRefresh={() => void handleRefresh()}
-      onConnectProvider={(providerId) => void handleConnectProvider(providerId)}
+      onConnectProvider={(providerId, instanceId) =>
+        void handleConnectProvider(providerId, instanceId)
+      }
       onOpenApiKeySetup={handleOpenApiKeySetup}
       onSubmitApiKey={handleSubmitApiKey}
       onRefreshInstance={(instanceId) => void handleRefreshInstance(instanceId)}

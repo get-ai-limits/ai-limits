@@ -104,6 +104,7 @@ connections:
   addAccount: Add account
   addAccountFor: "Add another {provider} account"
   accountsConnected: "{count} connected"
+  addAccountSessionHint: "First sign in to the account you want to add on the {provider} site. Only the account signed in there refreshes; the others keep their last numbers until you switch back."
 
 overview:
   screen: Overview
@@ -658,6 +659,8 @@ errors:
   challengeBlocked: Open the provider and complete its security check before trying again.
   providerChanged: AI Limits could not read this provider's usage response.
   temporaryError: AI Limits could not refresh this provider. Try again later.
+  otherAccount: A different account is signed in on this provider's site. Switch to this account there and it refreshes again.
+  duplicateAccount: The account signed in on this provider's site is already connected. Sign in to a different account there, then add it.
   kimiRetrySession: Kimi was still starting. Try Refresh once more, or open or reload Kimi.
   gumloopRetrySession: Could not read your Gumloop sign-in. Open gumloop.com, make sure you are signed in, then press Refresh.
 

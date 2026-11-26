@@ -91,7 +91,10 @@ export interface CockpitProps {
   providerOperations?: Partial<Record<ProviderInstanceId, ProviderOperation>>;
   onDisplayModeChange: (mode: DisplayMode) => void;
   onRefresh: () => void;
-  onConnectProvider: (providerKind: ProviderKind) => void;
+  onConnectProvider: (
+    providerKind: ProviderKind,
+    instanceId?: ProviderInstanceId,
+  ) => void;
   onOpenApiKeySetup?: (providerKind: ApiKeyProviderKind) => void;
   onSubmitApiKey?: (submission: ApiKeySubmission) => Promise<ApiKeyConnectAttemptResult>;
   onRefreshInstance?: (instanceId: ProviderInstanceId) => void;
@@ -444,10 +447,15 @@ export function providerView(
  */
 function suggestedAccountLabel(
   state: AppViewState,
-  view: { providerKind: ApiKeyProviderKind; mode: "connect" | "replace" },
+  view: {
+    providerKind: ApiKeyProviderKind;
+    mode: "connect" | "replace";
+    instanceId?: ProviderInstanceId;
+  },
 ): string | undefined {
   if (
     view.mode !== "connect" ||
+    view.instanceId !== undefined ||
     providerAvailability(state, view.providerKind).cardinality !== "multiple"
   ) {
     return undefined;
@@ -603,13 +611,17 @@ export function Cockpit({
     }
   };
 
-  const connectProvider = (providerKind: ProviderKind) => {
+  const connectProvider = (
+    providerKind: ProviderKind,
+    instanceId?: ProviderInstanceId,
+  ) => {
     if (providerAvailability(state, providerKind).credentialKind === "api-key") {
-      openApiKeyConnect(providerKind as ApiKeyProviderKind, "connect");
+      openApiKeyConnect(providerKind as ApiKeyProviderKind, "connect", instanceId);
       return;
     }
 
-    onConnectProvider(providerKind);
+    if (instanceId) onConnectProvider(providerKind, instanceId);
+    else onConnectProvider(providerKind);
   };
 
   const connectedInstances = state.instances.filter(
@@ -619,30 +631,42 @@ export function Cockpit({
   const availableProviderKinds = providerKinds.filter((providerKind) =>
     canCreateProviderInstance(state, providerKind),
   );
-  const availableProviders = availableProviderKinds.map((providerKind) => ({
-    providerKind,
-    credentialKind: providerAvailability(state, providerKind).credentialKind,
-    isReconnect:
-      providerAvailability(state, providerKind).cardinality === "single" &&
-      state.instances.some(
-        (instance) =>
-          instance.providerKind === providerKind && instance.access === "required",
-      ),
+  const availableProviders = availableProviderKinds.map((providerKind) => {
+    const availability = providerAvailability(state, providerKind);
+    const ofKind = state.instances.filter(
+      (instance) => instance.providerKind === providerKind,
+    );
+    const granted = ofKind.filter((instance) => instance.access === "granted");
+    const required = ofKind.find((instance) => instance.access === "required");
     // Self-hosted providers already present each site as its own instance,
-    // so only fixed-site providers say "Add account".
-    connectedCount:
-      providerAvailability(state, providerKind).configKind === "fixed"
-        ? state.instances.filter(
-            (instance) =>
-              instance.providerKind === providerKind &&
-              instance.access === "granted",
-          ).length
-        : 0,
-    operation:
-      providerAvailability(state, providerKind).cardinality === "single"
-        ? providerOperations[`${providerKind}:default`]
-        : undefined,
-  }));
+    // so only fixed-site providers say "Add account" and reconnect in place.
+    const fixed = availability.configKind === "fixed";
+    const reconnectInstanceId =
+      fixed && availability.cardinality === "multiple" && granted.length === 0
+        ? required?.id
+        : undefined;
+    const grantedIds = new Set(granted.map(({ id }) => id));
+    return {
+      providerKind,
+      credentialKind: availability.credentialKind,
+      isReconnect:
+        availability.cardinality === "single" || !fixed
+          ? required !== undefined
+          : reconnectInstanceId !== undefined,
+      ...(reconnectInstanceId ? { reconnectInstanceId } : {}),
+      connectedCount: fixed ? granted.length : 0,
+      operation:
+        availability.cardinality === "single"
+          ? providerOperations[`${providerKind}:default`]
+          : fixed
+            ? (Object.entries(providerOperations).find(
+                ([instanceId]) =>
+                  instanceId.startsWith(`${providerKind}:`) &&
+                  !grantedIds.has(instanceId as ProviderInstanceId),
+              )?.[1] as ProviderOperation | undefined)
+            : undefined,
+    };
+  });
   const overviewProviders = connectedInstances.map((instance) => {
     const card = providerView(
       instance,

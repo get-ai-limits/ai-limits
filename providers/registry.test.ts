@@ -67,7 +67,7 @@ const services: ProviderRuntimeServices = {
 const apiKey: ProviderCredential = { kind: "api-key", value: " secret " };
 
 describe("provider registry", () => {
-  test("scheduled Cursor collection performs only the base usage request", async () => {
+  test("scheduled Cursor collection performs only the base usage and login reads", async () => {
     const fetch = vi.fn<typeof globalThis.fetch>().mockResolvedValueOnce(
       new Response(JSON.stringify({
         billingCycleStart: "2030-04-01T00:00:00.000Z",
@@ -94,9 +94,13 @@ describe("provider registry", () => {
       }),
     ).resolves.toMatchObject({ ok: true });
 
-    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(fetch).toHaveBeenCalledTimes(2);
     expect(fetch).toHaveBeenCalledWith(
       "https://cursor.com/api/usage-summary",
+      expect.objectContaining({ method: "GET" }),
+    );
+    expect(fetch).toHaveBeenCalledWith(
+      "https://cursor.com/api/auth/me",
       expect.objectContaining({ method: "GET" }),
     );
   });
@@ -164,7 +168,7 @@ describe("provider registry", () => {
     ).toEqual([
       {
         kind: "chatgpt",
-        cardinality: "single",
+        cardinality: "multiple",
         credentialKind: "none",
         configKind: "fixed",
         accepted: fixed,
@@ -194,7 +198,7 @@ describe("provider registry", () => {
       },
       {
         kind: "cursor",
-        cardinality: "single",
+        cardinality: "multiple",
         credentialKind: "none",
         configKind: "fixed",
         accepted: fixed,
@@ -422,7 +426,7 @@ describe("provider registry", () => {
     expect(Object.keys(providerDefinitions)).toEqual(providerKinds);
     expect(providerDefinitions).toEqual({
       chatgpt: {
-        cardinality: "single",
+        cardinality: "multiple",
         credentialKind: "none",
         configKind: "fixed",
         optionalOrigins: ["https://chatgpt.com/*"],
@@ -443,7 +447,7 @@ describe("provider registry", () => {
         optionalPermissions: ["scripting"],
       },
       cursor: {
-        cardinality: "single",
+        cardinality: "multiple",
         credentialKind: "none",
         configKind: "fixed",
         optionalOrigins: ["https://cursor.com/*"],

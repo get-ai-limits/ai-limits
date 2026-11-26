@@ -115,7 +115,7 @@ async function authorizedApiRequest(
 
 async function authorizedBrowserIntent(
   service: ProviderService,
-  providerKind: "chatgpt",
+  providerKind: "chatgpt" | "claude" | "cursor",
 ): Promise<string> {
   const prepared = await service.prepareProviderPermission({
     providerKind,
@@ -1709,27 +1709,144 @@ describe("generic provider instance service", () => {
   });
 
   test("permission-only browser connect creates one singleton instance", async () => {
-    const collect = vi.fn(async () => success("chatgpt"));
+    const collect = vi.fn(async () => success("claude"));
     const service = createProviderService({
-      packages: registryWith({ chatgpt: { ...providerRegistry.chatgpt, collect } }),
+      packages: registryWith({ claude: { ...providerRegistry.claude, collect } }),
       clock: () => NOW,
     });
 
     await service.connectBrowserProvider(
-      "chatgpt",
-      await authorizedBrowserIntent(service, "chatgpt"),
+      "claude",
+      await authorizedBrowserIntent(service, "claude"),
     );
     await service.connectBrowserProvider(
-      "chatgpt",
-      await authorizedBrowserIntent(service, "chatgpt"),
+      "claude",
+      await authorizedBrowserIntent(service, "claude"),
     );
 
     const instances = (await loadInstanceAppState()).instances;
     expect(instances).toHaveLength(1);
     expect(instances[0]).toMatchObject({
-      id: "chatgpt:default",
-      providerKind: "chatgpt",
+      id: "claude:default",
+      providerKind: "claude",
       access: "granted",
+    });
+  });
+
+  describe("browser-session accounts", () => {
+    const KEY_A = "a".repeat(64);
+    const KEY_B = "b".repeat(64);
+
+    function signedInAs(accountKey: string | undefined, usedRatio = 0.25) {
+      return async (): Promise<CollectionResult> => {
+        const result = success("chatgpt");
+        if (!result.ok) return result;
+        return {
+          ok: true,
+          snapshot: {
+            ...result.snapshot,
+            ...(accountKey === undefined ? {} : { accountKey }),
+            metrics: [{ ...result.snapshot.metrics[0]!, usedRatio } as never],
+          },
+        };
+      };
+    }
+
+    function serviceSignedIn(signedIn: { key: string | undefined; ratio?: number }) {
+      const collect = vi.fn((async () =>
+        signedInAs(signedIn.key, signedIn.ratio)()) as ProviderPackage["collect"]);
+      return createProviderService({
+        packages: registryWith({ chatgpt: { ...providerRegistry.chatgpt, collect } }),
+        clock: () => NOW,
+        randomUUID: sequentialUuid(),
+      });
+    }
+
+    async function connectChatGpt(service: ProviderService) {
+      return service.connectBrowserProvider(
+        "chatgpt",
+        await authorizedBrowserIntent(service, "chatgpt"),
+      );
+    }
+
+    test("adds one connection per login and refuses the same login twice", async () => {
+      const signedIn: { key: string | undefined } = { key: KEY_A };
+      const service = serviceSignedIn(signedIn);
+
+      await connectChatGpt(service);
+      const duplicate = await connectChatGpt(service);
+      expect(duplicate.results[0]?.outcome).toEqual({
+        kind: "failure",
+        category: "duplicate_account",
+      });
+      expect((await loadInstanceAppState()).instances).toHaveLength(1);
+
+      signedIn.key = KEY_B;
+      await connectChatGpt(service);
+
+      const instances = (await loadInstanceAppState()).instances;
+      expect(instances.map(({ accountKey }) => accountKey)).toEqual([KEY_A, KEY_B]);
+      expect(new Set(instances.map(({ id }) => id)).size).toBe(2);
+      expect(instances.every(({ id }) => id.startsWith("chatgpt:"))).toBe(true);
+    });
+
+    test("refreshes only the signed-in login and keeps the other's last reading", async () => {
+      const signedIn: { key: string | undefined; ratio: number } = {
+        key: KEY_A,
+        ratio: 0.1,
+      };
+      const service = serviceSignedIn(signedIn);
+      await connectChatGpt(service);
+      signedIn.key = KEY_B;
+      signedIn.ratio = 0.6;
+      await connectChatGpt(service);
+      const [first, second] = (await loadInstanceAppState()).instances;
+
+      signedIn.ratio = 0.9;
+      const report = await service.refreshAll("manual_all");
+
+      expect(
+        Object.fromEntries(report.results.map(({ instanceId, outcome }) => [
+          instanceId,
+          outcome.kind === "failure" ? outcome.category : outcome.kind,
+        ])),
+      ).toEqual({ [first!.id]: "other_account", [second!.id]: "success" });
+      const after = (await loadInstanceAppState()).instances;
+      const firstAfter = after.find(({ id }) => id === first!.id)!;
+      const secondAfter = after.find(({ id }) => id === second!.id)!;
+      expect(firstAfter.snapshot?.metrics[0]).toMatchObject({ usedRatio: 0.1 });
+      expect(firstAfter.history).toHaveLength(1);
+      expect(firstAfter.lastAttempt?.outcome).toEqual({
+        kind: "failure",
+        category: "other_account",
+      });
+      expect(firstAfter.accountKey).toBe(KEY_A);
+      expect(secondAfter.snapshot?.metrics[0]).toMatchObject({ usedRatio: 0.9 });
+    });
+
+    test("an existing connection binds to its login on the next refresh", async () => {
+      await seed({
+        id: "chatgpt:default",
+        providerKind: "chatgpt",
+        config: { kind: "fixed" },
+        access: "granted",
+        createdAt: NOW,
+        history: [],
+      });
+      const signedIn: { key: string | undefined } = { key: KEY_A };
+      const service = serviceSignedIn(signedIn);
+
+      await service.refreshAll("manual_all");
+      await expect(connectionRepository.get("chatgpt:default")).resolves.toMatchObject({
+        accountKey: KEY_A,
+      });
+
+      signedIn.key = undefined;
+      const unverified = await service.refreshAll("manual_all");
+      expect(unverified.results[0]?.outcome).toEqual({
+        kind: "failure",
+        category: "temporary_error",
+      });
     });
   });
 

@@ -4,6 +4,7 @@ import type {
   CollectionResult,
   ProviderCollector,
 } from "../types";
+import { accountKeyFor } from "../account-key";
 import { retryAtFromResponse } from "../retry-after";
 import {
   chatGptCreditsSchema,
@@ -92,11 +93,29 @@ function decodeBase64Url(value: string): string {
   return new TextDecoder().decode(bytes);
 }
 
+function tokenPayload(accessToken: string): Record<string, unknown> | undefined {
+  try {
+    const payload: unknown = JSON.parse(
+      decodeBase64Url(accessToken.split(".")[1] ?? ""),
+    );
+    return typeof payload === "object" && payload !== null
+      ? (payload as Record<string, unknown>)
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** The signed-in ChatGPT login's stable user id (the token's `sub`). */
+function chatGptLoginId(accessToken: string): string | undefined {
+  const sub = tokenPayload(accessToken)?.sub;
+  return typeof sub === "string" && sub.trim() ? sub.trim() : undefined;
+}
+
 function chatGptAccountId(accessToken: string): string | undefined {
   try {
-    const payload = JSON.parse(
-      decodeBase64Url(accessToken.split(".")[1] ?? ""),
-    ) as Record<string, unknown>;
+    const payload = tokenPayload(accessToken);
+    if (!payload) return undefined;
     const auth = payload["https://api.openai.com/auth"];
     const nested =
       typeof auth === "object" && auth !== null
@@ -131,6 +150,18 @@ async function collectChatGpt({
     }
 
     const accountId = chatGptAccountId(session.data.accessToken);
+    const sessionUser = (session.data as Record<string, unknown>).user;
+    const sessionUserId =
+      typeof sessionUser === "object" && sessionUser !== null
+        ? (sessionUser as Record<string, unknown>).id
+        : undefined;
+    const loginId =
+      chatGptLoginId(session.data.accessToken) ??
+      (typeof sessionUserId === "string" && sessionUserId.trim()
+        ? sessionUserId.trim()
+        : undefined);
+    const accountKey =
+      loginId === undefined ? undefined : await accountKeyFor("chatgpt", loginId);
     const headers = {
       Authorization: `Bearer ${session.data.accessToken}`,
       ...(accountId ? { "ChatGPT-Account-Id": accountId } : {}),
@@ -182,6 +213,7 @@ async function collectChatGpt({
       ok: true,
       snapshot: {
         providerKind: "chatgpt",
+        ...(accountKey === undefined ? {} : { accountKey }),
         planLabel: usage.data.plan_type,
         source: "web-session",
         fetchedAt: now,

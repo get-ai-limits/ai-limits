@@ -242,12 +242,19 @@ export const connectionRepository = {
 export const usageRepository = {
   commit(
     id: ProviderInstanceId,
-    updater: (instance: ProviderInstanceRecord) => ProviderInstanceRecord,
+    updater: (
+      instance: ProviderInstanceRecord,
+      siblings: readonly ProviderInstanceRecord[],
+    ) => ProviderInstanceRecord,
   ): Promise<boolean> {
     return mutateState(async (state, now) => {
       const index = state.instances.findIndex((instance) => instance.id === id);
       if (index < 0) return false;
       const current = state.instances[index]!;
+      const siblings = state.instances.filter(
+        (instance) =>
+          instance.id !== id && instance.providerKind === current.providerKind,
+      );
       const immutable = {
         id: current.id,
         providerKind: current.providerKind,
@@ -263,7 +270,7 @@ export const usageRepository = {
         access: current.access,
         createdAt: current.createdAt,
       };
-      const requested = updater(current);
+      const requested = updater(current, siblings);
       const candidate: ProviderInstanceRecord = {
         ...requested,
         id: immutable.id,

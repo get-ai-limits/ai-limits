@@ -767,6 +767,8 @@ const failureCategories = new Set<FailureCategory>([
   "challenge_blocked",
   "provider_changed",
   "temporary_error",
+  "other_account",
+  "duplicate_account",
 ]);
 const failureGuidance = new Set<FailureGuidance>(["retry_session"]);
 

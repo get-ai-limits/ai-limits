@@ -10,7 +10,7 @@ export interface ProviderDefinition {
 
 export const providerDefinitions = {
   chatgpt: {
-    cardinality: "single",
+    cardinality: "multiple",
     credentialKind: "none",
     configKind: "fixed",
     optionalOrigins: ["https://chatgpt.com/*"],
@@ -31,7 +31,7 @@ export const providerDefinitions = {
     optionalPermissions: ["scripting"],
   },
   cursor: {
-    cardinality: "single",
+    cardinality: "multiple",
     credentialKind: "none",
     configKind: "fixed",
     optionalOrigins: ["https://cursor.com/*"],

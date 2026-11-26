@@ -104,6 +104,7 @@ connections:
   addAccount: 添加账号
   addAccountFor: "再添加一个 {provider} 账号"
   accountsConnected: "已连接 {count} 个"
+  addAccountSessionHint: "请先在 {provider} 网站上登录要添加的账号。只有当前在网站上登录的账号会刷新，其他账号会保留上次的数据，切换回去后再更新。"
 
 overview:
   screen: 总览
@@ -658,6 +659,8 @@ errors:
   challengeBlocked: 请打开该服务并完成安全验证后再试。
   providerChanged: AI Limits 无法读取此服务的用量响应。
   temporaryError: AI Limits 无法刷新此服务。请稍后再试。
+  otherAccount: 该服务网站当前登录的是另一个账号。切换回这个账号后即可再次刷新。
+  duplicateAccount: 该服务网站当前登录的账号已经连接过了。请先在网站上登录另一个账号，再添加。
   kimiRetrySession: Kimi 仍在启动。请再点一次刷新，或打开/重新加载 Kimi。
   gumloopRetrySession: 无法读取你的 Gumloop 登录状态。请打开 gumloop.com，确认已登录，然后点击刷新。
 

@@ -69,7 +69,7 @@ describe("Cursor adapter", () => {
         ]),
       },
     });
-    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(fetch).toHaveBeenCalledTimes(2);
     expect(fetch).toHaveBeenCalledWith(
       "https://cursor.com/api/usage-summary",
       expect.objectContaining({ method: "GET" }),
@@ -98,14 +98,21 @@ describe("Cursor adapter", () => {
         ]),
       },
     });
-    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(fetch).toHaveBeenCalledTimes(2);
   });
 
-  test("keeps plan and quota data without requesting the account email", async () => {
+  test("keeps plan and quota data and only a hash of the signed-in login", async () => {
     const controller = new AbortController();
     const fetch = vi
       .fn<typeof globalThis.fetch>()
-      .mockResolvedValueOnce(response(planSummary()));
+      .mockResolvedValueOnce(response(planSummary()))
+      .mockResolvedValueOnce(
+        response({
+          sub: "user_01EXAMPLESUB",
+          email: "someone@example.com",
+          name: "Someone Example",
+        }),
+      );
 
     const result = await cursorAdapter.collect(context(fetch, controller.signal));
 
@@ -113,6 +120,7 @@ describe("Cursor adapter", () => {
       ok: true,
       snapshot: {
         providerKind: "cursor",
+        accountKey: expect.stringMatching(/^[0-9a-f]{64}$/),
         planLabel: "pro",
         source: "web-session",
         fetchedAt: NOW,
@@ -160,9 +168,42 @@ describe("Cursor adapter", () => {
       signal: controller.signal,
     };
     expect(fetch).toHaveBeenNthCalledWith(1, "https://cursor.com/api/usage-summary", init);
-    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(fetch).toHaveBeenNthCalledWith(2, "https://cursor.com/api/auth/me", init);
+    expect(fetch).toHaveBeenCalledTimes(2);
+    const serialized = JSON.stringify(result);
+    expect(serialized).not.toContain("user_01EXAMPLESUB");
+    expect(serialized).not.toContain("someone@example.com");
+    expect(serialized).not.toContain("Someone Example");
     expect(JSON.stringify(result)).not.toContain("autoPercentUsed");
     expect(JSON.stringify(result)).not.toContain("remaining");
+  });
+
+  test("still reads usage, without a login key, when the identity read fails", async () => {
+    const fetch = vi
+      .fn<typeof globalThis.fetch>()
+      .mockResolvedValueOnce(response(planSummary()))
+      .mockResolvedValueOnce(response({ error: "nope" }, 403));
+
+    const result = await cursorAdapter.collect(context(fetch));
+
+    expect(result).toMatchObject({ ok: true });
+    expect(result.ok && result.snapshot.accountKey).toBeUndefined();
+  });
+
+  test("gives the same login the same key and different logins different keys", async () => {
+    const read = async (sub: string) => {
+      const fetch = vi
+        .fn<typeof globalThis.fetch>()
+        .mockResolvedValueOnce(response(planSummary()))
+        .mockResolvedValueOnce(response({ sub }));
+      const result = await cursorAdapter.collect(context(fetch));
+      return result.ok ? result.snapshot.accountKey : undefined;
+    };
+
+    const first = await read("user_A");
+    expect(first).toMatch(/^[0-9a-f]{64}$/);
+    expect(await read("user_A")).toBe(first);
+    expect(await read("user_B")).not.toBe(first);
   });
 
   test("keeps a single reported model pool instead of inventing the other", async () => {

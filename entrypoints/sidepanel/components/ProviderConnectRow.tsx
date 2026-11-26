@@ -97,6 +97,11 @@ export function ProviderConnectRow({
         <strong>{connectionMethod}</strong> —{" "}
         <span>{localizeConnectionDisclosure(providerKind)}</span>
       </p>
+      {addsAccount && credentialKind === "none" ? (
+        <p className="provider-connect-row__manual-disclosure">
+          {l10n.t("connections.addAccountSessionHint", { provider: name })}
+        </p>
+      ) : null}
       {manualDisclosure ? (
         <p className="provider-connect-row__manual-disclosure">
           {manualDisclosure}

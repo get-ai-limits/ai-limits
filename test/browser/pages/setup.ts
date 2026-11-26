@@ -25,7 +25,10 @@ Object.assign(globalThis, {
         return templates.get(dotted) ?? messages[key]?.message ?? "";
       },
     },
-    runtime: { getURL: (value: string) => value },
+    runtime: {
+      getURL: (value: string) => value,
+      getManifest: () => ({ version: "0.0.0" }),
+    },
     storage: { local: { get: async () => ({}), set: async () => undefined, remove: async () => undefined } },
   },
 });

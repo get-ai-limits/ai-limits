@@ -428,6 +428,39 @@ export function createProviderService(
     }
   }
 
+  async function disconnectInstance(
+    instanceId: ProviderInstanceId,
+  ): Promise<DisconnectInstanceResult> {
+    return withPermissionOwnershipLock("permissions", async () =>
+      withInstanceConnectionLock(instanceId, async () => {
+        const instance = await connectionRepository.get(instanceId);
+        if (!instance) return { ok: true, localDataDeleted: true } as const;
+        const cleanup = lanes.beginCleanup(instanceId);
+        orchestrator.invalidateInstance(instanceId);
+        apiKeyConnections.invalidateInstance(instanceId);
+        try {
+          const permissionCleanup = await permissionIntents.queueCleanup(
+            instance,
+          );
+          await deleteCredential(instanceId);
+          await forgetPackageSession(instance.providerKind);
+          await usageRepository.clear(instanceId);
+          await connectionRepository.delete(instanceId);
+          const removed = await completePermissionCleanup(permissionCleanup);
+          return removed
+            ? ({ ok: true, localDataDeleted: true } as const)
+            : ({
+                ok: false,
+                error: "permission_removal_failed",
+                localDataDeleted: true,
+              } as const);
+        } finally {
+          lanes.endCleanup(cleanup);
+        }
+      }),
+    );
+  }
+
   async function connectBrowserProvider(
     providerKind: BrowserSessionProviderKind,
     permissionIntentId: string,
@@ -538,7 +571,21 @@ export function createProviderService(
         reason: "superseded",
       });
     }
-    return orchestrator.refreshInstance(candidate.id, "connect");
+    const report = await orchestrator.refreshInstance(candidate.id, "connect");
+    // A new connection that turned out to be a login another connection
+    // already tracks is removed again, so the same account never shows twice.
+    if (
+      !existing &&
+      report.results.some(
+        ({ instanceId, outcome }) =>
+          instanceId === candidate.id &&
+          outcome.kind === "failure" &&
+          outcome.category === "duplicate_account",
+      )
+    ) {
+      await disconnectInstance(candidate.id);
+    }
+    return report;
   }
 
   async function connectApiKeyProvider(
@@ -826,36 +873,7 @@ export function createProviderService(
       await connectionRepository.setHidden(instanceId, hidden);
     },
     reorderInstances: (instanceIds) => connectionRepository.reorder(instanceIds),
-    async disconnectInstance(instanceId) {
-      return withPermissionOwnershipLock("permissions", async () =>
-        withInstanceConnectionLock(instanceId, async () => {
-          const instance = await connectionRepository.get(instanceId);
-          if (!instance) return { ok: true, localDataDeleted: true } as const;
-          const cleanup = lanes.beginCleanup(instanceId);
-          orchestrator.invalidateInstance(instanceId);
-          apiKeyConnections.invalidateInstance(instanceId);
-          try {
-            const permissionCleanup = await permissionIntents.queueCleanup(
-              instance,
-            );
-            await deleteCredential(instanceId);
-            await forgetPackageSession(instance.providerKind);
-            await usageRepository.clear(instanceId);
-            await connectionRepository.delete(instanceId);
-            const removed = await completePermissionCleanup(permissionCleanup);
-            return removed
-              ? ({ ok: true, localDataDeleted: true } as const)
-              : ({
-                  ok: false,
-                  error: "permission_removal_failed",
-                  localDataDeleted: true,
-                } as const);
-          } finally {
-            lanes.endCleanup(cleanup);
-          }
-        }),
-      );
-    },
+    disconnectInstance,
     reconcilePermissions,
     async deleteAllLocalData() {
       return withPermissionOwnershipLock("permissions", async () => {

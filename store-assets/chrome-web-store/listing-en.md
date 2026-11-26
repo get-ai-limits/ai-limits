@@ -261,7 +261,10 @@ refresh may read the sign-in entry from an already-open gumloop.com tab.
   in memory-backed `chrome.storage.session` until the browser exits and is not
   written to persistent storage. A Claude organization name may be normalized and stored as the
   visible plan label. Email-shaped account labels are discarded, and current
-  adapters do not query Claude or Cursor email endpoints.
+  adapters do not query the Claude email endpoint. To keep several ChatGPT or
+  Cursor accounts apart, the extension stores only a SHA-256 hash of each
+  login's stable user ID; it reads Cursor's user ID from `/api/auth/me` and
+  discards the email, name, and picture in that reply without storing them.
 - **Financial and payment information:** Yes, limited to provider-reported
   usage-credit balances, extra-usage amounts or limits, and on-demand spend
   values/limits included in a usage response. These normalized counters and

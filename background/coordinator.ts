@@ -133,6 +133,63 @@ function attemptFor(
   };
 }
 
+/**
+ * Keeps each connection on the login it was first read from. A reading from
+ * another signed-in account, or from an account a sibling connection already
+ * owns, becomes a failure so it never lands in this connection's history.
+ */
+export function gateAccountOutcome(
+  instance: ProviderInstanceRecord,
+  outcome: ProviderRefreshOutcome,
+  siblings: readonly ProviderInstanceRecord[],
+): { outcome: ProviderRefreshOutcome; accountKey?: string } {
+  const bound = instance.accountKey;
+  const keep = bound === undefined ? {} : { accountKey: bound };
+  if (outcome.kind !== "success") return { outcome, ...keep };
+  const observed = outcome.snapshot.accountKey;
+  if (observed === undefined) {
+    // Once a connection is tied to a login, an unverified reading could
+    // belong to anyone, so it is not stored.
+    return bound === undefined
+      ? { outcome }
+      : { outcome: { kind: "failure", category: "temporary_error" }, ...keep };
+  }
+  if (bound !== undefined) {
+    return bound === observed
+      ? { outcome, ...keep }
+      : { outcome: { kind: "failure", category: "other_account" }, ...keep };
+  }
+  return siblings.some((sibling) => sibling.accountKey === observed)
+    ? { outcome: { kind: "failure", category: "duplicate_account" } }
+    : { outcome, accountKey: observed };
+}
+
+/** Applies an outcome after the account gate, keeping the binding in step. */
+function applyGatedOutcome(
+  instance: ProviderInstanceRecord,
+  siblings: readonly ProviderInstanceRecord[],
+  outcome: ProviderRefreshOutcome,
+  trigger: RefreshTrigger,
+  startedAt: number,
+  finishedAt: number,
+): { instance: ProviderInstanceRecord; outcome: ProviderRefreshOutcome } {
+  const gated = gateAccountOutcome(instance, outcome, siblings);
+  const { accountKey: _previous, ...applied } = applyOutcome(
+    instance,
+    gated.outcome,
+    trigger,
+    startedAt,
+    finishedAt,
+  );
+  return {
+    instance:
+      gated.accountKey === undefined
+        ? applied
+        : { ...applied, accountKey: gated.accountKey },
+    outcome: gated.outcome,
+  };
+}
+
 function applyOutcome(
   instance: ProviderInstanceRecord,
   outcome: ProviderRefreshOutcome,
@@ -194,13 +251,22 @@ export async function commitProviderOutcome(
   shouldCommit: () => boolean,
 ): Promise<ProviderRefreshOutcome> {
   if (!shouldCommit()) return { kind: "skipped", reason: "superseded" };
-  const committed = await usageRepository.commit(instanceId, (instance) =>
-    shouldCommit()
-      ? applyOutcome(instance, outcome, trigger, startedAt, finishedAt)
-      : instance,
-  );
+  let committedOutcome = outcome;
+  const committed = await usageRepository.commit(instanceId, (instance, siblings) => {
+    if (!shouldCommit()) return instance;
+    const applied = applyGatedOutcome(
+      instance,
+      siblings,
+      outcome,
+      trigger,
+      startedAt,
+      finishedAt,
+    );
+    committedOutcome = applied.outcome;
+    return applied.instance;
+  });
   return committed && shouldCommit()
-    ? outcome
+    ? committedOutcome
     : { kind: "skipped", reason: "superseded" };
 }
 
