@@ -480,6 +480,20 @@ describe("parkLiveSession", () => {
     ).resolves.toBe("unavailable");
   });
 
+  test("keeps a sign-in cookie the site rotated after it was saved", async () => {
+    const api = fakeCookies([
+      cookie("Session", "live-a"),
+      cookie("restore-session", "rotated"),
+    ]);
+    await clearLiveSession(spec(() => undefined), api, [
+      { name: "Session", value: "live-a" },
+      { name: "restore-session", value: "sealed-a" },
+    ]);
+    expect(api.jar().map(({ name, value }) => `${name}=${value}`)).toEqual([
+      "restore-session=rotated",
+    ]);
+  });
+
   test("removes sign-in cookies on subdomains with their own host", async () => {
     const api = fakeCookies([cookie("Session", "x", ".www.cursor.com")]);
     await clearLiveSession(spec(() => undefined), api);

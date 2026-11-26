@@ -271,19 +271,19 @@ export function createProviderService(
       // The connect flow decides about a connection it is still adding.
       if (connectingInstanceIds.has(instanceId)) continue;
       try {
-        const instance = await connectionRepository.get(instanceId);
-        if (
-          instance &&
-          instance.accountKey === undefined &&
-          instance.snapshot === undefined &&
-          instance.history.length === 0 &&
-          // A later read (such as Add account's own, after signing the
-          // browser out) supersedes this report.
-          instance.lastAttempt?.outcome.kind === "failure" &&
-          instance.lastAttempt.outcome.category === "duplicate_account"
-        ) {
-          await disconnectInstance(instanceId);
-        }
+        // Checked under the connection's locks, so a read that bound it in
+        // the meantime keeps it.
+        await disconnectInstanceIf(
+          instanceId,
+          (instance) =>
+            instance.accountKey === undefined &&
+            instance.snapshot === undefined &&
+            instance.history.length === 0 &&
+            // A later read (such as Add account's own, after signing the
+            // browser out) supersedes this report.
+            instance.lastAttempt?.outcome.kind === "failure" &&
+            instance.lastAttempt.outcome.category === "duplicate_account",
+        );
       } catch {
         // Left for the next refresh; it never shows another account's data.
       }
@@ -546,10 +546,20 @@ export function createProviderService(
   async function disconnectInstance(
     instanceId: ProviderInstanceId,
   ): Promise<DisconnectInstanceResult> {
+    const result = await disconnectInstanceIf(instanceId, () => true);
+    return result === "kept" ? { ok: true, localDataDeleted: true } : result;
+  }
+
+  /** Disconnects unless `shouldRemove`, checked under the locks, says no. */
+  async function disconnectInstanceIf(
+    instanceId: ProviderInstanceId,
+    shouldRemove: (instance: ProviderInstanceRecord) => boolean,
+  ): Promise<DisconnectInstanceResult | "kept"> {
     return withPermissionOwnershipLock("permissions", async () =>
       withInstanceConnectionLock(instanceId, async () => {
         const instance = await connectionRepository.get(instanceId);
         if (!instance) return { ok: true, localDataDeleted: true } as const;
+        if (!shouldRemove(instance)) return "kept" as const;
         const cleanup = lanes.beginCleanup(instanceId);
         orchestrator.invalidateInstance(instanceId);
         apiKeyConnections.invalidateInstance(instanceId);

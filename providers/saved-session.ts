@@ -157,9 +157,19 @@ export async function captureLiveSession(
 export async function clearLiveSession(
   spec: SavedSessionSpec,
   api: CookiesApi,
+  /** Only these exact cookies, so one the site rotated since is kept. */
+  only?: readonly SavedSessionCookie[],
 ): Promise<void> {
   for (const cookie of await siteCookies(spec, api)) {
     if (!isSignInCookie(spec, cookie)) continue;
+    if (
+      only &&
+      !only.some(
+        ({ name, value }) => name === cookie.name && value === cookie.value,
+      )
+    ) {
+      continue;
+    }
     const host = cookie.domain.replace(/^\./, "");
     await api.remove({
       url: `https://${host}${cookie.path || "/"}`,
@@ -389,6 +399,8 @@ export async function parkLiveSession(
     if (!liveKey) return "signed_out";
     const owner = siblings.find(({ accountKey }) => accountKey === liveKey);
     if (!owner) return "new_login";
+    // Captured after that read, so a cookie its response rotated is saved
+    // at its new value.
     const cookies = await captureLiveSession(spec, api);
     if (cookies.length === 0) return "new_login";
     // Never clear a sign-in that could not be saved whole.
@@ -400,13 +412,9 @@ export async function parkLiveSession(
     ) {
       return "unavailable";
     }
-    // Make sure the captured cookie still belongs to that account.
-    if ((await spec.liveAccountKey(services.fetch, services.signal)) !== liveKey) {
-      return "new_login";
-    }
     if (!(await stillConnected(owner))) return "new_login";
     await saveSession(owner.id, cookies, services.now);
-    await clearLiveSession(spec, api);
+    await clearLiveSession(spec, api, cookies);
     return "parked";
   });
 }
