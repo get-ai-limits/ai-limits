@@ -395,6 +395,14 @@ The full policy is in [PRIVACY.md](../../PRIVACY.md).
    collected Grok Bot, extra-credit, and detail values may remain visible as
    earlier page values until Grok Bot's weekly reset, and the card should
    explain why they were not refreshed.
+   **Second account (optional `cookies`):** with a second reviewer-owned
+   Cursor account, open **Add provider** and choose **Add account** next to
+   Cursor. Read the hint, approve `cookies`, and confirm the browser is signed
+   out of cursor.com and a sign-in tab opens. Sign in to the second account
+   there and confirm a second card appears with its own usage, while the first
+   card keeps refreshing. Disconnect one card and confirm the other stays;
+   disconnect both and confirm `cookies` is no longer granted. The same flow
+   applies to ChatGPT.
 6. **Grok:** sign in at `grok.com`. You do **not** have to pre-open a Grok
    tab. Click **Connect** on Grok, approve the Grok origin plus `scripting`,
    and confirm a SuperGrok-family or Free plan plus the reported usage pool
