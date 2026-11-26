@@ -10,7 +10,10 @@ import {
   createProviderService,
   type ProviderService,
 } from "../background/provider-service";
-import { projectAppViewState } from "../background/view-state";
+import {
+  projectAppViewState,
+  projectRefreshReport,
+} from "../background/view-state";
 import type {
   InstanceAppState,
   ProviderInstanceId,
@@ -122,7 +125,10 @@ async function activateBackground(
     async refreshAll() {
       const report = await service.refreshAll("manual_all");
       const state = await stateAfterAlarmReconciliation();
-      return { state: projectAppViewState(state), report };
+      return {
+        state: projectAppViewState(state),
+        report: projectRefreshReport(report),
+      };
     },
     async prepareProviderPermission(command) {
       const { type: _type, ...request } = command;
@@ -143,13 +149,20 @@ async function activateBackground(
         permissionIntentId,
       );
       const state = await stateAfterAlarmReconciliation();
-      return { state: projectAppViewState(state), report };
+      return {
+        state: projectAppViewState(state),
+        report: projectRefreshReport(report),
+      };
     },
     async connectApiKeyProvider(command) {
       const { type: _type, ...request } = command;
       const result = await service.connectApiKeyProvider(request);
       const state = await stateAfterAlarmReconciliation();
-      return { ...result, state: projectAppViewState(state) };
+      return {
+        ...result,
+        report: projectRefreshReport(result.report),
+        state: projectAppViewState(state),
+      };
     },
     async refreshInstance(instanceId) {
       const report = await service.refreshInstance(
@@ -157,7 +170,10 @@ async function activateBackground(
         "manual_provider",
       );
       const state = await stateAfterAlarmReconciliation();
-      return { state: projectAppViewState(state), report };
+      return {
+        state: projectAppViewState(state),
+        report: projectRefreshReport(report),
+      };
     },
     async renameInstance(instanceId, userLabel) {
       await service.renameInstance(instanceId, userLabel);

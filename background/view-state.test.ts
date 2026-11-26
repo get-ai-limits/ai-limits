@@ -1,7 +1,8 @@
 import { describe, expect, test } from "vitest";
 
 import type { InstanceAppState } from "../domain/model";
-import { projectAppViewState } from "./view-state";
+import { parseRefreshReport } from "../domain/public-protocol";
+import { projectAppViewState, projectRefreshReport } from "./view-state";
 
 describe("public app view state", () => {
   test("allowlists the normalized dynamic collection URL and origin without durable config", () => {
@@ -146,5 +147,33 @@ describe("public app view state", () => {
       ],
     });
     expect(view.instances[0]).toMatchObject({ id: "kimi:default", hidden: true });
+  });
+
+  test("a refresh report reaches the panel without the account key, so it parses", () => {
+    const report = {
+      trigger: "manual_provider" as const,
+      startedAt: 1,
+      finishedAt: 2,
+      results: [
+        {
+          instanceId: "cursor:8d0fec33-3f1f-4637-93a5-4e9f976dc204" as const,
+          outcome: {
+            kind: "success" as const,
+            snapshot: {
+              providerKind: "cursor" as const,
+              accountKey: "a".repeat(64),
+              source: "web-session" as const,
+              fetchedAt: 2,
+              metrics: [],
+            },
+          },
+        },
+      ],
+    };
+
+    expect(() => parseRefreshReport(report)).toThrow();
+    const projected = projectRefreshReport(report);
+    expect(projected.results[0]?.outcome).not.toHaveProperty("snapshot.accountKey");
+    expect(() => parseRefreshReport(projected)).not.toThrow();
   });
 });
