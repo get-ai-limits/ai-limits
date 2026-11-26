@@ -11,7 +11,13 @@ import {
   type ProviderService,
 } from "../background/provider-service";
 import { projectAppViewState } from "../background/view-state";
-import type { InstanceAppState } from "../domain/model";
+import type {
+  InstanceAppState,
+  ProviderInstanceId,
+  ProviderInstanceRecord,
+} from "../domain/model";
+import { createSignInWatcher } from "../background/saved-session-sign-in";
+import { savedSessionSpecs } from "../providers/saved-session-specs";
 import { providerRegistry } from "../providers/registry";
 import type { ProviderPackage } from "../providers/types";
 import { initializeCredentialVault } from "../storage/credentials";
@@ -86,6 +92,8 @@ interface ActivatedBackground {
   ): Promise<void>;
   runScheduledRefresh(): Promise<void>;
   sweepPermissionIntents(): Promise<void>;
+  listInstances(): Promise<ProviderInstanceRecord[]>;
+  refreshAfterSignIn(instanceId: ProviderInstanceId): Promise<void>;
 }
 
 async function activateBackground(
@@ -206,6 +214,13 @@ async function activateBackground(
       await service.sweepPermissionIntents();
       await reconcileAlarm();
     },
+    async listInstances() {
+      return (await service.getState()).instances;
+    },
+    async refreshAfterSignIn(instanceId) {
+      await service.refreshInstance(instanceId, "manual_provider");
+      await reconcileAlarm();
+    },
   };
 }
 
@@ -238,7 +253,29 @@ export function registerBackgroundEventCapture(
       activation.then((background) => background.handleCommand(message)),
     ),
   );
+  // Reads a connection that waits for a sign-in as soon as it lands. The
+  // cookies API exists only while its optional permission is granted.
+  const signInWatcher = createSignInWatcher({
+    specs: savedSessionSpecs,
+    listInstances: () => activation.then((background) => background.listInstances()),
+    refreshInstance: (instance) =>
+      activation.then((background) => background.refreshAfterSignIn(instance.id)),
+  });
+  let watchingSignIns = false;
+  const watchSignIns = () => {
+    if (watchingSignIns) return;
+    try {
+      const cookies = (browser as { cookies?: typeof browser.cookies }).cookies;
+      if (!cookies?.onChanged) return;
+      cookies.onChanged.addListener(signInWatcher);
+      watchingSignIns = true;
+    } catch {
+      // Without the cookies API, connections refresh on the usual schedule.
+    }
+  };
+  watchSignIns();
   browser.permissions.onAdded.addListener(() => {
+    watchSignIns();
     enqueueWakeEvent((background) => background.reconcilePermissions());
   });
   browser.permissions.onRemoved.addListener((removed) => {

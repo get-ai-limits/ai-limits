@@ -334,7 +334,7 @@ export function normalizeExtraUsageCredits(
  * `sub` is used, and only its hash leaves this function. Undefined when the
  * identity cannot be read, which keeps unbound connections working.
  */
-async function cursorAccountKey(
+export async function cursorAccountKey(
   fetch: typeof globalThis.fetch,
   signal: AbortSignal,
 ): Promise<string | undefined> {

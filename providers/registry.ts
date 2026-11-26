@@ -9,6 +9,7 @@ import { factoryAdapter } from "./factory/adapter";
 import { zaiAdapter } from "./zai/adapter";
 import { warpAdapter } from "./warp/adapter";
 import { installWarpOriginRule } from "./warp/origin-rule";
+import { chatGptSavedSession } from "./saved-session-specs";
 import { fireworksAdapter } from "./fireworks/adapter";
 import { grokPackage } from "./grok/package";
 import { groqCloudAdapter } from "./groqcloud/adapter";
@@ -94,6 +95,7 @@ export const providerRegistry = {
     kind: "chatgpt",
     adapter: chatGptAdapter,
     cardinality: providerDefinitions.chatgpt.cardinality,
+    savedSession: chatGptSavedSession,
     requiredPermissions: fixedPermissions(
       providerDefinitions.chatgpt.optionalOrigins,
       providerDefinitions.chatgpt.optionalPermissions,

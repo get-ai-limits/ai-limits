@@ -16,6 +16,12 @@ import {
   type UpdatedListener,
 } from "../tab-ensure";
 import { collectCursor } from "./adapter";
+import {
+  collectWithSavedSession,
+  type SavedSessionEnvironment,
+  type SavedSessionSpec,
+} from "../saved-session";
+import { cursorSavedSession } from "../saved-session-specs";
 import { applyCursorPageMetrics } from "./page-metrics";
 import {
   CURSOR_OWNED_TAB_LEASE_PREFIX,
@@ -46,6 +52,9 @@ interface CursorPackageDependencies {
   cleanupAbandonedOwnedTab?(): Promise<void>;
   /** How long scheduled refresh waits for a page read; tests shorten it. */
   scheduledProbeBudgetMs?: number;
+  /** Lets each connection keep its own saved sign-in. */
+  savedSession?: SavedSessionSpec;
+  savedSessionEnvironment?: SavedSessionEnvironment;
 }
 
 // Scheduled refresh shares the provider's collection deadline with the base
@@ -99,6 +108,9 @@ export function createCursorPackage(
     cardinality: providerDefinitions.cursor.cardinality,
     credentialKind: providerDefinitions.cursor.credentialKind,
     configKind: providerDefinitions.cursor.configKind,
+    ...(dependencies.savedSession
+      ? { savedSession: dependencies.savedSession }
+      : {}),
     normalizeConfig: normalizeFixedConfig,
     requiredPermissions: (config) =>
       normalizeFixedConfig(config)
@@ -119,50 +131,74 @@ export function createCursorPackage(
         return { ok: false, health: { kind: "provider_changed" } };
       }
 
-      const interactive = services.interaction === "allowed";
-      let probe: ProbeOrSkipped = { kind: "skipped" };
-      if (interactive && !services.signal.aborted) {
-        try {
-          probe = await dependencies.findDashboardJson({ allowOwnedTab: true });
-        } catch {
-          probe = { kind: "inject_threw", detail: "findDashboardJson threw" };
+      const live = async (): Promise<CollectionResult> => {
+        const interactive = services.interaction === "allowed";
+        let probe: ProbeOrSkipped = { kind: "skipped" };
+        if (interactive && !services.signal.aborted) {
+          try {
+            probe = await dependencies.findDashboardJson({ allowOwnedTab: true });
+          } catch {
+            probe = { kind: "inject_threw", detail: "findDashboardJson threw" };
+          }
+        } else if (!interactive && !services.signal.aborted) {
+          // Stops the read itself, not just the wait, once it is abandoned.
+          const abandon = new AbortController();
+          let started: Promise<CursorDashboardProbe>;
+          try {
+            started = dependencies.findDashboardJson({
+              allowOwnedTab: false,
+              signal: abandon.signal,
+            });
+          } catch {
+            started = Promise.reject(new Error("findDashboardJson threw"));
+          }
+          probe = await withinBudget(
+            started,
+            dependencies.scheduledProbeBudgetMs ??
+              CURSOR_SCHEDULED_PROBE_BUDGET_MS,
+            services.signal,
+          );
+          abandon.abort();
         }
-      } else if (!interactive && !services.signal.aborted) {
-        // Stops the read itself, not just the wait, once it is abandoned.
-        const abandon = new AbortController();
-        let started: Promise<CursorDashboardProbe>;
-        try {
-          started = dependencies.findDashboardJson({
-            allowOwnedTab: false,
-            signal: abandon.signal,
-          });
-        } catch {
-          started = Promise.reject(new Error("findDashboardJson threw"));
-        }
-        probe = await withinBudget(
-          started,
-          dependencies.scheduledProbeBudgetMs ??
-            CURSOR_SCHEDULED_PROBE_BUDGET_MS,
-          services.signal,
+        // Scheduled refresh only uses an already-open cursor.com tab, within a
+        // short budget. Without a usable read it keeps the scheduled wording
+        // (no tab hints) and last-good page values.
+        if (!interactive && probe.kind !== "read") probe = { kind: "skipped" };
+        const dashboard =
+          probe.kind === "skipped" ? {} : dashboardJsonFromProbe(probe);
+        const result = await dependencies.collect(
+          adapterContext(services),
+          dashboard,
         );
-        abandon.abort();
-      }
-      // Scheduled refresh only uses an already-open cursor.com tab, within a
-      // short budget. Without a usable read it keeps the scheduled wording
-      // (no tab hints) and last-good page values.
-      if (!interactive && probe.kind !== "read") probe = { kind: "skipped" };
-      const dashboard =
-        probe.kind === "skipped" ? {} : dashboardJsonFromProbe(probe);
-      const result = await dependencies.collect(
-        adapterContext(services),
-        dashboard,
-      );
-      return applyCursorPageMetrics(
-        result,
-        instance.snapshot,
-        probe,
-        services.now,
-      );
+        return applyCursorPageMetrics(
+          result,
+          instance.snapshot,
+          probe,
+          services.now,
+        );
+      };
+      if (!dependencies.savedSession) return live();
+      return collectWithSavedSession({
+        spec: dependencies.savedSession,
+        instance,
+        services,
+        live,
+        // A saved sign-in is not the browser's, so page values (read in a
+        // cursor.com tab, as the browser's account) are left as they were.
+        saved: async (fetch) =>
+          applyCursorPageMetrics(
+            await dependencies.collect(
+              { ...adapterContext(services), fetch },
+              {},
+            ),
+            instance.snapshot,
+            { kind: "skipped" },
+            services.now,
+          ),
+        ...(dependencies.savedSessionEnvironment
+          ? { environment: dependencies.savedSessionEnvironment }
+          : {}),
+      });
     },
   };
 }
@@ -187,6 +223,7 @@ function cursorOwnedTabBrowser() {
 
 export const cursorPackage = createCursorPackage({
   collect: collectCursor,
+  savedSession: cursorSavedSession,
   findDashboardJson: ({ allowOwnedTab, signal }) => {
     const tabs = cursorOwnedTabBrowser();
     return findCursorDashboardJson({

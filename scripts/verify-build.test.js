@@ -21,7 +21,7 @@ function validManifest() {
       "sidePanel",
       "declarativeNetRequestWithHostAccess",
     ],
-    optional_permissions: ["scripting"],
+    optional_permissions: ["cookies", "scripting"],
     optional_host_permissions: [...EXPECTED_OPTIONAL_ORIGINS],
     icons: {
       16: "icons/16.png",

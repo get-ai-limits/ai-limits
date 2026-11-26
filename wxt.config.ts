@@ -68,9 +68,12 @@ export default defineConfig({
       ...new Set(providers.flatMap(({ optionalOrigins }) => optionalOrigins)),
     ],
     optional_permissions: [
-      ...new Set(
-        providers.flatMap(({ optionalPermissions }) => optionalPermissions),
-      ),
+      ...new Set([
+        ...providers.flatMap(({ optionalPermissions }) => optionalPermissions),
+        // Saved sign-ins for a second Cursor or ChatGPT account; asked for
+        // only when one is added. See providers/saved-session.ts.
+        "cookies" as const,
+      ]),
     ],
     icons: {
       16: "icons/16.png",

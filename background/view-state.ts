@@ -183,6 +183,7 @@ export function projectAppViewState(state: InstanceAppState): AppViewState {
         ...(provider.failureGuidance?.retry_session === undefined
           ? {}
           : { recoveryGuidance: provider.failureGuidance.retry_session }),
+        ...(provider.savedSession ? { savedSignIns: true as const } : {}),
       };
     }),
     instances: state.instances.map((instance) => ({

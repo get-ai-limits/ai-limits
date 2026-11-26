@@ -655,6 +655,7 @@ export function Cockpit({
           : reconnectInstanceId !== undefined,
       ...(reconnectInstanceId ? { reconnectInstanceId } : {}),
       connectedCount: fixed ? granted.length : 0,
+      ...(availability.savedSignIns ? { savedSignIns: true } : {}),
       operation:
         availability.cardinality === "single"
           ? providerOperations[`${providerKind}:default`]

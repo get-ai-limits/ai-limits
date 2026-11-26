@@ -490,9 +490,33 @@ export function App() {
             (instance) => instance.providerKind === providerKind,
           )?.id
         : undefined);
+    // Adding a second Cursor or ChatGPT account, or signing an existing card
+    // back in, saves each card's own sign-in; that needs the cookies
+    // permission, asked for in the same prompt.
+    const usesSavedSignIn =
+      providerAvailability(currentState, providerKind).savedSignIns === true &&
+      currentState.instances.some(
+        (instance) =>
+          instance.providerKind === providerKind &&
+          instance.id !== existingInstanceId,
+      );
     let prepared: PermissionIntentResponse;
     try {
       prepared = await preparePermission(providerKind, config, existingInstanceId);
+      if (usesSavedSignIn) {
+        prepared = {
+          ...prepared,
+          permissions: {
+            ...prepared.permissions,
+            permissions: [
+              ...new Set([
+                ...(prepared.permissions.permissions ?? []),
+                "cookies" as const,
+              ]),
+            ],
+          },
+        };
+      }
     } catch {
       announce(
         l10n.t("announcements.connectFailed", {
@@ -541,8 +565,23 @@ export function App() {
         ({ outcome }) =>
           outcome.kind === "failure" && outcome.category === "duplicate_account",
       );
+      const waitsForSignIn =
+        usesSavedSignIn &&
+        response.report.results.some(
+          ({ instanceId: resultId, outcome }) =>
+            resultId === prepared.instanceId &&
+            outcome.kind === "failure" &&
+            outcome.category === "signed_out",
+        );
       if (duplicate) {
         announce(localizeFailure("duplicate_account"), "attention");
+      } else if (waitsForSignIn) {
+        announce(
+          l10n.t("connections.signInAnotherAccount", {
+            provider: localizeProviderName(providerKind),
+          }),
+          "attention",
+        );
       } else {
         const summary = manualSummary(response.report, response.state);
         announce(summary.message, summary.tone);

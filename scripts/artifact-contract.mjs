@@ -11,7 +11,7 @@ export const EXPECTED_REQUIRED_PERMISSIONS = [
   "sidePanel",
   "storage",
 ];
-export const EXPECTED_OPTIONAL_PERMISSIONS = ["scripting"];
+export const EXPECTED_OPTIONAL_PERMISSIONS = ["cookies", "scripting"];
 export const EXPECTED_OPTIONAL_ORIGINS = [
   "https://api.elevenlabs.io/*",
   "https://chatgpt.com/*",
@@ -170,7 +170,7 @@ export function validateBuildManifest(manifest, packageVersion) {
       EXPECTED_OPTIONAL_PERMISSIONS,
     )
   ) {
-    errors.push('Expected optional_permissions to equal ["scripting"].');
+    errors.push('Expected optional_permissions to equal ["cookies", "scripting"].');
   }
   if (manifest.minimum_chrome_version !== "116") {
     errors.push('Expected minimum_chrome_version to equal "116".');

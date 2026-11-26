@@ -7,6 +7,13 @@ import type {
 import type { CollectionResult, ProviderPackage } from "../providers/types";
 import { providerRegistry } from "../providers/registry";
 import {
+  collectWithSavedSession,
+  type CookiesApi,
+  type SavedSessionEnvironment,
+  type SavedSessionSpec,
+} from "../providers/saved-session";
+import { readSavedSession } from "../storage/saved-sessions";
+import {
   initializeCredentialVault,
   readCredentialWithRevision,
   saveApiKeyIfCurrent,
@@ -1887,6 +1894,113 @@ describe("generic provider instance service", () => {
       expect(instances.map(({ id, accountKey }) => ({ id, accountKey }))).toEqual([
         { id: "chatgpt:default", accountKey: KEY_A },
       ]);
+    });
+
+    describe("with saved sign-ins", () => {
+      function savedSignInService() {
+        const browserState: { key: string | undefined } = { key: KEY_A };
+        let jar: Browser.cookies.Cookie[] = [];
+        const signIn = (key: string) => {
+          browserState.key = key;
+          jar = [{
+            name: "Session",
+            value: `synthetic-${key.slice(0, 1)}`,
+            domain: "chatgpt.com",
+            path: "/",
+            hostOnly: true,
+            httpOnly: true,
+            secure: true,
+            session: true,
+            sameSite: "lax",
+            storeId: "0",
+          }];
+        };
+        signIn(KEY_A);
+        const cookies: CookiesApi = {
+          getAll: async () => jar,
+          remove: async ({ name }) => {
+            jar = jar.filter((cookie) => cookie.name !== name);
+            browserState.key = undefined;
+            return {};
+          },
+        };
+        const savedSessionEnvironment: SavedSessionEnvironment = {
+          cookies: async () => cookies,
+          rules: { updateSessionRules: async () => undefined },
+          extensionHost: () => "extension-id",
+        };
+        const savedSession: SavedSessionSpec = {
+          ...providerRegistry.chatgpt.savedSession!,
+          isAuthCookie: (name) => name === "Session",
+          liveAccountKey: async () => browserState.key,
+        };
+        const openSignInTab = vi.fn(async () => undefined);
+        const collect = vi.fn((async (instance, services) =>
+          collectWithSavedSession({
+            spec: savedSession,
+            instance,
+            services,
+            environment: savedSessionEnvironment,
+            live: async () =>
+              browserState.key === undefined
+                ? { ok: false, health: { kind: "signed_out" } }
+                : signedInAs(browserState.key)(),
+            saved: signedInAs(instance.accountKey),
+          })) as ProviderPackage["collect"]);
+        const service = createProviderService({
+          packages: registryWith({
+            chatgpt: { ...providerRegistry.chatgpt, savedSession, collect },
+          }),
+          clock: () => NOW,
+          randomUUID: sequentialUuid(),
+          savedSessionEnvironment,
+          openSignInTab,
+          removeSavedSessionPermission: async () => undefined,
+        });
+        return { service, signIn, openSignInTab, browserState };
+      }
+
+      test("adding an account saves the current sign-in, signs the browser out, and opens sign-in", async () => {
+        const { service, signIn, openSignInTab, browserState } =
+          savedSignInService();
+        await connectChatGpt(service);
+        const [first] = (await loadInstanceAppState()).instances;
+
+        const report = await connectChatGpt(service);
+
+        expect(browserState.key).toBeUndefined();
+        await expect(readSavedSession(first!.id)).resolves.toMatchObject({
+          cookies: [{ name: "Session", value: "synthetic-a" }],
+        });
+        expect(report.results.at(-1)?.outcome).toMatchObject({
+          kind: "failure",
+          category: "signed_out",
+        });
+        expect(openSignInTab).toHaveBeenCalledWith("https://chatgpt.com/auth/login");
+        expect((await loadInstanceAppState()).instances).toHaveLength(2);
+
+        // The other account signs in; both connections now refresh.
+        signIn(KEY_B);
+        const refreshed = await service.refreshAll("manual_all");
+        expect(
+          refreshed.results.map(({ outcome }) => outcome.kind),
+        ).toEqual(["success", "success"]);
+        expect(
+          (await loadInstanceAppState()).instances.map(({ accountKey }) => accountKey),
+        ).toEqual([KEY_A, KEY_B]);
+      });
+
+      test("removing the connection removes its saved sign-in", async () => {
+        const { service } = savedSignInService();
+        await connectChatGpt(service);
+        await connectChatGpt(service);
+        const [first] = (await loadInstanceAppState()).instances;
+        await expect(readSavedSession(first!.id)).resolves.toBeDefined();
+
+        await service.disconnectInstance(first!.id);
+
+        await expect(readSavedSession(first!.id)).resolves.toBeUndefined();
+      });
     });
   });
 

@@ -23,6 +23,8 @@ export interface ProviderConnectRowProps {
   isReconnect?: boolean;
   /** Accounts of this provider already connected; above zero offers "Add account". */
   connectedCount?: number;
+  /** Each account keeps its own saved sign-in. */
+  savedSignIns?: boolean;
   operation?: ProviderOperation;
   onConnect: (providerKind: ProviderKind) => void;
 }
@@ -32,6 +34,7 @@ export function ProviderConnectRow({
   credentialKind,
   isReconnect = false,
   connectedCount = 0,
+  savedSignIns = false,
   operation,
   onConnect,
 }: ProviderConnectRowProps) {
@@ -99,7 +102,9 @@ export function ProviderConnectRow({
       </p>
       {addsAccount && credentialKind === "none" ? (
         <p className="provider-connect-row__manual-disclosure">
-          {l10n.t("connections.addAccountSessionHint", { provider: name })}
+          {savedSignIns
+            ? l10n.t("connections.addAccountSavedSignInHint", { provider: name })
+            : l10n.t("connections.addAccountSessionHint", { provider: name })}
         </p>
       ) : null}
       {manualDisclosure ? (

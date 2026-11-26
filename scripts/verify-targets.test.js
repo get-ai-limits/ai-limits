@@ -35,7 +35,7 @@ function firefoxManifest() {
     },
     permissions: ["storage", "alarms", "declarativeNetRequestWithHostAccess"],
     optional_host_permissions: [...EXPECTED_OPTIONAL_ORIGINS],
-    optional_permissions: ["scripting"],
+    optional_permissions: ["cookies", "scripting"],
     action: { default_title: "__MSG_manifest_actionTitle__" },
     background: { scripts: ["background.js"] },
     sidebar_action: { default_panel: "sidepanel.html" },

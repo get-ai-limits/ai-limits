@@ -16,6 +16,7 @@ export interface AddProviderViewProps {
     isReconnect?: boolean;
     reconnectInstanceId?: ProviderInstanceId;
     connectedCount?: number;
+    savedSignIns?: boolean;
     operation?: ProviderOperation;
   }>;
   origin: "overview" | "settings";
@@ -57,6 +58,7 @@ export function AddProviderView({
                 isReconnect,
                 reconnectInstanceId,
                 connectedCount,
+                savedSignIns,
                 operation,
               }) => (
                 <ProviderConnectRow
@@ -65,6 +67,7 @@ export function AddProviderView({
                   credentialKind={credentialKind}
                   isReconnect={isReconnect}
                   connectedCount={connectedCount}
+                  savedSignIns={savedSignIns}
                   operation={operation}
                   onConnect={(kind) =>
                     reconnectInstanceId

@@ -56,6 +56,17 @@ import {
   removeUnusedInstancePermissions,
 } from "./permissions";
 import { isProviderRefreshEligible } from "./provider-access";
+import {
+  browserSavedSessionEnvironment,
+  parkLiveSession,
+  SAVED_SESSION_PERMISSION,
+  type SavedSessionEnvironment,
+} from "../providers/saved-session";
+import {
+  deleteAllSavedSessions,
+  deleteSavedSession,
+} from "../storage/saved-sessions";
+import { markAwaitingSignIn } from "./saved-session-sign-in";
 import { createProviderOperationLane } from "./provider-operation-lane";
 import { createKeyedSerialExecutor } from "./keyed-serial";
 import {
@@ -137,6 +148,19 @@ export interface ProviderServiceOptions {
   clock?: () => number;
   randomUUID?: () => string;
   permissionIntentTtlMs?: number;
+  savedSessionEnvironment?: SavedSessionEnvironment;
+  /** Opens the provider's sign-in page for another account. */
+  openSignInTab?: (url: string) => Promise<void>;
+  /** Drops the optional cookies permission once nothing uses it. */
+  removeSavedSessionPermission?: () => Promise<void>;
+}
+
+async function openSignInTabInBrowser(url: string): Promise<void> {
+  await browser.tabs.create({ url, active: true });
+}
+
+async function removeCookiesPermission(): Promise<void> {
+  await browser.permissions.remove({ permissions: [SAVED_SESSION_PERMISSION] });
 }
 
 function normalizedLabel(value: string | undefined): string | undefined {
@@ -188,6 +212,47 @@ export function createProviderService(
   const fetch = options.fetch ?? globalThis.fetch.bind(globalThis);
   const clock = options.clock ?? Date.now;
   const randomUUID = options.randomUUID ?? (() => globalThis.crypto.randomUUID());
+  const savedSessionEnvironment =
+    options.savedSessionEnvironment ?? browserSavedSessionEnvironment;
+  const openSignInTab = options.openSignInTab ?? openSignInTabInBrowser;
+  const removeSavedSessionPermission =
+    options.removeSavedSessionPermission ?? removeCookiesPermission;
+
+  /**
+   * Saved sign-ins need the cookies permission only while a connection that
+   * can keep one exists. Once none does, the permission and every saved
+   * sign-in go.
+   */
+  async function releaseUnusedSavedSessions(
+    removedKinds: readonly ProviderKind[],
+  ): Promise<void> {
+    if (!removedKinds.some((kind) => packages[kind].savedSession)) return;
+    try {
+      const instances = await connectionRepository.list();
+      if (instances.some(({ providerKind }) => packages[providerKind].savedSession)) {
+        return;
+      }
+      await deleteAllSavedSessions();
+      if (await savedSessionEnvironment.cookies()) {
+        await removeSavedSessionPermission();
+      }
+    } catch {
+      // Best effort: a saved sign-in is also dropped with its connection.
+    }
+  }
+
+  /** Opens the sign-in page and watches for the sign-in that follows. */
+  async function startSignIn(providerKind: ProviderKind): Promise<boolean> {
+    const spec = packages[providerKind].savedSession;
+    if (!spec) return false;
+    try {
+      await markAwaitingSignIn(providerKind, clock());
+      await openSignInTab(spec.signInUrl);
+      return true;
+    } catch {
+      return false;
+    }
+  }
   const lanes = createProviderOperationLane();
   const apiKeyConnections = createApiKeyConnectionLifecycle();
   const withInstanceConnectionLock =
@@ -443,10 +508,12 @@ export function createProviderService(
             instance,
           );
           await deleteCredential(instanceId);
+          await deleteSavedSession(instanceId);
           await forgetPackageSession(instance.providerKind);
           await usageRepository.clear(instanceId);
           await connectionRepository.delete(instanceId);
           const removed = await completePermissionCleanup(permissionCleanup);
+          await releaseUnusedSavedSessions([instance.providerKind]);
           return removed
             ? ({ ok: true, localDataDeleted: true } as const)
             : ({
@@ -586,7 +653,62 @@ export function createProviderService(
         await orchestrator.refreshInstance(instance.id, "manual_provider");
       }
     }
-    const report = await orchestrator.refreshInstance(candidate.id, "connect");
+    // With saved sign-ins, adding an account saves the browser's current
+    // sign-in for the connection it belongs to and signs the browser out of
+    // the site, so the new connection waits for a fresh sign-in instead of
+    // being refused as a duplicate.
+    const spec = providerPackage.savedSession;
+    let parked: Awaited<ReturnType<typeof parkLiveSession>> = "unavailable";
+    if (spec && !existing && providerPackage.cardinality === "multiple") {
+      const siblings = (await connectionRepository.list()).filter(
+        (instance) =>
+          instance.id !== candidate.id && instance.providerKind === providerKind,
+      );
+      if (siblings.length > 0) {
+        parked = await parkLiveSession(
+          spec,
+          siblings,
+          { fetch, signal: new AbortController().signal, now: clock() },
+          savedSessionEnvironment,
+        ).catch(() => "unavailable" as const);
+      }
+    }
+    let report = await orchestrator.refreshInstance(candidate.id, "connect");
+    const candidateOutcome = () =>
+      report.results.find(({ instanceId }) => instanceId === candidate.id)
+        ?.outcome;
+    if (spec && existing) {
+      // Reconnecting a connection whose account the browser is not signed in
+      // to: save the browser's sign-in for its own connection, then sign in.
+      const outcome = candidateOutcome();
+      if (
+        outcome?.kind === "failure" &&
+        (outcome.category === "other_account" ||
+          outcome.category === "signed_out")
+      ) {
+        const siblings = (await connectionRepository.list()).filter(
+          (instance) =>
+            instance.id !== candidate.id &&
+            instance.providerKind === providerKind,
+        );
+        parked = await parkLiveSession(
+          spec,
+          siblings,
+          { fetch, signal: new AbortController().signal, now: clock() },
+          savedSessionEnvironment,
+        ).catch(() => "unavailable" as const);
+        if (parked === "parked") {
+          report = await orchestrator.refreshInstance(candidate.id, "connect");
+        }
+      }
+    }
+    if (
+      spec &&
+      (parked === "parked" || parked === "signed_out") &&
+      candidateOutcome()?.kind === "failure"
+    ) {
+      await startSignIn(providerKind);
+    }
     // A new connection that turned out to be a login another connection
     // already tracks is removed again, so the same account never shows twice.
     if (
@@ -816,6 +938,19 @@ export function createProviderService(
   async function reconcilePermissions(
     change?: Browser.permissions.Permissions,
   ): Promise<void> {
+    // Taking back the cookies permission also takes back saved sign-ins.
+    if (
+      !change ||
+      change.permissions?.includes(SAVED_SESSION_PERMISSION)
+    ) {
+      try {
+        if (!(await savedSessionEnvironment.cookies())) {
+          await deleteAllSavedSessions();
+        }
+      } catch {
+        // Kept until the next reconciliation; they are unusable without it.
+      }
+    }
     await withPermissionOwnershipLock("permissions", async () => {
       const generation = ++reconciliationGeneration;
       const instances = await connectionRepository.list();
@@ -902,6 +1037,7 @@ export function createProviderService(
           orchestrator.invalidateAll();
           apiKeyConnections.invalidateAll();
           await deleteAllCredentials();
+          await deleteAllSavedSessions();
           await Promise.all(
             (Object.keys(packages) as ProviderKind[]).map(forgetPackageSession),
           );
@@ -909,6 +1045,11 @@ export function createProviderService(
           const removed = await removeAllInstancePermissions(
             [...instances, ...intentCandidates],
             packages,
+          );
+          await releaseUnusedSavedSessions(
+            [...instances, ...intentCandidates].map(
+              ({ providerKind }) => providerKind,
+            ),
           );
           return {
             result: removed ? "deleted" : "deleted_with_permission_errors",

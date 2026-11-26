@@ -104,6 +104,8 @@ connections:
   addAccount: Add account
   addAccountFor: "Add another {provider} account"
   accountsConnected: "{count} connected"
+  addAccountSavedSignInHint: "AI Limits saves the {provider} sign-in this browser uses now for its card, signs this browser out of {provider}, and opens the sign-in page. Sign in to the other account there, and every account keeps refreshing. Avoid Log out on the {provider} site: it ends the saved sign-in too."
+  signInAnotherAccount: "Sign in to the other {provider} account in the tab that just opened. Your other {provider} cards keep refreshing."
   addAccountSessionHint: "First sign in to the account you want to add on the {provider} site. Only the account signed in there refreshes; the others keep their last numbers until you switch back."
 
 overview:
@@ -659,7 +661,7 @@ errors:
   challengeBlocked: Open the provider and complete its security check before trying again.
   providerChanged: AI Limits could not read this provider's usage response.
   temporaryError: AI Limits could not refresh this provider. Try again later.
-  otherAccount: A different account is signed in on this provider's site. Switch to this account there and it refreshes again.
+  otherAccount: A different account is signed in on this provider's site. Reconnect this card to sign in to its account again.
   duplicateAccount: The account signed in on this provider's site is already connected. Sign in to a different account there, then add it.
   kimiRetrySession: Kimi was still starting. Try Refresh once more, or open or reload Kimi.
   gumloopRetrySession: Could not read your Gumloop sign-in. Open gumloop.com, make sure you are signed in, then press Refresh.

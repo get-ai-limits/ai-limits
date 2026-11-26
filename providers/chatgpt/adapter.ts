@@ -128,6 +128,61 @@ function chatGptAccountId(accessToken: string): string | undefined {
   }
 }
 
+/**
+ * The opaque key for the login and workspace a session belongs to. Usage is
+ * per workspace, so a login with several workspaces gets one key per
+ * workspace it reads.
+ */
+async function chatGptSessionAccountKey(
+  session: { accessToken?: string | null } & Record<string, unknown>,
+): Promise<string | undefined> {
+  const accessToken = session.accessToken;
+  if (!accessToken) return undefined;
+  const accountId = chatGptAccountId(accessToken);
+  const sessionUser = session.user;
+  const sessionUserId =
+    typeof sessionUser === "object" && sessionUser !== null
+      ? (sessionUser as Record<string, unknown>).id
+      : undefined;
+  const loginId =
+    chatGptLoginId(accessToken) ??
+    (typeof sessionUserId === "string" && sessionUserId.trim()
+      ? sessionUserId.trim()
+      : undefined);
+  return loginId === undefined
+    ? undefined
+    : accountKeyFor(
+        "chatgpt",
+        accountId === undefined ? loginId : `${loginId}:${accountId}`,
+      );
+}
+
+/**
+ * Reads which login the browser is signed in to, as the same opaque key a
+ * reading carries. Undefined when signed out or unreadable.
+ */
+export async function chatGptLiveAccountKey(
+  fetch: typeof globalThis.fetch,
+  signal: AbortSignal,
+): Promise<string | undefined> {
+  try {
+    const response = await fetch(SESSION_ENDPOINT, {
+      method: "GET",
+      credentials: "include",
+      signal,
+    });
+    if (!response.ok) return undefined;
+    const session = chatGptSessionSchema.safeParse(await parseJson(response));
+    return session.success
+      ? await chatGptSessionAccountKey(
+          session.data as { accessToken?: string } & Record<string, unknown>,
+        )
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 async function collectChatGpt({
   fetch: injectedFetch,
   now,
@@ -150,25 +205,7 @@ async function collectChatGpt({
     }
 
     const accountId = chatGptAccountId(session.data.accessToken);
-    const sessionUser = (session.data as Record<string, unknown>).user;
-    const sessionUserId =
-      typeof sessionUser === "object" && sessionUser !== null
-        ? (sessionUser as Record<string, unknown>).id
-        : undefined;
-    const loginId =
-      chatGptLoginId(session.data.accessToken) ??
-      (typeof sessionUserId === "string" && sessionUserId.trim()
-        ? sessionUserId.trim()
-        : undefined);
-    // Usage is per workspace, so a login with several workspaces gets one key
-    // per workspace it reads.
-    const accountKey =
-      loginId === undefined
-        ? undefined
-        : await accountKeyFor(
-            "chatgpt",
-            accountId === undefined ? loginId : `${loginId}:${accountId}`,
-          );
+    const accountKey = await chatGptSessionAccountKey(session.data);
     const headers = {
       Authorization: `Bearer ${session.data.accessToken}`,
       ...(accountId ? { "ChatGPT-Account-Id": accountId } : {}),
