@@ -318,6 +318,59 @@ These
 read-only responses are normalized into balance, quota, counter, or spend
 metrics; raw provider responses are not persisted.
 
+### Saved sign-ins for several Cursor or ChatGPT accounts
+
+A browser holds one Cursor sign-in and one ChatGPT sign-in at a time. When you
+add a second Cursor or ChatGPT account, AI Limits asks for the optional
+`cookies` permission. It is asked for only then, not for a first connection,
+and it is used only for `cursor.com` and `chatgpt.com`.
+
+With it, AI Limits copies the sign-in cookie the browser holds for that site
+(Cursor's `WorkosCursorSessionToken`; ChatGPT's
+`__Secure-next-auth.session-token`, including any numbered chunks) and saves
+it for the connection whose account it belongs to. That connection is
+identified by the opaque login key described above. AI Limits then removes
+that cookie from the browser, so the browser is signed out of that site on
+this device. It does not use the site's own Log out, which would end the
+session on the provider's servers. It then opens the provider's sign-in page,
+so you can sign in to the other account. For 15 minutes after opening that
+page, it watches for that site's sign-in cookie to change, and then reads the
+waiting connection. Each connection's saved copy is refreshed from the browser
+whenever the browser is signed in to that connection's account.
+
+When the browser is signed in to a different account, AI Limits reads a
+connection with its saved sign-in instead. For each such request from its
+background service worker, it adds a session rule that matches only that
+site's requests started by AI Limits itself outside any tab. The rule sets
+the request's Cookie header to the saved sign-in plus the browser's
+bot-protection cookies for that site (Cloudflare's `__cf_bm`, `cf_clearance`,
+`_cfuvid`, and `__cflb`, and ChatGPT's `oai-did` device ID). It also drops any
+cookie the site sends back. The request is sent without the browser's own
+cookies, and the rule is removed as soon as the request finishes. AI Limits
+sends these requests one at a time per site, so one account's request never
+carries another account's sign-in. Your open tabs and the browser's own
+sign-in are not affected. For Cursor, page-only Grok Bot and extra-credit
+values are read only for the account the browser is signed in to. Other
+Cursor connections keep their last values for those.
+
+Saved sign-ins are stored in `chrome.storage.local` under a separate record
+from usage state, with the same trusted-context restriction as API keys
+(described below). They are sent only to the site they came from, as the
+Cookie header described above. They are never included in usage state,
+History, logs, analytics, or a developer backend. A saved sign-in is deleted
+in these cases:
+
+- when its connection is disconnected;
+- when the site no longer accepts it;
+- on **Delete all local data**;
+- when you remove the `cookies` permission.
+
+When no Cursor or ChatGPT connection remains, AI Limits also gives the
+`cookies` permission back. Sessions end on the provider's own schedule.
+Cursor's last 60 days from sign-in, after which that connection asks you to
+sign in again. Using the site's Log out while signed in to an account also
+ends that account's saved sign-in.
+
 ## Local storage and retention
 
 AI Limits stores one application-state record in `chrome.storage.local`. It
@@ -325,7 +378,9 @@ contains display, language, and automatic-refresh preferences, per-instance nons
 configuration such as a normalized configurable-provider base URL and label, provider
 order and Overview visibility, provider permission state, the normalized usage fields listed above, History, and
 sanitized refresh-attempt metadata. It does not contain provider cookies,
-browser-session credentials, or API keys.
+browser-session credentials, or API keys. Saved Cursor or ChatGPT sign-ins,
+when you add a second account, are kept in their own record, as described
+above.
 
 API keys are stored separately in chrome.storage.local,
 which AI Limits restricts to trusted extension contexts through Chrome's

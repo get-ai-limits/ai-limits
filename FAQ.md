@@ -260,12 +260,18 @@ its own card, History, and name, which you can change in Settings.
 
 - **API-key providers** (OpenAI, OpenRouter, DeepSeek, and the rest): each
   account has its own key, so all of them refresh.
-- **ChatGPT and Cursor** use the account signed in on chatgpt.com or
-  cursor.com. Before adding another account, sign in to it on that site. Each
-  connection remembers its own login, so only the account signed in there
-  refreshes; the others keep their last numbers and say that a different
-  account is signed in, until you switch back. ChatGPT tracks each workspace
-  separately, so switching workspace counts as switching account.
+- **ChatGPT and Cursor** read the account signed in on chatgpt.com or
+  cursor.com, and a browser holds only one at a time. When you choose **Add
+  account**, AI Limits asks for the optional `cookies` permission. It saves
+  the current sign-in for its card, signs the browser out of that site on
+  this device, and opens the sign-in page for the next account. After that,
+  every account keeps refreshing, whichever one the browser is signed in to.
+  Don't use **Log out** on the ChatGPT or Cursor site to switch accounts,
+  because that ends the saved sign-in too. A saved sign-in lasts as long as
+  the provider allows (60 days for Cursor). After that, that card asks you to
+  sign in again: choose **Reconnect** and sign in to that account. ChatGPT
+  tracks each workspace separately. See [Privacy](PRIVACY.md) for how saved
+  sign-ins are kept and used.
 
 Claude, Kimi, Grok, Mistral, Perplexity, and Gumloop still connect one account.
 

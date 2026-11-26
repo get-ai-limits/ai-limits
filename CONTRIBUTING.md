@@ -81,7 +81,8 @@ select quota metrics and the balance of balance-first providers only.
 
 Do not persist browser-session credentials, request-local account identifiers
 (the SHA-256 login key from `providers/account-key.ts` is the only allowed
-derivative),
+derivative; saved Cursor and ChatGPT sign-ins live only in the
+`storage/saved-sessions.ts` record described in PRIVACY.md),
 or raw provider responses. A reviewed API-key package keeps one key per instance
 in the dedicated trusted-context credential vault, outside application state
 and History, and binds it to the matching configuration revision. Same-origin
