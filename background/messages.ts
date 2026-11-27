@@ -204,7 +204,7 @@ export function isRuntimeCommand(value: unknown): value is RuntimeCommand {
       (value.mode === "used" || value.mode === "left")
     );
   }
-  if (value.type === "SET_AUTO_REFRESH") {
+  if (value.type === "SET_AUTO_REFRESH" || value.type === "SET_HIDE_EXHAUSTED") {
     return (
       hasExactKeys(value, ["type", "enabled"]) &&
       typeof value.enabled === "boolean"
@@ -236,6 +236,7 @@ export interface RuntimeCommandHandlers {
   getState(): unknown;
   setDisplayMode(mode: DisplayMode): unknown;
   setAutoRefresh(enabled: boolean): unknown;
+  setHideExhausted(enabled: boolean): unknown;
   deleteLocalData(): unknown;
 }
 
@@ -297,6 +298,8 @@ export function createRuntimeCommandHandler(handlers: RuntimeCommandHandlers) {
         return handlers.setDisplayMode(value.mode);
       case "SET_AUTO_REFRESH":
         return handlers.setAutoRefresh(value.enabled);
+      case "SET_HIDE_EXHAUSTED":
+        return handlers.setHideExhausted(value.enabled);
       case "DELETE_LOCAL_DATA":
         return handlers.deleteLocalData();
     }

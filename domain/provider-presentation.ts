@@ -1,3 +1,4 @@
+import type { QuotaMetric } from "./model";
 import { providerKinds, type ProviderKind } from "./provider-kind";
 
 export interface ProviderPresentation {
@@ -212,6 +213,107 @@ export const providerBalanceCategories = {
   warp: "pool-primary",
   gumloop: "pool-primary",
 } as const satisfies Record<ProviderKind, ProviderBalanceCategory>;
+
+/**
+ * How one provider's plan splits into usage pools.
+ *
+ * A pool is a set of quota windows that gate the same usage, such as a 5-hour
+ * and a weekly window on one message allowance. A pool is used up while any
+ * of its windows is at its limit. A plan is used up only while every pool it
+ * reports is used up and none of its overflow meters (extra credits, on-demand
+ * spend) can still pay for more usage.
+ */
+export interface ProviderPoolSpec {
+  /** Groups the snapshot's quota metrics into pools, by metric id. */
+  pools(quotas: readonly QuotaMetric[]): string[][];
+  /** Balances and spend counters that keep the plan usable past its pools. */
+  overflowMetricIds: readonly string[];
+}
+
+const onePool = (quotas: readonly QuotaMetric[]): string[][] =>
+  quotas.length === 0 ? [] : [quotas.map((quota) => quota.id)];
+
+const eachOwnPool = (quotas: readonly QuotaMetric[]): string[][] =>
+  quotas.map((quota) => [quota.id]);
+
+const generalPool = (quotas: readonly QuotaMetric[]): string[][] =>
+  onePool(quotas.filter((quota) => quota.scope === "general"));
+
+function poolsByKey(
+  quotas: readonly QuotaMetric[],
+  key: (quota: QuotaMetric) => string,
+): string[][] {
+  const pools = new Map<string, string[]>();
+  for (const quota of quotas) {
+    const poolKey = key(quota);
+    pools.set(poolKey, [...(pools.get(poolKey) ?? []), quota.id]);
+  }
+  return [...pools.values()];
+}
+
+// Grok chat rate limits are named `<window>-<mode>-<queries|tokens>`. Each
+// chat mode is its own pool. When Grok reports its shared usage pool, that
+// pool gates every mode and the per-mode limits are not shown.
+const GROK_MODE_WINDOW =
+  /^(?:weekly|\d+(?:\.\d+)?-(?:day|hour))-(.+)-(?:queries|tokens)$/;
+const GROK_SHARED_POOL = new Set(["weekly-pool", "monthly-pool"]);
+
+function grokPools(quotas: readonly QuotaMetric[]): string[][] {
+  const shared = quotas.filter((quota) => GROK_SHARED_POOL.has(quota.id));
+  if (shared.length > 0) return onePool(shared);
+  return poolsByKey(
+    quotas,
+    (quota) => GROK_MODE_WINDOW.exec(quota.id)?.[1] ?? `metric:${quota.id}`,
+  );
+}
+
+/**
+ * Providers set to `null` report balances or spend, not plan windows, so
+ * they are never treated as used up.
+ */
+export const providerPoolSpecs = {
+  chatgpt: { pools: onePool, overflowMetricIds: ["credits"] },
+  // Model-scoped weekly windows narrow one model; the general windows gate
+  // the whole plan.
+  claude: { pools: generalPool, overflowMetricIds: ["extra-usage"] },
+  kimi: { pools: onePool, overflowMetricIds: [] },
+  // Cursor's model lanes and Grok Bot are separate allowances.
+  cursor: {
+    pools: eachOwnPool,
+    overflowMetricIds: ["on-demand", "extra-usage-credits"],
+  },
+  grok: { pools: grokPools, overflowMetricIds: ["extra-usage-credits"] },
+  mistral: null,
+  // Recurring, promotional, and purchased credits are spent one after another.
+  perplexity: { pools: eachOwnPool, overflowMetricIds: [] },
+  // Voice slots are capacity, not usage, so only monthly credits count.
+  elevenlabs: {
+    pools: (quotas) =>
+      onePool(quotas.filter((quota) => quota.id === "monthly-credits")),
+    overflowMetricIds: [],
+  },
+  newapi: null,
+  litellm: null,
+  clawrouter: null,
+  sub2api: null,
+  llmProxy: null,
+  deepseek: null,
+  moonshot: null,
+  deepinfra: null,
+  fireworks: null,
+  openai: null,
+  groqcloud: null,
+  openrouter: null,
+  // Standard, Core, and Premium are separate token pools.
+  factory: {
+    pools: (quotas) => poolsByKey(quotas, (quota) => quota.id.split("-")[0]!),
+    overflowMetricIds: ["extra-usage"],
+  },
+  // MCP tool calls are a side allowance; the coding windows gate the plan.
+  zai: { pools: generalPool, overflowMetricIds: [] },
+  warp: { pools: onePool, overflowMetricIds: ["add-on"] },
+  gumloop: { pools: onePool, overflowMetricIds: [] },
+} as const satisfies Record<ProviderKind, ProviderPoolSpec | null>;
 
 export const providerNames = Object.fromEntries(
   providerKinds.map((providerKind) => [

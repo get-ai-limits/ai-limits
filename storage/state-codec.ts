@@ -613,7 +613,7 @@ function normalizeInstance(
 export function createEmptyInstanceAppState(): InstanceAppState {
   return {
     version: INSTANCE_STATE_VERSION,
-    preferences: { displayMode: "used", autoRefresh: true },
+    preferences: { displayMode: "used", autoRefresh: true, hideExhausted: false },
     instances: [],
   };
 }
@@ -655,6 +655,7 @@ export function normalizeInstanceAppState(
         typeof preferences.autoRefresh === "boolean"
           ? preferences.autoRefresh
           : true,
+      hideExhausted: preferences.hideExhausted === true,
     },
     instances,
   };

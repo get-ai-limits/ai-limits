@@ -242,6 +242,7 @@ function quotaOnlyHistory(
 function releasedPreferences(value: Record<string, unknown>): {
   displayMode: DisplayMode;
   autoRefresh: boolean;
+  hideExhausted: false;
 } {
   const preferences = isRecord(value.preferences) ? value.preferences : {};
   return {
@@ -250,6 +251,7 @@ function releasedPreferences(value: Record<string, unknown>): {
       typeof preferences.autoRefresh === "boolean"
         ? preferences.autoRefresh
         : true,
+    hideExhausted: false,
   };
 }
 
@@ -304,7 +306,7 @@ function migrateReleasedV4(
     const normalizedProvider = normalizeInstanceAppState(
       {
         version: 5,
-        preferences: { displayMode: "used", autoRefresh: true },
+        preferences: { displayMode: "used", autoRefresh: true, hideExhausted: false },
         instances: [
           {
             id,

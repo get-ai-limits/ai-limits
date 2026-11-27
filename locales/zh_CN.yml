@@ -132,6 +132,12 @@ overview:
   allHiddenTitle: 所有服务都已隐藏
   allHiddenCopy: 它们仍保持连接并继续刷新。可以在这里或设置中重新显示。
   showAll: 全部显示
+  allExhaustedTitle: 所有套餐的额度暂时都已用完
+  allExhaustedCopy: 额度重置后，套餐会回到这里。如需现在查看，请在设置中关闭“隐藏已用完的套餐”。
+  usedUp: 已用完
+  usedUpUntil: "已用完 · {reset}"
+  view: 查看
+  viewNamed: "查看 {label}"
   movedTo: "{label} 已移到第 {position} 位，共 {total} 位。"
 
 providerDetail:
@@ -408,6 +414,8 @@ settings:
   automaticRefreshDescription: 大约每 15 分钟检查已连接的服务。定时刷新保持非交互，不会接管浏览器。
   automaticOn: 开 · 大约每 15 分钟
   automaticOff: 关 · 请从顶部手动刷新
+  hideExhausted: 隐藏已用完的套餐
+  hideExhaustedDescription: 当套餐的每个额度池都已达到上限且没有剩余的额外额度时，将其移出总览。额度重置后会重新显示。隐藏的套餐仍保持连接并继续刷新。
   language: 语言
   languageDescription: 仅支持英文和简体中文。其他浏览器语言会回退到英文。浏览器自身的菜单和扩展名称仍跟随浏览器的语言。
   languageFollowChrome: 跟随浏览器
@@ -561,6 +569,7 @@ announcements:
   renameFailed: "无法重命名 {label}。"
   arrangeFailed: 无法保存服务顺序。请重试。
   visibilityFailed: "无法更新 {label}。请重试。"
+  hideExhaustedFailed: 无法更新“隐藏已用完的套餐”。请重试。
   localDataDeleted: 已删除本地用量数据并断开所有服务。
   localDataPartial: 已删除本地用量数据。部分服务的访问权限未能移除。
   localDataFailed: 无法删除本地数据。

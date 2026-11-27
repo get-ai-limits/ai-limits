@@ -857,7 +857,7 @@ describe("generic provider instance service", () => {
     await browser.storage.local.set({
       aiLimitsState: {
         version: 5,
-        preferences: { displayMode: "used", autoRefresh: true },
+        preferences: { displayMode: "used", autoRefresh: true, hideExhausted: false },
         instances: [
           {
             ...newApiInstance(FIRST, "https://old.example/gateway"),
@@ -950,7 +950,7 @@ describe("generic provider instance service", () => {
     await browser.storage.local.set({
       aiLimitsState: {
         version: 5,
-        preferences: { displayMode: "used", autoRefresh: true },
+        preferences: { displayMode: "used", autoRefresh: true, hideExhausted: false },
         instances: [
           {
             ...newApiInstance(FIRST, "https://malformed.example/gateway"),

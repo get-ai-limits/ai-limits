@@ -338,6 +338,18 @@ export const preferencesRepository = {
       );
     });
   },
+
+  setHideExhausted(enabled: boolean): Promise<void> {
+    return mutateState(async (state, now) => {
+      await writeNormalizedState(
+        {
+          ...state,
+          preferences: { ...state.preferences, hideExhausted: enabled },
+        },
+        now,
+      );
+    });
+  },
 };
 
 export function deleteAllInstanceData(): Promise<InstanceAppState> {

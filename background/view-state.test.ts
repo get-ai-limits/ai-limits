@@ -77,7 +77,7 @@ describe("public app view state", () => {
   test("copies only normalized metric, history, and attempt view data", () => {
     const state: InstanceAppState = {
       version: 5,
-      preferences: { displayMode: "used", autoRefresh: true },
+      preferences: { displayMode: "used", autoRefresh: true, hideExhausted: false },
       instances: [
         {
           id: "kimi:default",
@@ -133,7 +133,7 @@ describe("public app view state", () => {
   test("projects a hidden instance", () => {
     const view = projectAppViewState({
       version: 5,
-      preferences: { displayMode: "used", autoRefresh: true },
+      preferences: { displayMode: "used", autoRefresh: true, hideExhausted: false },
       instances: [
         {
           id: "kimi:default",

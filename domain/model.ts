@@ -38,6 +38,8 @@ export interface InstanceAppState {
   preferences: {
     displayMode: DisplayMode;
     autoRefresh: boolean;
+    /** Leave used-up plans off the Overview until a pool reopens. */
+    hideExhausted: boolean;
   };
   instances: ProviderInstanceRecord[];
 }

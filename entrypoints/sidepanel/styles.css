@@ -1925,6 +1925,14 @@ section[aria-labelledby="overview-title"] .provider-list {
   white-space: nowrap;
 }
 
+.overview-hidden__note {
+  display: block;
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 11px;
+  text-overflow: ellipsis;
+}
+
 .overview-hidden li > button,
 .settings-provider-arrange__move > button {
   min-width: 44px;
