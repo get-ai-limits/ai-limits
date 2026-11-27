@@ -184,6 +184,9 @@ describe("strict instance runtime protocol", () => {
       config: { kind: "fixed", password: "nested-secret" },
       apiKey: "secret",
     },
+    { type: "SET_HIDE_EXHAUSTED" },
+    { type: "SET_HIDE_EXHAUSTED", enabled: "true" },
+    { type: "SET_HIDE_EXHAUSTED", enabled: true, extra: 1 },
   ])("rejects malformed, legacy, or secret-extended command %#", (command) => {
     expect(isRuntimeCommand(command)).toBe(false);
   });

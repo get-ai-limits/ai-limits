@@ -69,6 +69,8 @@ export function OverviewView({
     ({ hidden, exhausted }) => !hidden && exhausted,
   );
   const tuckedAwayCount = hiddenProviders.length + exhaustedProviders.length;
+  const hiddenSummaryRef = useRef<HTMLElement>(null);
+  const exhaustedIds = useRef<Set<ProviderInstanceId> | undefined>(undefined);
 
   useEffect(() => {
     if (!focusOnModeChange.current) return;
@@ -89,6 +91,22 @@ export function OverviewView({
         `[data-focus-key="overview-provider-${instanceId}"]`,
       )
       ?.focus();
+  }, [providers]);
+
+  // A card that becomes used up while it holds focus leaves the Overview, so
+  // focus moves to the hidden list that now counts it.
+  useEffect(() => {
+    const previous = exhaustedIds.current;
+    exhaustedIds.current = new Set(
+      exhaustedProviders.map(({ instanceId }) => instanceId),
+    );
+    if (!previous) return;
+    const newlyUsedUp = exhaustedProviders.some(
+      ({ instanceId }) => !previous.has(instanceId),
+    );
+    const focusLost =
+      document.activeElement === null || document.activeElement === document.body;
+    if (newlyUsedUp && focusLost) hiddenSummaryRef.current?.focus();
   }, [providers]);
 
   const showProvider = (instanceId: ProviderInstanceId) => {
@@ -212,7 +230,7 @@ export function OverviewView({
       {exhaustedProviders.length > 0 ||
       (hiddenProviders.length > 0 && visibleProviders.length > 0) ? (
         <details className="overview-hidden">
-          <summary>
+          <summary ref={hiddenSummaryRef}>
             {l10n.count("overview.hiddenCount", tuckedAwayCount)}
           </summary>
           <ul>

@@ -194,6 +194,36 @@ describe("plan exhaustion", () => {
     ).toEqual({ exhausted: false });
   });
 
+  it("keeps Kimi visible while only Kimi Code's windows are full", () => {
+    const monthly = quota("monthly-total", 0.4);
+    const coding = [
+      quota("five-hour-coding", 1, { scope: "feature" }),
+      quota("weekly-coding", 0.5, { scope: "feature" }),
+    ];
+    expect(planExhaustion(snapshot("kimi", [monthly, ...coding]), NOW)).toEqual({
+      exhausted: false,
+    });
+    expect(
+      planExhaustion(snapshot("kimi", [{ ...monthly, usedRatio: 1 }, ...coding]), NOW),
+    ).toMatchObject({ exhausted: true });
+    // The legacy endpoint reports only the coding windows.
+    expect(planExhaustion(snapshot("kimi", coding), NOW)).toMatchObject({
+      exhausted: true,
+    });
+  });
+
+  it("gives no reopening time when any pool's reset is unknown", () => {
+    expect(
+      planExhaustion(
+        snapshot("perplexity", [
+          quota("recurring-credits", 1, { scope: "product" }),
+          quota("purchased-credits", 1, { scope: "product", cycle: undefined }),
+        ]),
+        NOW,
+      ),
+    ).toEqual({ exhausted: true });
+  });
+
   it("never hides balance providers or a plan without readings", () => {
     expect(
       planExhaustion(snapshot("openrouter", [quota("key-limit", 1)]), NOW),

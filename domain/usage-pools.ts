@@ -8,7 +8,7 @@ export type PlanExhaustion =
   | { exhausted: false }
   | {
       exhausted: true;
-      /** When the first pool is expected to open again, if every window says. */
+      /** When the first pool opens again, given only when every pool's reset is known. */
       reopensAt?: number;
     };
 
@@ -63,7 +63,10 @@ export function planExhaustion(
     return { exhausted: false };
   }
 
+  // The plan comes back when its first pool reopens. A pool with no known
+  // reset could reopen at any time, so then no reopening time is given.
   let reopensAt: number | undefined;
+  let reopeningKnown = true;
   for (const pool of pools) {
     const blocking = pool.filter((quota) => windowBlocks(quota, now));
     if (blocking.length === 0) return { exhausted: false };
@@ -73,9 +76,11 @@ export function planExhaustion(
       const poolOpensAt = Math.max(...resets);
       reopensAt =
         reopensAt === undefined ? poolOpensAt : Math.min(reopensAt, poolOpensAt);
+    } else {
+      reopeningKnown = false;
     }
   }
-  return reopensAt === undefined
-    ? { exhausted: true }
-    : { exhausted: true, reopensAt };
+  return reopeningKnown && reopensAt !== undefined
+    ? { exhausted: true, reopensAt }
+    : { exhausted: true };
 }

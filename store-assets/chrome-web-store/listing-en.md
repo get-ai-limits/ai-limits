@@ -85,7 +85,7 @@ AI Limits is an independent project by TiantianFlow. It is not affiliated with, 
 
 ### Required permissions
 
-- `storage`: saves display, language, and refresh preferences, provider order and
+- `storage`: saves display, language, refresh, and hide-used-up-plans preferences, provider order and
   Overview visibility, provider access state,
   normalized quota/counter/balance snapshots, up to 30 days of typed
   per-instance History, sanitized refresh status, and for ChatGPT and Cursor a

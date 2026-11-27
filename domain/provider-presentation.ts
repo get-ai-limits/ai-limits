@@ -253,7 +253,7 @@ function poolsByKey(
 
 // Grok chat rate limits are named `<window>-<mode>-<queries|tokens>`. Each
 // chat mode is its own pool. When Grok reports its shared usage pool, that
-// pool gates every mode and the per-mode limits are not shown.
+// pool gates every mode and the adapter does not collect per-mode limits.
 const GROK_MODE_WINDOW =
   /^(?:weekly|\d+(?:\.\d+)?-(?:day|hour))-(.+)-(?:queries|tokens)$/;
 const GROK_SHARED_POOL = new Set(["weekly-pool", "monthly-pool"]);
@@ -276,7 +276,15 @@ export const providerPoolSpecs = {
   // Model-scoped weekly windows narrow one model; the general windows gate
   // the whole plan.
   claude: { pools: generalPool, overflowMetricIds: ["extra-usage"] },
-  kimi: { pools: onePool, overflowMetricIds: [] },
+  // Kimi's monthly total covers Work and Code; the 5-hour and weekly windows
+  // gate only Kimi Code, so they count only when no monthly total is reported.
+  kimi: {
+    pools: (quotas) =>
+      quotas.some((quota) => quota.scope === "general")
+        ? generalPool(quotas)
+        : onePool(quotas),
+    overflowMetricIds: [],
+  },
   // Cursor's model lanes and Grok Bot are separate allowances.
   cursor: {
     pools: eachOwnPool,

@@ -151,6 +151,59 @@ describe("provider arrangement", () => {
     ).toBeVisible();
   });
 
+  it("reopens the hidden list when returning from a used-up plan", () => {
+    renderArranged(
+      [instance("chatgpt:default"), instance("claude:default", usedUpClaude())],
+      { hideExhausted: true },
+    );
+    fireEvent.click(screen.getByText("1 hidden"));
+    fireEvent.click(screen.getByRole("button", { name: "View Claude" }));
+    fireEvent.click(screen.getByRole("button", { name: "Overview" }));
+
+    const view = screen.getByRole("button", { name: "View Claude" });
+    expect(view.closest("details")).toHaveProperty("open", true);
+    expect(view).toHaveFocus();
+  });
+
+  it("keeps a used-up plan's card when its last refresh failed", () => {
+    renderArranged(
+      [
+        instance("claude:default", {
+          ...usedUpClaude(),
+          lastAttempt: {
+            trigger: "manual_provider",
+            startedAt: NOW,
+            finishedAt: NOW,
+            outcome: { kind: "failure", category: "signed_out" },
+          },
+        }),
+      ],
+      { hideExhausted: true },
+    );
+    expect(overviewCardNames()).toEqual(["Claude"]);
+  });
+
+  it("moves focus to the hidden list when a focused card becomes used up", () => {
+    const view = renderArranged(
+      [instance("chatgpt:default"), instance("claude:default")],
+      { hideExhausted: true },
+    );
+    screen.getByRole("button", { name: "Refresh Claude" }).focus();
+    view.rerender(
+      <Cockpit
+        state={arrangedState(
+          [instance("chatgpt:default"), instance("claude:default", usedUpClaude())],
+          true,
+        )}
+        now={NOW}
+        onDisplayModeChange={vi.fn()}
+        onRefresh={vi.fn()}
+        onConnectProvider={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("1 hidden")).toHaveFocus();
+  });
+
   it("brings a used-up plan back once its window resets", () => {
     renderArranged(
       [instance("claude:default", usedUpClaude(NOW - 1))],
