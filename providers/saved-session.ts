@@ -191,13 +191,19 @@ function savedSessionRule(
   spec: SavedSessionSpec,
   extensionHost: string,
   header: string,
+  origin: string | undefined,
 ): Browser.declarativeNetRequest.Rule {
   return {
     id: spec.ruleId,
     priority: 1,
     action: {
       type: "modifyHeaders",
-      requestHeaders: [{ header: "cookie", operation: "set", value: header }],
+      requestHeaders: [
+        { header: "cookie", operation: "set", value: header },
+        ...(origin === undefined
+          ? []
+          : [{ header: "origin", operation: "set", value: origin }]),
+      ],
       responseHeaders: [{ header: "set-cookie", operation: "remove" }],
     },
     condition: {
@@ -217,25 +223,42 @@ export async function removeSavedSessionRule(
   await rules.updateSessionRules({ removeRuleIds: [spec.ruleId] });
 }
 
-/** A fetch whose requests to the site carry the saved sign-in instead. */
+/**
+ * A fetch whose requests to the site carry the saved sign-in instead. With
+ * `origin`, they also carry the site's own Origin, as a request from one of
+ * its pages would. Requests run one at a time, since the rule is set for
+ * exactly one request.
+ */
 function savedSessionFetch(
   spec: SavedSessionSpec,
   environment: SavedSessionEnvironment,
   baseFetch: typeof globalThis.fetch,
   header: string,
+  origin?: string,
 ): typeof globalThis.fetch {
-  return async (input, init) => {
-    const rule = savedSessionRule(spec, environment.extensionHost(), header);
-    await environment.rules.updateSessionRules({
-      removeRuleIds: [spec.ruleId],
-      addRules: [rule],
-    });
-    try {
-      // `omit` keeps the browser from storing anything the site answers.
-      return await baseFetch(input, { ...init, credentials: "omit" });
-    } finally {
-      await removeSavedSessionRule(spec, environment.rules);
-    }
+  let queue: Promise<unknown> = Promise.resolve();
+  return (input, init) => {
+    const run = async () => {
+      const rule = savedSessionRule(
+        spec,
+        environment.extensionHost(),
+        header,
+        origin,
+      );
+      await environment.rules.updateSessionRules({
+        removeRuleIds: [spec.ruleId],
+        addRules: [rule],
+      });
+      try {
+        // `omit` keeps the browser from storing anything the site answers.
+        return await baseFetch(input, { ...init, credentials: "omit" });
+      } finally {
+        await removeSavedSessionRule(spec, environment.rules);
+      }
+    };
+    const result = queue.then(run, run);
+    queue = result.catch(() => undefined);
+    return result;
   };
 }
 
@@ -270,8 +293,15 @@ export interface SavedSessionCollectOptions {
   services: ProviderRuntimeServices;
   /** Reads with the browser's own sign-in. */
   live(): Promise<CollectionResult>;
-  /** Reads with the given fetch, which carries the saved sign-in. */
-  saved(fetch: typeof globalThis.fetch): Promise<CollectionResult>;
+  /**
+   * Reads with the given fetch, which carries the saved sign-in.
+   * `pageFetch` also carries the site's own Origin, for requests the site
+   * accepts only from its pages.
+   */
+  saved(
+    fetch: typeof globalThis.fetch,
+    pageFetch: typeof globalThis.fetch,
+  ): Promise<CollectionResult>;
   environment?: SavedSessionEnvironment;
 }
 
@@ -312,12 +342,15 @@ export async function collectWithSavedSession({
               spec.isDeviceCookie(name),
             )
           : [];
+        const header = cookieHeader(savedSession.cookies, device);
         const result = await saved(
+          savedSessionFetch(spec, environment, services.fetch, header),
           savedSessionFetch(
             spec,
             environment,
             services.fetch,
-            cookieHeader(savedSession.cookies, device),
+            header,
+            new URL(spec.siteUrl).origin,
           ),
         );
         // A signed-out answer is kept, not deleted: it may be a brief or
@@ -327,8 +360,9 @@ export async function collectWithSavedSession({
       }
     }
     const result = await live();
-    // Only a sign-in saved when another account was added is kept fresh; a
-    // connection that never had one saved never gets one here.
+    // An existing saved copy is kept fresh here. A first copy is saved by
+    // saveLiveSession, which only runs while the provider has another
+    // connection.
     if (
       result.ok &&
       savedSession &&
@@ -367,6 +401,64 @@ async function refreshSavedCopy(
   }
 }
 
+/**
+ * What storage keeps of a captured sign-in: the named sign-in cookies come
+ * first, so a cookie left out (one storage cannot hold) is never the session
+ * itself. Undefined when a named sign-in cookie (such as one chunk of a split
+ * session token) cannot be kept, since the copy could not sign in.
+ */
+function savableSignIn(
+  spec: SavedSessionSpec,
+  captured: readonly SavedSessionCookie[],
+  now: number,
+): SavedSessionCookie[] | undefined {
+  const cookies =
+    normalizeSavedSession({ cookies: [...captured], savedAt: now })?.cookies ?? [];
+  const kept = new Set(cookies.map(({ name }) => name));
+  if (
+    !cookies.some(({ name }) => spec.isSessionCookie(name)) ||
+    captured.some(({ name }) => spec.isAuthCookie(name) && !kept.has(name))
+  ) {
+    return undefined;
+  }
+  return cookies;
+}
+
+/**
+ * Saves the browser's sign-in for a connection that has none saved yet, while
+ * the browser is signed in to that connection's account. Called only for a
+ * provider with more than one connection, so every account added keeps
+ * refreshing once the browser moves on, however it moves on. The browser's
+ * sign-in is left as it is.
+ */
+export async function saveLiveSession(
+  spec: SavedSessionSpec,
+  instance: ProviderInstanceRecord,
+  services: Pick<ProviderRuntimeServices, "fetch" | "signal" | "now">,
+  environment: SavedSessionEnvironment = browserSavedSessionEnvironment,
+  /** Whether the connection still exists; checked right before saving. */
+  stillConnected: () => Promise<boolean> = async () => true,
+): Promise<boolean> {
+  if (instance.accountKey === undefined) return false;
+  const api = await environment.cookies();
+  if (!api) return false;
+  return withSiteLock(spec, async () => {
+    if (await readSavedSession(instance.id, services.now)) return false;
+    const liveKey = await spec.liveAccountKey(services.fetch, services.signal);
+    if (liveKey !== instance.accountKey) return false;
+    // Captured after that read, so a cookie its response rotated is saved at
+    // its new value.
+    const cookies = savableSignIn(
+      spec,
+      await captureLiveSession(spec, api),
+      services.now,
+    );
+    if (!cookies || !(await stillConnected())) return false;
+    await saveSession(instance.id, cookies, services.now);
+    return true;
+  });
+}
+
 export type ParkResult =
   /** Saving needs the cookies permission, which is not granted. */
   | "unavailable"
@@ -403,21 +495,10 @@ export async function parkLiveSession(
     const captured = await captureLiveSession(spec, api);
     // Signed in, but to cookies this extension cannot see or save.
     if (captured.length === 0) return "unavailable";
-    // What storage keeps: the named sign-in cookies come first, so a cookie
-    // left out (one storage cannot hold) is never the session itself. Only
-    // the kept cookies are cleared, so the browser loses nothing unsaved.
-    const cookies =
-      normalizeSavedSession({ cookies: captured, savedAt: services.now })
-        ?.cookies ?? [];
-    // Every named sign-in cookie (such as each chunk of a split session
-    // token) must be kept, or the saved copy could not sign in.
-    const kept = new Set(cookies.map(({ name }) => name));
-    if (
-      !cookies.some(({ name }) => spec.isSessionCookie(name)) ||
-      captured.some(({ name }) => spec.isAuthCookie(name) && !kept.has(name))
-    ) {
-      return "unavailable";
-    }
+    // Only the kept cookies are cleared, so the browser loses nothing
+    // unsaved.
+    const cookies = savableSignIn(spec, captured, services.now);
+    if (!cookies) return "unavailable";
     if (!(await stillConnected(owner))) return "new_login";
     await saveSession(owner.id, cookies, services.now);
     await clearLiveSession(spec, api, cookies);

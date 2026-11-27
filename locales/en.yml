@@ -112,7 +112,7 @@ addAccount:
   subtitle: A browser holds one sign-in per site, so AI Limits keeps one for each account.
   back: Back
   step1Title: Allow AI Limits to save sign-ins
-  step1Copy: "Your browser asks for permission to use {provider} cookies. AI Limits saves the {provider} sign-in cookies this browser uses now (its HttpOnly cookies, except bot protection) on this device, for the card they belong to. It sends them only to {provider} and deletes them when you disconnect that card."
+  step1Copy: "Your browser asks for permission to use {provider} cookies. AI Limits saves each {provider} account's sign-in cookies (its HttpOnly cookies, except bot protection) on this device, for the card they belong to: the account signed in now, and the new one once it signs in. It sends them only to {provider} and deletes them when you disconnect that card."
   start: Allow and continue
   starting: Saving your current sign-in…
   declined: Nothing changed. Adding an account needs this permission; allow it when you are ready.

@@ -2085,6 +2085,40 @@ describe("generic provider instance service", () => {
         expect(instances.map(({ accountKey }) => accountKey)).toEqual([KEY_A]);
       });
 
+      test("an added account's own sign-in is saved once it is read", async () => {
+        const { service, signIn } = savedSignInService();
+        await connectChatGpt(service);
+        const [first] = (await loadInstanceAppState()).instances;
+        await connectChatGpt(service);
+        signIn(KEY_B);
+        await service.refreshAll("manual_all");
+        const second = (await loadInstanceAppState()).instances.find(
+          ({ accountKey }) => accountKey === KEY_B,
+        );
+        await expect(readSavedSession(second!.id)).resolves.toMatchObject({
+          cookies: [{ name: "Session", value: "synthetic-b" }],
+        });
+
+        // The browser moves back to the first account on its own; both keep
+        // reading.
+        signIn(KEY_A);
+        const report = await service.refreshAll("manual_all");
+        expect(
+          report.results.map(({ instanceId, outcome }) => [instanceId, outcome.kind]),
+        ).toEqual([
+          [first!.id, "success"],
+          [second!.id, "success"],
+        ]);
+      });
+
+      test("a provider's only connection never gets a saved sign-in", async () => {
+        const { service } = savedSignInService();
+        await connectChatGpt(service);
+        await service.refreshAll("manual_all");
+        const [only] = (await loadInstanceAppState()).instances;
+        await expect(readSavedSession(only!.id)).resolves.toBeUndefined();
+      });
+
       test("removing the connection removes its saved sign-in", async () => {
         const { service } = savedSignInService();
         await connectChatGpt(service);

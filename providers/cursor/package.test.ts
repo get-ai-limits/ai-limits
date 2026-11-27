@@ -3,7 +3,7 @@ import { describe, expect, test, vi } from "vitest";
 import type { ProviderInstanceRecord, UsageSnapshot } from "../../domain/model";
 import type { CollectionContext, CollectionResult } from "../types";
 import type { CursorDashboardJson, CursorDashboardProbe } from "./page-dashboard";
-import { createCursorPackage } from "./package";
+import { createCursorPackage, readSavedDashboard } from "./package";
 
 const NOW = 1_800_000_000_000;
 const GROK_START = NOW - 3 * 24 * 60 * 60 * 1_000;
@@ -404,5 +404,54 @@ describe("Cursor provider package", () => {
         ],
       },
     });
+  });
+});
+
+describe("readSavedDashboard", () => {
+  test("posts to the dashboard endpoints one at a time with the saved sign-in", async () => {
+    const calls: string[] = [];
+    const pageFetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      calls.push(`${init?.method} ${String(input)}`);
+      return String(input).endsWith("get-sand-usage-status")
+        ? new Response(JSON.stringify({ usage: 1 }))
+        : new Response("forbidden", { status: 403 });
+    }) as unknown as typeof fetch;
+
+    const probe = await readSavedDashboard(
+      pageFetch,
+      new AbortController().signal,
+      8_000,
+    );
+
+    expect(calls).toEqual([
+      "POST https://cursor.com/api/dashboard/get-sand-usage-status",
+      "POST https://cursor.com/api/dashboard/get-credit-grants-balance",
+      "POST https://cursor.com/api/dashboard/get-aggregated-usage-events",
+    ]);
+    expect(probe).toEqual({
+      kind: "read",
+      grok: { ok: true, value: { usage: 1 } },
+      credits: { ok: false, status: 403 },
+      aggregated: { ok: false, status: 403 },
+    });
+  });
+
+  test("keeps the last page values when Cursor refuses every request", async () => {
+    const pageFetch = vi.fn(
+      async () => new Response("Invalid origin", { status: 403 }),
+    ) as unknown as typeof fetch;
+    await expect(
+      readSavedDashboard(pageFetch, new AbortController().signal, 8_000),
+    ).resolves.toEqual({ kind: "skipped" });
+  });
+
+  test("stops once the collection is abandoned", async () => {
+    const abort = new AbortController();
+    abort.abort();
+    const pageFetch = vi.fn() as unknown as typeof fetch;
+    await expect(readSavedDashboard(pageFetch, abort.signal, 8_000)).resolves.toEqual({
+      kind: "skipped",
+    });
+    expect(pageFetch).not.toHaveBeenCalled();
   });
 });
