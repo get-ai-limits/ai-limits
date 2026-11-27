@@ -50,6 +50,17 @@ describe("plan exhaustion", () => {
     ).toEqual({ exhausted: false });
   });
 
+  it("counts a window that reads 100% as used up despite fractional usage", () => {
+    const included = (used: number) =>
+      quota("included", used / 1111, { used, limit: 1111, unit: "credits" });
+    expect(planExhaustion(snapshot("warp", [included(1110.97)]), NOW)).toMatchObject({
+      exhausted: true,
+    });
+    expect(planExhaustion(snapshot("warp", [included(1110)]), NOW)).toEqual({
+      exhausted: false,
+    });
+  });
+
   it("waits for every window holding a pool shut before it reopens", () => {
     expect(
       planExhaustion(
