@@ -1897,7 +1897,7 @@ describe("generic provider instance service", () => {
     });
 
     describe("with saved sign-ins", () => {
-      function savedSignInService({ unsaveable = false } = {}) {
+      function savedSignInService({ unsaveable = false, tabSignedIn = false } = {}) {
         const browserState: { key: string | undefined; keyCheckFails?: boolean } = {
           key: KEY_A,
         };
@@ -1964,6 +1964,7 @@ describe("generic provider instance service", () => {
           randomUUID: sequentialUuid(),
           savedSessionEnvironment,
           openSignInTab,
+          siteTabStillSignedIn: async () => tabSignedIn,
           removeSavedSessionPermission: async () => undefined,
         });
         return { service, signIn, openSignInTab, browserState };
@@ -2012,6 +2013,23 @@ describe("generic provider instance service", () => {
         openSignInTab.mockRejectedValueOnce(new Error("no window"));
         await expect(service.openSignIn("chatgpt")).resolves.toBe(false);
         await expect(service.openSignIn("chatgpt")).resolves.toBe(true);
+      });
+
+      test("Add account says so when a tab of the site is still signed in", async () => {
+        const { service, openSignInTab } = savedSignInService({ tabSignedIn: true });
+        await connectChatGpt(service);
+        const [first] = (await loadInstanceAppState()).instances;
+
+        const result = await service.connectBrowserProviderWithSignIn(
+          "chatgpt",
+          await authorizedBrowserIntent(service, "chatgpt"),
+        );
+
+        expect(result.signIn).toBe("still_signed_in");
+        expect(openSignInTab).not.toHaveBeenCalled();
+        // The current account is saved; the empty new card is gone.
+        await expect(readSavedSession(first!.id)).resolves.toBeDefined();
+        expect((await loadInstanceAppState()).instances).toHaveLength(1);
       });
 
       test("Add account says the sign-in was not saved when it cannot be", async () => {

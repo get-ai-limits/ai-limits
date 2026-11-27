@@ -64,12 +64,14 @@ import {
   removeSavedSessionRule,
   SAVED_SESSION_PERMISSION,
   type SavedSessionEnvironment,
+  type SavedSessionSpec,
 } from "../providers/saved-session";
 import {
   deleteAllSavedSessions,
   deleteSavedSession,
 } from "../storage/saved-sessions";
 import { markAwaitingSignIn } from "./saved-session-sign-in";
+import { siteTabStillSignedIn } from "./page-sign-in";
 import { createProviderOperationLane } from "./provider-operation-lane";
 import { createKeyedSerialExecutor } from "./keyed-serial";
 import {
@@ -164,6 +166,8 @@ export interface ProviderServiceOptions {
   savedSessionEnvironment?: SavedSessionEnvironment;
   /** Opens the provider's sign-in page for another account. */
   openSignInTab?: (url: string) => Promise<void>;
+  /** Whether an open tab of the site is still signed in. */
+  siteTabStillSignedIn?: (spec: SavedSessionSpec) => Promise<boolean>;
   /** Drops the optional cookies permission once nothing uses it. */
   removeSavedSessionPermission?: () => Promise<void>;
 }
@@ -228,6 +232,7 @@ export function createProviderService(
   const savedSessionEnvironment =
     options.savedSessionEnvironment ?? browserSavedSessionEnvironment;
   const openSignInTab = options.openSignInTab ?? openSignInTabInBrowser;
+  const tabStillSignedIn = options.siteTabStillSignedIn ?? siteTabStillSignedIn;
   const removeSavedSessionPermission =
     options.removeSavedSessionPermission ?? removeCookiesPermission;
 
@@ -867,6 +872,22 @@ export function createProviderService(
         // as it is.
         if (parked === "unavailable") {
           signIn = "not_saved";
+        } else if (
+          spec &&
+          // Only once the current account is saved (now or on an earlier
+          // try), which the message says.
+          (parked === "parked" || parked === "signed_out") &&
+          finalOutcome?.kind === "failure" &&
+          finalOutcome.category !== "duplicate_account" &&
+          (await tabStillSignedIn(spec))
+        ) {
+          // The extension's read found the browser signed out, but a tab of
+          // the site is still signed in: say so instead of waiting, and drop
+          // the empty card.
+          signIn = "still_signed_in";
+          await disconnectInstanceIf(candidate.id, isEmptyConnection).catch(
+            () => "kept" as const,
+          );
         } else if (
           finalOutcome?.kind === "failure" &&
           (finalOutcome.category === "signed_out" ||

@@ -632,6 +632,9 @@ export function App() {
         return { kind: response.signIn, instanceId: prepared.instanceId };
       }
       if (response.signIn === "not_saved") return { kind: "not_saved" };
+      if (response.signIn === "still_signed_in") {
+        return { kind: "still_signed_in" };
+      }
       if (outcome?.kind === "success") {
         return { kind: "added", instanceId: prepared.instanceId };
       }

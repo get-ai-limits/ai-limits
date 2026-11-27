@@ -30,7 +30,6 @@ import {
   cursorOwnedTabCommitted,
   dashboardJsonFromProbe,
   findCursorDashboardJson,
-  type CursorDashboardEndpointResult,
   type CursorDashboardJson,
   type CursorDashboardProbe,
 } from "./page-dashboard";
@@ -84,57 +83,6 @@ function withinBudget(
       finish({ kind: "inject_threw", detail: "findDashboardJson threw" }),
     );
   });
-}
-
-const GROK_ENDPOINT = "https://cursor.com/api/dashboard/get-sand-usage-status";
-const CREDIT_GRANTS_ENDPOINT =
-  "https://cursor.com/api/dashboard/get-credit-grants-balance";
-const AGGREGATED_ENDPOINT =
-  "https://cursor.com/api/dashboard/get-aggregated-usage-events";
-
-/**
- * Reads the dashboard JSON a cursor.com page reads, with a saved sign-in, one
- * request at a time within `budgetMs`. `skipped` unless at least one answer
- * came back, so a refusal keeps the last page values and their wording.
- */
-export async function readSavedDashboard(
-  pageFetch: typeof globalThis.fetch,
-  signal: AbortSignal,
-  budgetMs: number,
-): Promise<CursorDashboardProbe | { kind: "skipped" }> {
-  const abort = new AbortController();
-  const stop = () => abort.abort();
-  const timer = setTimeout(stop, budgetMs);
-  signal.addEventListener("abort", stop, { once: true });
-  if (signal.aborted) stop();
-  const read = async (url: string): Promise<CursorDashboardEndpointResult> => {
-    if (abort.signal.aborted) return { ok: false };
-    try {
-      const response = await pageFetch(url, {
-        method: "POST",
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-        },
-        body: "{}",
-        signal: abort.signal,
-      });
-      if (!response.ok) return { ok: false, status: response.status };
-      return { ok: true, value: await response.json() };
-    } catch {
-      return { ok: false };
-    }
-  };
-  try {
-    const grok = await read(GROK_ENDPOINT);
-    const credits = await read(CREDIT_GRANTS_ENDPOINT);
-    const aggregated = await read(AGGREGATED_ENDPOINT);
-    if (!grok.ok && !credits.ok && !aggregated.ok) return { kind: "skipped" };
-    return { kind: "read", grok, credits, aggregated };
-  } finally {
-    clearTimeout(timer);
-    signal.removeEventListener("abort", stop);
-  }
 }
 
 function adapterContext(services: ProviderRuntimeServices): CollectionContext {
@@ -235,27 +183,18 @@ export function createCursorPackage(
         instance,
         services,
         live,
-        // A cursor.com tab reads as the browser's account, so this
-        // connection's page values are read with its saved sign-in instead,
-        // carrying cursor.com's Origin as the page would. If Cursor refuses
-        // that, they are left as they were.
-        saved: async (fetch, pageFetch) => {
-          const probe = await readSavedDashboard(
-            pageFetch,
-            services.signal,
-            dependencies.scheduledProbeBudgetMs ??
-              CURSOR_SCHEDULED_PROBE_BUDGET_MS,
-          );
-          return applyCursorPageMetrics(
+        // A saved sign-in is not the browser's, so page values (read in a
+        // cursor.com tab, as the browser's account) are left as they were.
+        saved: async (fetch) =>
+          applyCursorPageMetrics(
             await dependencies.collect(
               { ...adapterContext(services), fetch },
-              probe.kind === "read" ? dashboardJsonFromProbe(probe) : {},
+              {},
             ),
             instance.snapshot,
-            probe,
+            { kind: "skipped" },
             services.now,
-          );
-        },
+          ),
         ...(dependencies.savedSessionEnvironment
           ? { environment: dependencies.savedSessionEnvironment }
           : {}),

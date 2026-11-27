@@ -9,6 +9,7 @@ export const cursorSavedSession: SavedSessionSpec = {
   // Straight to the sign-in form, not a page that could restore a session.
   signInUrl: "https://cursor.com/api/auth/login?redirect_uri=%2Fdashboard",
   ruleId: 2,
+  pageSignInCheckUrl: "https://cursor.com/api/auth/me",
   isAuthCookie: (name) => name === "WorkosCursorSessionToken",
   isSessionCookie: (name) => name === "WorkosCursorSessionToken",
   isDeviceCookie: cloudflareCookie,

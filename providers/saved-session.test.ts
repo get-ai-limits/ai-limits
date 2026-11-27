@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import type { ProviderInstanceRecord } from "../domain/model";
 import {
+  captureLiveSession,
   clearLiveSession,
   collectWithSavedSession,
   parkLiveSession,
@@ -239,48 +240,6 @@ describe("collectWithSavedSession", () => {
     expect(updateSessionRules).toHaveBeenLastCalledWith({ removeRuleIds: [2] });
     // The browser's own sign-in is untouched.
     expect(api.jar().map(({ name }) => name)).toContain("Session");
-  });
-
-  test("page requests also carry the site's Origin, one request at a time", async () => {
-    await saveSession(A, [{ name: "Session", value: "saved-a" }], 1);
-    const { env, rules } = environment(fakeCookies([cookie("Session", "live-b")]));
-    const seen: { origin?: string; inFlight: number }[] = [];
-    let inFlight = 0;
-
-    await collectWithSavedSession({
-      spec: spec(() => KEY_B),
-      instance: instance(A, KEY_A),
-      services: {
-        ...services,
-        fetch: vi.fn(async () => {
-          inFlight += 1;
-          const headers = rules.at(-1)?.[0]?.action.requestHeaders ?? [];
-          seen.push({
-            origin: headers.find(({ header }) => header === "origin")?.value,
-            inFlight,
-          });
-          await new Promise((resolve) => setTimeout(resolve, 5));
-          inFlight -= 1;
-          return new Response("{}");
-        }),
-      },
-      live: vi.fn(),
-      saved: async (fetch, pageFetch) => {
-        await fetch("https://cursor.com/api/usage-summary");
-        await Promise.all([
-          pageFetch("https://cursor.com/api/dashboard/a", { method: "POST" }),
-          pageFetch("https://cursor.com/api/dashboard/b", { method: "POST" }),
-        ]);
-        return success(KEY_A);
-      },
-      environment: env,
-    });
-
-    expect(seen).toEqual([
-      { origin: undefined, inFlight: 1 },
-      { origin: "https://cursor.com", inFlight: 1 },
-      { origin: "https://cursor.com", inFlight: 1 },
-    ]);
   });
 
   test("drops a saved sign-in whose session cookie is gone", async () => {
@@ -645,6 +604,45 @@ describe("parkLiveSession", () => {
     expect(api.jar().map(({ name, value }) => `${name}=${value}`)).toEqual([
       "restore-session=rotated",
     ]);
+  });
+
+  test("clears partitioned sign-in cookies with their partition", async () => {
+    const partitioned = {
+      ...cookie("Session", "x"),
+      partitionKey: { topLevelSite: "https://cursor.com" },
+    } as Browser.cookies.Cookie;
+    const api = fakeCookies([partitioned]);
+    await clearLiveSession(spec(() => undefined), api);
+    expect(api.getAll).toHaveBeenCalledWith({ domain: "cursor.com", partitionKey: {} });
+    expect(api.remove).toHaveBeenCalledWith({
+      url: "https://cursor.com/",
+      name: "Session",
+      storeId: "0",
+      partitionKey: { topLevelSite: "https://cursor.com" },
+    });
+  });
+
+  test("never saves a partitioned copy, but clears it with the saved sign-in", async () => {
+    const partitioned = {
+      ...cookie("Session", "embedded"),
+      partitionKey: { topLevelSite: "https://example.com" },
+    } as Browser.cookies.Cookie;
+    const api = fakeCookies([partitioned]);
+    await expect(captureLiveSession(spec(() => undefined), api)).resolves.toEqual([]);
+    await clearLiveSession(spec(() => undefined), api, [
+      { name: "Session", value: "live-a" },
+    ]);
+    expect(api.jar()).toHaveLength(0);
+  });
+
+  test("reads cookies without a partition key where the browser rejects one", async () => {
+    const api = fakeCookies([cookie("Session", "x")]);
+    vi.mocked(api.getAll).mockImplementationOnce(() => {
+      throw new TypeError("Unexpected property: 'partitionKey'");
+    });
+    await clearLiveSession(spec(() => undefined), api);
+    expect(api.getAll).toHaveBeenLastCalledWith({ domain: "cursor.com" });
+    expect(api.jar()).toHaveLength(0);
   });
 
   test("removes sign-in cookies on subdomains with their own host", async () => {

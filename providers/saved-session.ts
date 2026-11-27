@@ -46,6 +46,11 @@ export interface SavedSessionSpec {
    * protection), sent alongside a saved sign-in so the site accepts it.
    */
   isDeviceCookie(name: string): boolean;
+  /**
+   * A same-origin URL that answers OK only while signed in, fetched from an
+   * open tab of the site to check that the tab was signed out too.
+   */
+  readonly pageSignInCheckUrl?: string;
   /** Which login the browser is signed in to now, as an opaque account key. */
   liveAccountKey(
     fetch: typeof globalThis.fetch,
@@ -59,9 +64,19 @@ export function cloudflareCookie(name: string): boolean {
   return CLOUDFLARE_COOKIES.has(name);
 }
 
+type CookiePartitionKey = { topLevelSite?: string; hasCrossSiteAncestor?: boolean };
+
 export interface CookiesApi {
-  getAll(details: { domain: string }): Promise<Browser.cookies.Cookie[]>;
-  remove(details: { url: string; name: string; storeId?: string }): Promise<unknown>;
+  getAll(details: {
+    domain: string;
+    partitionKey?: CookiePartitionKey;
+  }): Promise<Browser.cookies.Cookie[]>;
+  remove(details: {
+    url: string;
+    name: string;
+    storeId?: string;
+    partitionKey?: CookiePartitionKey;
+  }): Promise<unknown>;
 }
 
 export interface SessionRulesApi {
@@ -101,12 +116,39 @@ function onDomain(cookie: Browser.cookies.Cookie, domain: string): boolean {
   return host === domain || host.endsWith(`.${domain}`);
 }
 
+function partitionKeyOf(
+  cookie: Browser.cookies.Cookie,
+): CookiePartitionKey | undefined {
+  return (cookie as { partitionKey?: CookiePartitionKey }).partitionKey;
+}
+
+/**
+ * The site's cookies. Only clearing asks for partitioned copies too: they
+ * can keep a page on the site signed in, but they are never saved or sent.
+ */
 async function siteCookies(
   spec: SavedSessionSpec,
   api: CookiesApi,
+  { partitioned = false }: { partitioned?: boolean } = {},
 ): Promise<Browser.cookies.Cookie[]> {
-  const all = await api.getAll({ domain: spec.cookieDomain });
-  return all.filter((cookie) => onDomain(cookie, spec.cookieDomain));
+  const unpartitioned = () => api.getAll({ domain: spec.cookieDomain });
+  let all: Browser.cookies.Cookie[];
+  if (partitioned) {
+    try {
+      // An empty partition key also returns partitioned cookies. Browsers
+      // before it reject the key, some by throwing before the call starts.
+      all = await api.getAll({ domain: spec.cookieDomain, partitionKey: {} });
+    } catch {
+      all = await unpartitioned();
+    }
+  } else {
+    all = await unpartitioned();
+  }
+  return all.filter(
+    (cookie) =>
+      onDomain(cookie, spec.cookieDomain) &&
+      (partitioned || !partitionKeyOf(cookie)),
+  );
 }
 
 /**
@@ -159,12 +201,16 @@ export async function clearLiveSession(
   /** Only these exact cookies, so one the site rotated since is kept. */
   only?: readonly SavedSessionCookie[],
 ): Promise<void> {
-  for (const cookie of await siteCookies(spec, api)) {
+  for (const cookie of await siteCookies(spec, api, { partitioned: true })) {
     if (!isSignInCookie(spec, cookie)) continue;
+    const partitionKey = partitionKeyOf(cookie);
+    // A partitioned copy is never saved, so it matches a saved cookie by
+    // name alone.
     if (
       only &&
       !only.some(
-        ({ name, value }) => name === cookie.name && value === cookie.value,
+        ({ name, value }) =>
+          name === cookie.name && (partitionKey || value === cookie.value),
       )
     ) {
       continue;
@@ -174,6 +220,7 @@ export async function clearLiveSession(
       url: `https://${host}${cookie.path || "/"}`,
       name: cookie.name,
       ...(cookie.storeId ? { storeId: cookie.storeId } : {}),
+      ...(partitionKey ? { partitionKey } : {}),
     });
   }
 }
@@ -191,19 +238,13 @@ function savedSessionRule(
   spec: SavedSessionSpec,
   extensionHost: string,
   header: string,
-  origin: string | undefined,
 ): Browser.declarativeNetRequest.Rule {
   return {
     id: spec.ruleId,
     priority: 1,
     action: {
       type: "modifyHeaders",
-      requestHeaders: [
-        { header: "cookie", operation: "set", value: header },
-        ...(origin === undefined
-          ? []
-          : [{ header: "origin", operation: "set", value: origin }]),
-      ],
+      requestHeaders: [{ header: "cookie", operation: "set", value: header }],
       responseHeaders: [{ header: "set-cookie", operation: "remove" }],
     },
     condition: {
@@ -224,27 +265,19 @@ export async function removeSavedSessionRule(
 }
 
 /**
- * A fetch whose requests to the site carry the saved sign-in instead. With
- * `origin`, they also carry the site's own Origin, as a request from one of
- * its pages would. Requests run one at a time, since the rule is set for
- * exactly one request.
+ * A fetch whose requests to the site carry the saved sign-in instead.
+ * Requests run one at a time, since the rule is set for exactly one request.
  */
 function savedSessionFetch(
   spec: SavedSessionSpec,
   environment: SavedSessionEnvironment,
   baseFetch: typeof globalThis.fetch,
   header: string,
-  origin?: string,
 ): typeof globalThis.fetch {
   let queue: Promise<unknown> = Promise.resolve();
   return (input, init) => {
     const run = async () => {
-      const rule = savedSessionRule(
-        spec,
-        environment.extensionHost(),
-        header,
-        origin,
-      );
+      const rule = savedSessionRule(spec, environment.extensionHost(), header);
       await environment.rules.updateSessionRules({
         removeRuleIds: [spec.ruleId],
         addRules: [rule],
@@ -293,15 +326,8 @@ export interface SavedSessionCollectOptions {
   services: ProviderRuntimeServices;
   /** Reads with the browser's own sign-in. */
   live(): Promise<CollectionResult>;
-  /**
-   * Reads with the given fetch, which carries the saved sign-in.
-   * `pageFetch` also carries the site's own Origin, for requests the site
-   * accepts only from its pages.
-   */
-  saved(
-    fetch: typeof globalThis.fetch,
-    pageFetch: typeof globalThis.fetch,
-  ): Promise<CollectionResult>;
+  /** Reads with the given fetch, which carries the saved sign-in. */
+  saved(fetch: typeof globalThis.fetch): Promise<CollectionResult>;
   environment?: SavedSessionEnvironment;
 }
 
@@ -342,15 +368,12 @@ export async function collectWithSavedSession({
               spec.isDeviceCookie(name),
             )
           : [];
-        const header = cookieHeader(savedSession.cookies, device);
         const result = await saved(
-          savedSessionFetch(spec, environment, services.fetch, header),
           savedSessionFetch(
             spec,
             environment,
             services.fetch,
-            header,
-            new URL(spec.siteUrl).origin,
+            cookieHeader(savedSession.cookies, device),
           ),
         );
         // A signed-out answer is kept, not deleted: it may be a brief or

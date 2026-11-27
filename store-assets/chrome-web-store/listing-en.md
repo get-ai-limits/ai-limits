@@ -116,9 +116,7 @@ AI Limits is an independent project by TiantianFlow. It is not affiliated with, 
   Cursor or ChatGPT account (see `cookies` below), a second kind of session
   rule sets the Cookie header of the extension's own background request to
   that site to the saved sign-in of the connection being read, and drops any
-  cookie the site sends back. For Cursor's dashboard requests (Grok Bot,
-  credit grants, aggregated usage), which Cursor accepts only from its own
-  pages, the rule also sets the Origin header to `https://cursor.com`. The request is sent without the browser's own
+  cookie the site sends back. The request is sent without the browser's own
   cookies. Each rule exists only while that one request runs, matches only
   `cursor.com` or `chatgpt.com` requests from this extension's service worker
   outside any tab, and never touches pages or the browser's own sign-in. No
@@ -211,7 +209,9 @@ These origins are requested one provider at a time after the user clicks
   back when no Cursor or ChatGPT connection remains. It also reads that
   site's bot-protection cookies (Cloudflare `__cf_bm`, `cf_clearance`,
   `_cfuvid`, `__cflb`; ChatGPT `oai-did`) to send alongside a saved sign-in;
-  those are not saved.
+  those are not saved. A saved Cursor sign-in reads only base usage: Grok
+  Bot, extra-credit and usage-detail values are read only for the account
+  the browser is signed in to.
 - `scripting`: requested with Kimi, Cursor, Grok, or Gumloop access. For Kimi, it reads only
   the exact `access_token` and `refresh_token` browser-storage entries from an already-open or
   recovery-created matching Kimi page. If a credential is missing or rejected,
@@ -229,7 +229,10 @@ These origins are requested one provider at a time after the user clicks
   returns only their JSON, and does not inspect rendered content, browser
   storage, or cookie values directly. Chrome attaches the signed-in Cursor
   cookies to those same-origin requests. Scheduled refresh may inject into an
-  already-open cursor.com tab and never opens a new one. For Grok, Connect or manual Refresh can run a
+  already-open cursor.com tab and never opens a new one. During Add account
+  for a second Cursor account, a second bundled function asks up to three
+  open cursor.com tabs whether they are still signed in, by requesting
+  `/api/auth/me` and returning only whether it names a signed-in account. For Grok, Connect or manual Refresh can run a
   bundled exact-origin function in one already-open `grok.com` page. If none is
   open, that interactive path may create one inactive `https://grok.com/` tab,
   wait up to 10 seconds, and close only the tab it created. It never activates
@@ -409,7 +412,9 @@ The full policy is in [PRIVACY.md](../../PRIVACY.md).
    approve `cookies`, and confirm the browser is signed
    out of cursor.com and a sign-in tab opens. Sign in to the second account
    there and confirm a second card appears with its own usage, while the first
-   card keeps refreshing. Disconnect one card and confirm the other stays;
+   card keeps refreshing its usage. (Cursor's Grok Bot, extra-credit and
+   usage-detail values refresh only for the account the browser is signed in
+   to; other cards keep their last values.) Disconnect one card and confirm the other stays;
    disconnect both and confirm `cookies` is no longer granted. The same flow
    applies to ChatGPT.
 6. **Grok:** sign in at `grok.com`. You do **not** have to pre-open a Grok

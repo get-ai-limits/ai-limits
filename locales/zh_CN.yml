@@ -121,11 +121,12 @@ addAccount:
   step2Done: "已保存。此浏览器已退出 {provider}。"
   notSaved: "AI Limits 无法保存此浏览器当前的 {provider} 登录，因此没有让你退出，也没有做任何更改。请重试；如果反复出现，请先重新登录 {provider}。"
   step3Title: 登录另一个账号
-  step3Copy: "在打开的 {provider} 标签页中，登录你要添加的账号（不要用已添加过的账号）。登录完成后，本指南会自动继续。"
+  step3Copy: "在打开的 {provider} 标签页中，登录你要添加的账号（不要用已添加过的账号）。如果使用“通过 Google 继续”，请选择该账号对应的 Google 账号。登录完成后，本指南会自动继续。"
   step3Waiting: 正在等待你登录…
   tabFailed: 登录页面没有打开。请在这里打开。
   openSignIn: "打开 {provider} 登录页面"
-  sameAccount: "这是一个已添加过的账号。请用另一个 {provider} 账号登录。"
+  sameAccount: "这是一个已添加过的账号。请用另一个 {provider} 账号登录；如果 Google 自动替你选了账号，请选择“使用其他账号”。"
+  stillSignedIn: "当前账号已保存，但此浏览器中的某个 {provider} 标签页仍然登录着该账号，所以 AI Limits 暂时无法添加另一个账号。请刷新该标签页后重试。不要在那里点击退出登录。"
   noLogout: "请不要在 {provider} 网站上点击退出登录：那样也会让另一个账号保存的登录失效。"
   step4Title: 完成
   step4Copy: 现在每个账号都会各自刷新。
