@@ -340,9 +340,13 @@ cookies, sign-in cookies first; a cookie it cannot save (too long, or with
 characters a cookie header cannot carry) stays in the browser. If that is one
 of the named sign-in cookies, it saves nothing and the browser stays signed in. That
 connection is identified by the opaque login key described above. AI Limits
-then removes those cookies from the browser, so the browser is signed out of that site on
-this device. It does not use the site's own Log out, which would end the
-session on the provider's servers. It then opens the provider's sign-in page,
+then removes those cookies from the browser (partitioned copies included), so
+the browser is signed out of that site on this device. It does not use the
+site's own Log out, which would end the session on the provider's servers.
+For Cursor, it then asks each open `cursor.com` tab, up to three, whether that
+tab is still signed in, by running a bundled function there that requests
+`https://cursor.com/api/auth/me` and returns only whether the answer was OK.
+If one still is, Add account says so instead of opening the sign-in page. It then opens the provider's sign-in page,
 so you can sign in to the other account. For 15 minutes after opening that
 page, it watches for that site's sign-in cookie to change, and then reads the
 waiting connection. Whenever a connection is read with the browser's own

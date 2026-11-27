@@ -310,14 +310,20 @@ export interface ConnectApiKeyProviderResult {
  * `waiting` when the browser is signed out and the sign-in page is open,
  * `tab_failed` when it is signed out but the page could not open, and
  * `not_saved` when the current sign-in could not be saved, so the browser
- * was left signed in.
+ * was left signed in, and `still_signed_in` when an open tab of the site is
+ * still signed in after the sign-in was saved and cleared.
  */
-export type AddAccountSignIn = "waiting" | "tab_failed" | "not_saved";
+export type AddAccountSignIn =
+  | "waiting"
+  | "tab_failed"
+  | "not_saved"
+  | "still_signed_in";
 
 const addAccountSignIns = new Set<AddAccountSignIn>([
   "waiting",
   "tab_failed",
   "not_saved",
+  "still_signed_in",
 ]);
 
 export interface RefreshResponse {

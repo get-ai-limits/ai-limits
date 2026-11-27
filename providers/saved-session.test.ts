@@ -605,6 +605,30 @@ describe("parkLiveSession", () => {
     ]);
   });
 
+  test("clears partitioned sign-in cookies with their partition", async () => {
+    const partitioned = {
+      ...cookie("Session", "x"),
+      partitionKey: { topLevelSite: "https://cursor.com" },
+    } as Browser.cookies.Cookie;
+    const api = fakeCookies([partitioned]);
+    await clearLiveSession(spec(() => undefined), api);
+    expect(api.getAll).toHaveBeenCalledWith({ domain: "cursor.com", partitionKey: {} });
+    expect(api.remove).toHaveBeenCalledWith({
+      url: "https://cursor.com/",
+      name: "Session",
+      storeId: "0",
+      partitionKey: { topLevelSite: "https://cursor.com" },
+    });
+  });
+
+  test("reads cookies without a partition key where the browser rejects one", async () => {
+    const api = fakeCookies([cookie("Session", "x")]);
+    vi.mocked(api.getAll).mockRejectedValueOnce(new Error("Unexpected property"));
+    await clearLiveSession(spec(() => undefined), api);
+    expect(api.getAll).toHaveBeenLastCalledWith({ domain: "cursor.com" });
+    expect(api.jar()).toHaveLength(0);
+  });
+
   test("removes sign-in cookies on subdomains with their own host", async () => {
     const api = fakeCookies([cookie("Session", "x", ".www.cursor.com")]);
     await clearLiveSession(spec(() => undefined), api);

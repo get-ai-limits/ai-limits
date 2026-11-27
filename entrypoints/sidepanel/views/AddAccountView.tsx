@@ -20,6 +20,8 @@ export type AddAccountStart =
   | { kind: "added"; instanceId: ProviderInstanceId }
   /** The current sign-in could not be saved; nothing changed. */
   | { kind: "not_saved" }
+  /** Saved, but a tab of the site is still signed in to it. */
+  | { kind: "still_signed_in" }
   /** The browser is signed in to an account that is already added. */
   | { kind: "same_account" }
   /** The permission prompt was declined. */
@@ -33,6 +35,7 @@ type Phase =
   | { name: "done"; instanceId: ProviderInstanceId }
   | { name: "same_account" }
   | { name: "not_saved" }
+  | { name: "still_signed_in" }
   | { name: "declined" }
   | { name: "failed" };
 
@@ -60,6 +63,8 @@ function phaseFromStart(start: AddAccountStart): Phase {
       return { name: "done", instanceId: start.instanceId };
     case "not_saved":
       return { name: "not_saved" };
+    case "still_signed_in":
+      return { name: "still_signed_in" };
     case "same_account":
       return { name: "same_account" };
     case "declined":
@@ -78,6 +83,7 @@ function statuses(phase: Phase): [StepStatus, StepStatus, StepStatus, StepStatus
     case "declined":
       return ["error", "todo", "todo", "todo"];
     case "not_saved":
+    case "still_signed_in":
     case "failed":
       return ["done", "error", "todo", "todo"];
     case "waiting":
@@ -234,12 +240,16 @@ export function AddAccountView({
                   {l10n.t("addAccount.starting")}
                 </p>
               ) : null}
-              {phase.name === "not_saved" || phase.name === "failed" ? (
+              {phase.name === "not_saved" ||
+              phase.name === "still_signed_in" ||
+              phase.name === "failed" ? (
                 <>
                   <p className="add-account-guide__problem" role="status">
                     {phase.name === "not_saved"
                       ? l10n.t("addAccount.notSaved", { provider })
-                      : l10n.t("addAccount.failed")}
+                      : phase.name === "still_signed_in"
+                        ? l10n.t("addAccount.stillSignedIn", { provider })
+                        : l10n.t("addAccount.failed")}
                   </p>
                   <button
                     className="button button--primary"

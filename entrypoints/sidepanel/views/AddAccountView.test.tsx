@@ -89,9 +89,7 @@ describe("AddAccountView", () => {
     // The background removes a card that turned out to be a known account.
     view.rerender(<AddAccountView {...props} instances={[]} />);
 
-    await screen.findByText(
-      "That's an account you already added. Sign in with a different Cursor account.",
-    );
+    await screen.findByText(/^That's an account you already added\. Sign in with a different Cursor account/);
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
     await waitFor(() => expect(props.onStart).toHaveBeenCalledTimes(2));
   });
@@ -100,6 +98,13 @@ describe("AddAccountView", () => {
     renderView({ kind: "not_saved" });
     fireEvent.click(screen.getByRole("button", { name: "Allow and continue" }));
     await screen.findByText(/couldn't save the Cursor sign-in/);
+    expect(screen.getByRole("button", { name: "Try again" })).toBeInTheDocument();
+  });
+
+  it("says so when a tab of the site is still signed in", async () => {
+    renderView({ kind: "still_signed_in" });
+    fireEvent.click(screen.getByRole("button", { name: "Allow and continue" }));
+    await screen.findByText(/a Cursor tab in this browser is still signed in/);
     expect(screen.getByRole("button", { name: "Try again" })).toBeInTheDocument();
   });
 

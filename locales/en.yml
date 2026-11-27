@@ -121,11 +121,12 @@ addAccount:
   step2Done: "Saved. This browser is signed out of {provider}."
   notSaved: "AI Limits couldn't save the {provider} sign-in this browser uses now, so it left you signed in and changed nothing. Try again, or sign in to {provider} again first if it keeps happening."
   step3Title: "Sign in to the other account"
-  step3Copy: "In the {provider} tab that opened, sign in with the account you want to add, not one you already added. This guide moves on by itself once you're in."
+  step3Copy: "In the {provider} tab that opened, sign in with the account you want to add, not one you already added. If you use Continue with Google, pick that account's Google account. This guide moves on by itself once you're in."
   step3Waiting: Waiting for you to sign in…
   tabFailed: "The sign-in page didn't open. Open it here."
   openSignIn: "Open {provider} sign-in"
-  sameAccount: "That's an account you already added. Sign in with a different {provider} account."
+  sameAccount: "That's an account you already added. Sign in with a different {provider} account; with Google, choose Use another account if Google picks one for you."
+  stillSignedIn: "Your current account is saved, but a {provider} tab in this browser is still signed in to it, so AI Limits can't add another account yet. Reload that tab, then try again. Don't use Log out there."
   noLogout: "Don't use Log out on the {provider} site: it would end the saved sign-in of your other account too."
   step4Title: Done
   step4Copy: Every account now refreshes on its own.

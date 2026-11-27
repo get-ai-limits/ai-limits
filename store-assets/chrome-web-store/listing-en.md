@@ -227,7 +227,10 @@ These origins are requested one provider at a time after the user clicks
   returns only their JSON, and does not inspect rendered content, browser
   storage, or cookie values directly. Chrome attaches the signed-in Cursor
   cookies to those same-origin requests. Scheduled refresh may inject into an
-  already-open cursor.com tab and never opens a new one. For Grok, Connect or manual Refresh can run a
+  already-open cursor.com tab and never opens a new one. During Add account
+  for a second Cursor account, a second bundled function asks up to three
+  open cursor.com tabs whether they are still signed in, by requesting
+  `/api/auth/me` and returning only whether the answer was OK. For Grok, Connect or manual Refresh can run a
   bundled exact-origin function in one already-open `grok.com` page. If none is
   open, that interactive path may create one inactive `https://grok.com/` tab,
   wait up to 10 seconds, and close only the tab it created. It never activates

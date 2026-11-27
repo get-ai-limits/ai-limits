@@ -46,6 +46,11 @@ export interface SavedSessionSpec {
    * protection), sent alongside a saved sign-in so the site accepts it.
    */
   isDeviceCookie(name: string): boolean;
+  /**
+   * A same-origin URL that answers OK only while signed in, fetched from an
+   * open tab of the site to check that the tab was signed out too.
+   */
+  readonly pageSignInCheckUrl?: string;
   /** Which login the browser is signed in to now, as an opaque account key. */
   liveAccountKey(
     fetch: typeof globalThis.fetch,
@@ -59,9 +64,19 @@ export function cloudflareCookie(name: string): boolean {
   return CLOUDFLARE_COOKIES.has(name);
 }
 
+type CookiePartitionKey = { topLevelSite?: string; hasCrossSiteAncestor?: boolean };
+
 export interface CookiesApi {
-  getAll(details: { domain: string }): Promise<Browser.cookies.Cookie[]>;
-  remove(details: { url: string; name: string; storeId?: string }): Promise<unknown>;
+  getAll(details: {
+    domain: string;
+    partitionKey?: CookiePartitionKey;
+  }): Promise<Browser.cookies.Cookie[]>;
+  remove(details: {
+    url: string;
+    name: string;
+    storeId?: string;
+    partitionKey?: CookiePartitionKey;
+  }): Promise<unknown>;
 }
 
 export interface SessionRulesApi {
@@ -105,7 +120,11 @@ async function siteCookies(
   spec: SavedSessionSpec,
   api: CookiesApi,
 ): Promise<Browser.cookies.Cookie[]> {
-  const all = await api.getAll({ domain: spec.cookieDomain });
+  // An empty partition key also returns partitioned cookies, which a page on
+  // the site can be signed in with too; browsers before it reject the key.
+  const all = await api
+    .getAll({ domain: spec.cookieDomain, partitionKey: {} })
+    .catch(() => api.getAll({ domain: spec.cookieDomain }));
   return all.filter((cookie) => onDomain(cookie, spec.cookieDomain));
 }
 
@@ -170,10 +189,13 @@ export async function clearLiveSession(
       continue;
     }
     const host = cookie.domain.replace(/^\./, "");
+    const partitionKey = (cookie as { partitionKey?: CookiePartitionKey })
+      .partitionKey;
     await api.remove({
       url: `https://${host}${cookie.path || "/"}`,
       name: cookie.name,
       ...(cookie.storeId ? { storeId: cookie.storeId } : {}),
+      ...(partitionKey ? { partitionKey } : {}),
     });
   }
 }
