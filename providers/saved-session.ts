@@ -191,19 +191,13 @@ function savedSessionRule(
   spec: SavedSessionSpec,
   extensionHost: string,
   header: string,
-  origin: string | undefined,
 ): Browser.declarativeNetRequest.Rule {
   return {
     id: spec.ruleId,
     priority: 1,
     action: {
       type: "modifyHeaders",
-      requestHeaders: [
-        { header: "cookie", operation: "set", value: header },
-        ...(origin === undefined
-          ? []
-          : [{ header: "origin", operation: "set", value: origin }]),
-      ],
+      requestHeaders: [{ header: "cookie", operation: "set", value: header }],
       responseHeaders: [{ header: "set-cookie", operation: "remove" }],
     },
     condition: {
@@ -224,27 +218,19 @@ export async function removeSavedSessionRule(
 }
 
 /**
- * A fetch whose requests to the site carry the saved sign-in instead. With
- * `origin`, they also carry the site's own Origin, as a request from one of
- * its pages would. Requests run one at a time, since the rule is set for
- * exactly one request.
+ * A fetch whose requests to the site carry the saved sign-in instead.
+ * Requests run one at a time, since the rule is set for exactly one request.
  */
 function savedSessionFetch(
   spec: SavedSessionSpec,
   environment: SavedSessionEnvironment,
   baseFetch: typeof globalThis.fetch,
   header: string,
-  origin?: string,
 ): typeof globalThis.fetch {
   let queue: Promise<unknown> = Promise.resolve();
   return (input, init) => {
     const run = async () => {
-      const rule = savedSessionRule(
-        spec,
-        environment.extensionHost(),
-        header,
-        origin,
-      );
+      const rule = savedSessionRule(spec, environment.extensionHost(), header);
       await environment.rules.updateSessionRules({
         removeRuleIds: [spec.ruleId],
         addRules: [rule],
@@ -293,15 +279,8 @@ export interface SavedSessionCollectOptions {
   services: ProviderRuntimeServices;
   /** Reads with the browser's own sign-in. */
   live(): Promise<CollectionResult>;
-  /**
-   * Reads with the given fetch, which carries the saved sign-in.
-   * `pageFetch` also carries the site's own Origin, for requests the site
-   * accepts only from its pages.
-   */
-  saved(
-    fetch: typeof globalThis.fetch,
-    pageFetch: typeof globalThis.fetch,
-  ): Promise<CollectionResult>;
+  /** Reads with the given fetch, which carries the saved sign-in. */
+  saved(fetch: typeof globalThis.fetch): Promise<CollectionResult>;
   environment?: SavedSessionEnvironment;
 }
 
@@ -342,15 +321,12 @@ export async function collectWithSavedSession({
               spec.isDeviceCookie(name),
             )
           : [];
-        const header = cookieHeader(savedSession.cookies, device);
         const result = await saved(
-          savedSessionFetch(spec, environment, services.fetch, header),
           savedSessionFetch(
             spec,
             environment,
             services.fetch,
-            header,
-            new URL(spec.siteUrl).origin,
+            cookieHeader(savedSession.cookies, device),
           ),
         );
         // A signed-out answer is kept, not deleted: it may be a brief or

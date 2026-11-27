@@ -241,48 +241,6 @@ describe("collectWithSavedSession", () => {
     expect(api.jar().map(({ name }) => name)).toContain("Session");
   });
 
-  test("page requests also carry the site's Origin, one request at a time", async () => {
-    await saveSession(A, [{ name: "Session", value: "saved-a" }], 1);
-    const { env, rules } = environment(fakeCookies([cookie("Session", "live-b")]));
-    const seen: { origin?: string; inFlight: number }[] = [];
-    let inFlight = 0;
-
-    await collectWithSavedSession({
-      spec: spec(() => KEY_B),
-      instance: instance(A, KEY_A),
-      services: {
-        ...services,
-        fetch: vi.fn(async () => {
-          inFlight += 1;
-          const headers = rules.at(-1)?.[0]?.action.requestHeaders ?? [];
-          seen.push({
-            origin: headers.find(({ header }) => header === "origin")?.value,
-            inFlight,
-          });
-          await new Promise((resolve) => setTimeout(resolve, 5));
-          inFlight -= 1;
-          return new Response("{}");
-        }),
-      },
-      live: vi.fn(),
-      saved: async (fetch, pageFetch) => {
-        await fetch("https://cursor.com/api/usage-summary");
-        await Promise.all([
-          pageFetch("https://cursor.com/api/dashboard/a", { method: "POST" }),
-          pageFetch("https://cursor.com/api/dashboard/b", { method: "POST" }),
-        ]);
-        return success(KEY_A);
-      },
-      environment: env,
-    });
-
-    expect(seen).toEqual([
-      { origin: undefined, inFlight: 1 },
-      { origin: "https://cursor.com", inFlight: 1 },
-      { origin: "https://cursor.com", inFlight: 1 },
-    ]);
-  });
-
   test("drops a saved sign-in whose session cookie is gone", async () => {
     await saveSession(A, [{ name: "_account", value: "workspace" }], 1);
     const live = vi.fn(async () => success(KEY_B));

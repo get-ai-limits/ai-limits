@@ -116,9 +116,7 @@ AI Limits is an independent project by TiantianFlow. It is not affiliated with, 
   Cursor or ChatGPT account (see `cookies` below), a second kind of session
   rule sets the Cookie header of the extension's own background request to
   that site to the saved sign-in of the connection being read, and drops any
-  cookie the site sends back. For Cursor's dashboard requests (Grok Bot,
-  credit grants, aggregated usage), which Cursor accepts only from its own
-  pages, the rule also sets the Origin header to `https://cursor.com`. The request is sent without the browser's own
+  cookie the site sends back. The request is sent without the browser's own
   cookies. Each rule exists only while that one request runs, matches only
   `cursor.com` or `chatgpt.com` requests from this extension's service worker
   outside any tab, and never touches pages or the browser's own sign-in. No

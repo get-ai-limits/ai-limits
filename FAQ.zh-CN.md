@@ -42,9 +42,8 @@ Chrome 完全关闭或设备休眠时，AI Limits 无法刷新。恢复运行后
 恢复。任何 Cursor 刷新都可能通过已经打开的 Cursor 页面请求 Grok Bot 和额外
 Credits JSON；只有手动刷新会在没有打开的标签页时短暂打开一个非活动用量页。
 没有打开的标签页或读取未完成时，定时刷新会保留上次有效的页面数值，
-直到 Grok Bot 的每周重置，并说明为何未能刷新。已保存登录的其他 Cursor 账号
-会在后台用其保存的登录（携带 `cursor.com` 的 Origin）读取这些数值；如果 Cursor
-拒绝，这些卡片会保留上次的数值。Grok 的 Connect 或手动 Refresh
+直到 Grok Bot 的每周重置，并说明为何未能刷新。其他 Cursor 账号会保留这些
+数值的上次结果，直到浏览器登录该账号。Grok 的 Connect 或手动 Refresh
 会从 grok.com 页面读取用量，因为扩展后台请求会被拒绝；它们会优先使用已经
 打开的 grok.com 标签页，如果没有则可能短暂打开一个非活动标签页。Grok
 定时刷新可能向已经打开的 grok.com 标签页注入代码，但绝不会新建标签页。

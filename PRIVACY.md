@@ -364,16 +364,14 @@ background service worker, it adds a session rule that matches only that
 site's requests started by AI Limits itself outside any tab. The rule sets
 the request's Cookie header to the saved sign-in plus the browser's
 bot-protection cookies for that site (Cloudflare's `__cf_bm`, `cf_clearance`,
-`_cfuvid`, and `__cflb`, and ChatGPT's `oai-did` device ID). For Cursor's dashboard
-requests, which Cursor accepts only from its own pages, the rule also sets the
-Origin header to `https://cursor.com`. It also drops any cookie the site sends
+`_cfuvid`, and `__cflb`, and ChatGPT's `oai-did` device ID). It also drops any cookie the site sends
 back. The request is sent without the browser's own
 cookies, and the rule is removed as soon as the request finishes. AI Limits
 sends these requests one at a time per site, so one account's request never
 carries another account's sign-in. Your open tabs and the browser's own
-sign-in are not affected. For Cursor, Grok Bot, extra-credit and usage-detail
-values are read this way for each saved account too; if Cursor refuses those
-requests, that connection keeps its last values for them.
+sign-in are not affected. For Cursor, page-only Grok Bot and extra-credit
+values are read only for the account the browser is signed in to. Other
+Cursor connections keep their last values for those.
 
 Saved sign-ins are stored in `chrome.storage.local` under a separate record
 from usage state. In Chromium builds they have the same trusted-context
