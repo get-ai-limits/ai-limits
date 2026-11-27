@@ -637,6 +637,8 @@ export function createProviderService(
           await forgetPackageSession(instance.providerKind);
           await usageRepository.clear(instanceId);
           await connectionRepository.delete(instanceId);
+          // Again, for a sign-in saved after a read while this ran.
+          await deleteSavedSession(instanceId);
           const removed = await completePermissionCleanup(permissionCleanup);
           await releaseUnusedSavedSessions([instance.providerKind]);
           return removed

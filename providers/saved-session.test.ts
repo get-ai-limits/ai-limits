@@ -461,15 +461,27 @@ describe("saveLiveSession", () => {
     });
   });
 
-  test("saves nothing when the sign-in changes during the account check", async () => {
+  test("saves a session cookie the account check rotated at its new value", async () => {
     const api = fakeCookies([cookie("Session", "live-a")]);
-    const changing = spec(() => KEY_A);
-    vi.mocked(changing.liveAccountKey).mockImplementationOnce(async () => {
-      api.jar()[0]!.value = "live-b";
+    const rotating = spec(() => KEY_A);
+    vi.mocked(rotating.liveAccountKey).mockImplementationOnce(async () => {
+      api.jar()[0]!.value = "rotated-a";
       return KEY_A;
     });
     await expect(
-      saveLiveSession(changing, instance(A, KEY_A), services, environment(api).env),
+      saveLiveSession(rotating, instance(A, KEY_A), services, environment(api).env),
+    ).resolves.toBe(true);
+    await expect(readSavedSession(A)).resolves.toMatchObject({
+      cookies: [{ name: "Session", value: "rotated-a" }],
+    });
+  });
+
+  test("saves nothing when the browser moves to another account during the save", async () => {
+    const api = fakeCookies([cookie("Session", "live-a")]);
+    let checks = 0;
+    const moving = spec(() => (++checks === 1 ? KEY_A : KEY_B));
+    await expect(
+      saveLiveSession(moving, instance(A, KEY_A), services, environment(api).env),
     ).resolves.toBe(false);
     await expect(readSavedSession(A)).resolves.toBeUndefined();
   });

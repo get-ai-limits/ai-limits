@@ -424,17 +424,6 @@ function savableSignIn(
   return cookies;
 }
 
-function sessionValues(
-  spec: SavedSessionSpec,
-  cookies: readonly SavedSessionCookie[],
-): string {
-  return JSON.stringify(
-    cookies
-      .filter(({ name }) => spec.isSessionCookie(name))
-      .map(({ name, value }) => [name, value]),
-  );
-}
-
 /**
  * Saves the browser's sign-in for a connection that has none saved yet, while
  * the browser is signed in to that connection's account. Called only for a
@@ -455,14 +444,15 @@ export async function saveLiveSession(
   if (!api) return false;
   return withSiteLock(spec, async () => {
     if (await readSavedSession(instance.id, services.now)) return false;
-    const before = sessionValues(spec, await captureLiveSession(spec, api));
-    const liveKey = await spec.liveAccountKey(services.fetch, services.signal);
-    if (liveKey !== instance.accountKey) return false;
+    const onAccount = async () =>
+      (await spec.liveAccountKey(services.fetch, services.signal)) ===
+      instance.accountKey;
+    if (!(await onAccount())) return false;
     // Captured after that read, so a cookie its response rotated is saved at
-    // its new value; a sign-in that changed during the read is not saved,
-    // since the read may have checked the earlier one.
+    // its new value. Checked again after, so a browser that moved to another
+    // account in between is never saved for this one.
     const captured = await captureLiveSession(spec, api);
-    if (sessionValues(spec, captured) !== before) return false;
+    if (!(await onAccount())) return false;
     const cookies = savableSignIn(spec, captured, services.now);
     if (!cookies || !(await stillConnected())) return false;
     await saveSession(instance.id, cookies, services.now);
