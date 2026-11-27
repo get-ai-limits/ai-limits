@@ -345,9 +345,15 @@ this device. It does not use the site's own Log out, which would end the
 session on the provider's servers. It then opens the provider's sign-in page,
 so you can sign in to the other account. For 15 minutes after opening that
 page, it watches for that site's sign-in cookie to change, and then reads the
-waiting connection. A connection's saved copy, once it has one, is refreshed
-from the browser whenever the browser is signed in to that connection's
-account. A connection that never had a sign-in saved this way never gets one.
+waiting connection. Whenever a connection is read with the browser's own
+sign-in and has no saved copy yet (such as the new connection once it reads
+its account, or a connection that existed before this version), AI Limits
+saves its sign-in the same way, without signing the browser out, so it keeps
+refreshing after the browser moves to another account. This happens only
+while the provider has more than one connection and the `cookies` permission
+is granted; a provider's only connection never gets a saved sign-in. A
+connection's saved copy is refreshed from the browser whenever the browser is
+signed in to that connection's account.
 Choosing **Reconnect** on a card whose account is not signed in does the same
 saving and local sign-out for the account that is signed in, but only after
 the `cookies` permission was granted through **Add account**.
@@ -358,14 +364,16 @@ background service worker, it adds a session rule that matches only that
 site's requests started by AI Limits itself outside any tab. The rule sets
 the request's Cookie header to the saved sign-in plus the browser's
 bot-protection cookies for that site (Cloudflare's `__cf_bm`, `cf_clearance`,
-`_cfuvid`, and `__cflb`, and ChatGPT's `oai-did` device ID). It also drops any
-cookie the site sends back. The request is sent without the browser's own
+`_cfuvid`, and `__cflb`, and ChatGPT's `oai-did` device ID). For Cursor's dashboard
+requests, which Cursor accepts only from its own pages, the rule also sets the
+Origin header to `https://cursor.com`. It also drops any cookie the site sends
+back. The request is sent without the browser's own
 cookies, and the rule is removed as soon as the request finishes. AI Limits
 sends these requests one at a time per site, so one account's request never
 carries another account's sign-in. Your open tabs and the browser's own
-sign-in are not affected. For Cursor, page-only Grok Bot and extra-credit
-values are read only for the account the browser is signed in to. Other
-Cursor connections keep their last values for those.
+sign-in are not affected. For Cursor, Grok Bot, extra-credit and usage-detail
+values are read this way for each saved account too; if Cursor refuses those
+requests, that connection keeps its last values for them.
 
 Saved sign-ins are stored in `chrome.storage.local` under a separate record
 from usage state. In Chromium builds they have the same trusted-context

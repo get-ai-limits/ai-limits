@@ -4,6 +4,7 @@ import {
   clearLiveSession,
   collectWithSavedSession,
   parkLiveSession,
+  saveLiveSession,
   type CookiesApi,
   type SavedSessionEnvironment,
   type SavedSessionSpec,
@@ -240,6 +241,48 @@ describe("collectWithSavedSession", () => {
     expect(api.jar().map(({ name }) => name)).toContain("Session");
   });
 
+  test("page requests also carry the site's Origin, one request at a time", async () => {
+    await saveSession(A, [{ name: "Session", value: "saved-a" }], 1);
+    const { env, rules } = environment(fakeCookies([cookie("Session", "live-b")]));
+    const seen: { origin?: string; inFlight: number }[] = [];
+    let inFlight = 0;
+
+    await collectWithSavedSession({
+      spec: spec(() => KEY_B),
+      instance: instance(A, KEY_A),
+      services: {
+        ...services,
+        fetch: vi.fn(async () => {
+          inFlight += 1;
+          const headers = rules.at(-1)?.[0]?.action.requestHeaders ?? [];
+          seen.push({
+            origin: headers.find(({ header }) => header === "origin")?.value,
+            inFlight,
+          });
+          await new Promise((resolve) => setTimeout(resolve, 5));
+          inFlight -= 1;
+          return new Response("{}");
+        }),
+      },
+      live: vi.fn(),
+      saved: async (fetch, pageFetch) => {
+        await fetch("https://cursor.com/api/usage-summary");
+        await Promise.all([
+          pageFetch("https://cursor.com/api/dashboard/a", { method: "POST" }),
+          pageFetch("https://cursor.com/api/dashboard/b", { method: "POST" }),
+        ]);
+        return success(KEY_A);
+      },
+      environment: env,
+    });
+
+    expect(seen).toEqual([
+      { origin: undefined, inFlight: 1 },
+      { origin: "https://cursor.com", inFlight: 1 },
+      { origin: "https://cursor.com", inFlight: 1 },
+    ]);
+  });
+
   test("drops a saved sign-in whose session cookie is gone", async () => {
     await saveSession(A, [{ name: "_account", value: "workspace" }], 1);
     const live = vi.fn(async () => success(KEY_B));
@@ -381,6 +424,87 @@ describe("collectWithSavedSession", () => {
     releaseFirst();
     await Promise.all([first, second]);
     expect(order).toEqual(["first:start", "first:end", "second"]);
+  });
+});
+
+describe("saveLiveSession", () => {
+  test("saves the browser's sign-in for its connection and leaves the browser signed in", async () => {
+    const api = fakeCookies([cookie("Session", "live-a"), cookie("cf_clearance", "d")]);
+    await expect(
+      saveLiveSession(spec(() => KEY_A), instance(A, KEY_A), services, environment(api).env),
+    ).resolves.toBe(true);
+    await expect(readSavedSession(A)).resolves.toMatchObject({
+      cookies: [{ name: "Session", value: "live-a" }],
+    });
+    expect(api.jar()).toHaveLength(2);
+  });
+
+  test("saves nothing for another account, an existing copy, or a removed connection", async () => {
+    const api = fakeCookies([cookie("Session", "live-b")]);
+    const { env } = environment(api);
+    await expect(
+      saveLiveSession(spec(() => KEY_B), instance(A, KEY_A), services, env),
+    ).resolves.toBe(false);
+    await expect(readSavedSession(A)).resolves.toBeUndefined();
+
+    await expect(
+      saveLiveSession(spec(() => KEY_B), instance(B, KEY_B), services, env, async () => false),
+    ).resolves.toBe(false);
+    await expect(readSavedSession(B)).resolves.toBeUndefined();
+
+    await saveSession(B, [{ name: "Session", value: "older-b" }], 1);
+    await expect(
+      saveLiveSession(spec(() => KEY_B), instance(B, KEY_B), services, env),
+    ).resolves.toBe(false);
+    await expect(readSavedSession(B)).resolves.toMatchObject({
+      cookies: [{ name: "Session", value: "older-b" }],
+    });
+  });
+
+  test("saves a session cookie the account check rotated at its new value", async () => {
+    const api = fakeCookies([cookie("Session", "live-a")]);
+    const rotating = spec(() => KEY_A);
+    vi.mocked(rotating.liveAccountKey).mockImplementationOnce(async () => {
+      api.jar()[0]!.value = "rotated-a";
+      return KEY_A;
+    });
+    await expect(
+      saveLiveSession(rotating, instance(A, KEY_A), services, environment(api).env),
+    ).resolves.toBe(true);
+    await expect(readSavedSession(A)).resolves.toMatchObject({
+      cookies: [{ name: "Session", value: "rotated-a" }],
+    });
+  });
+
+  test("saves nothing when the browser moves to another account during the save", async () => {
+    const api = fakeCookies([cookie("Session", "live-a")]);
+    let checks = 0;
+    const moving = spec(() => (++checks === 1 ? KEY_A : KEY_B));
+    await expect(
+      saveLiveSession(moving, instance(A, KEY_A), services, environment(api).env),
+    ).resolves.toBe(false);
+    await expect(readSavedSession(A)).resolves.toBeUndefined();
+  });
+
+  test("removes the copy again for a connection removed while saving", async () => {
+    const api = fakeCookies([cookie("Session", "live-a")]);
+    let checks = 0;
+    await expect(
+      saveLiveSession(
+        spec(() => KEY_A),
+        instance(A, KEY_A),
+        services,
+        environment(api).env,
+        async () => ++checks === 1,
+      ),
+    ).resolves.toBe(false);
+    await expect(readSavedSession(A)).resolves.toBeUndefined();
+  });
+
+  test("needs the cookies permission", async () => {
+    await expect(
+      saveLiveSession(spec(() => KEY_A), instance(A, KEY_A), services, environment(undefined).env),
+    ).resolves.toBe(false);
   });
 });
 

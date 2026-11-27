@@ -60,6 +60,7 @@ import { isProviderRefreshEligible } from "./provider-access";
 import {
   browserSavedSessionEnvironment,
   parkLiveSession,
+  saveLiveSession,
   removeSavedSessionRule,
   SAVED_SESSION_PERMISSION,
   type SavedSessionEnvironment,
@@ -76,6 +77,8 @@ import {
   type PermissionIntentCandidate,
   type StoredPermissionIntent,
 } from "./permission-intents";
+
+const SAVE_SIGN_IN_TIMEOUT_MS = 15_000;
 
 export type ProviderPackageRegistry = {
   [Kind in ProviderKind]: ProviderPackage;
@@ -277,6 +280,47 @@ export function createProviderService(
       instance.snapshot === undefined &&
       instance.history.length === 0
     );
+  }
+
+  /**
+   * Saves the sign-in of every connection just read with the browser's own
+   * sign-in that has none saved yet, while its provider has another
+   * connection. Then a card keeps refreshing however the browser later moves
+   * to another account, not only when Add account moved it.
+   */
+  async function saveNewSignIns(report: RefreshReport): Promise<RefreshReport> {
+    const read = report.results.filter(({ outcome }) => outcome.kind === "success");
+    if (read.length === 0) return report;
+    const instances = await connectionRepository.list();
+    for (const { instanceId } of read) {
+      const instance = instances.find(({ id }) => id === instanceId);
+      const spec = instance && packages[instance.providerKind].savedSession;
+      if (
+        !instance ||
+        !spec ||
+        instance.accountKey === undefined ||
+        !instances.some(
+          (other) =>
+            other.id !== instance.id &&
+            other.providerKind === instance.providerKind,
+        )
+      ) {
+        continue;
+      }
+      await saveLiveSession(
+        spec,
+        instance,
+        // A hung check must not hold the site's lock for later reads.
+        { fetch, signal: AbortSignal.timeout(SAVE_SIGN_IN_TIMEOUT_MS), now: clock() },
+        savedSessionEnvironment,
+        async () => (await connectionRepository.get(instance.id)) !== undefined,
+      ).catch(() => false);
+    }
+    return report;
+  }
+
+  async function afterRefresh(report: RefreshReport): Promise<RefreshReport> {
+    return saveNewSignIns(await removeEmptyDuplicates(report));
   }
 
   async function removeEmptyDuplicates(
@@ -593,6 +637,8 @@ export function createProviderService(
           await forgetPackageSession(instance.providerKind);
           await usageRepository.clear(instanceId);
           await connectionRepository.delete(instanceId);
+          // Again, for a sign-in saved after a read while this ran.
+          await deleteSavedSession(instanceId);
           const removed = await completePermissionCleanup(permissionCleanup);
           await releaseUnusedSavedSessions([instance.providerKind]);
           return removed
@@ -851,6 +897,7 @@ export function createProviderService(
       ) {
         await disconnectInstance(candidate.id);
       }
+      await saveNewSignIns(report);
       return signIn === undefined ? { report } : { report, signIn };
     } finally {
       connectingInstanceIds.delete(candidate.id);
@@ -1146,11 +1193,9 @@ export function createProviderService(
     openSignIn: startSignIn,
     connectApiKeyProvider,
     refreshInstance: async (instanceId, trigger) =>
-      removeEmptyDuplicates(
-        await orchestrator.refreshInstance(instanceId, trigger),
-      ),
+      afterRefresh(await orchestrator.refreshInstance(instanceId, trigger)),
     refreshAll: async (trigger) =>
-      removeEmptyDuplicates(await orchestrator.refreshAll(trigger)),
+      afterRefresh(await orchestrator.refreshAll(trigger)),
     async renameInstance(instanceId, userLabel) {
       if (!(await connectionRepository.get(instanceId))) {
         throw new Error("Provider instance is unavailable.");

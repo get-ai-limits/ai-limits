@@ -81,7 +81,9 @@ Chrome attaches the signed-in Cursor cookies to those fixed same-origin
 requests. It never activates a Cursor tab, and scheduled refresh never opens
 one. Last-good Grok Bot and extra-credit values stay
 on the card until Grok Bot's weekly reset; the card says why they could not be
-refreshed.
+refreshed. Other Cursor accounts with a saved sign-in read these values
+in the background with their saved sign-in, which carries `cursor.com`'s
+Origin; if Cursor refuses that, those cards keep their last values.
 
 ## Why does Grok need a grok.com page?
 
@@ -265,8 +267,10 @@ its own card, History, and name, which you can change in Settings.
   account**, a short guide in the side panel walks you through it. AI Limits
   asks for the optional `cookies` permission, saves
   the current sign-in for its card, signs the browser out of that site on
-  this device, and opens the sign-in page for the next account. After that,
-  every account keeps refreshing, whichever one the browser is signed in to.
+  this device, and opens the sign-in page for the next account. Every other
+  account's sign-in is saved too, the next time it is read while the browser
+  is signed in to it. After that, every account keeps
+  refreshing, whichever one the browser is signed in to.
   Don't use **Log out** on the ChatGPT or Cursor site to switch accounts,
   because that ends the saved sign-in too. A saved sign-in lasts as long as
   the provider allows (about 60 days for Cursor). After that, that card asks you to
