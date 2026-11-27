@@ -822,7 +822,11 @@ export function createProviderService(
           signIn = "not_saved";
         } else if (
           finalOutcome?.kind === "failure" &&
-          finalOutcome.category === "signed_out"
+          (finalOutcome.category === "signed_out" ||
+            // Signed out here, but the read failed: the sign-in still
+            // completes this card.
+            (parked === "parked" &&
+              finalOutcome.category !== "duplicate_account"))
         ) {
           signIn = (await startSignIn(providerKind)) ? "waiting" : "tab_failed";
         }

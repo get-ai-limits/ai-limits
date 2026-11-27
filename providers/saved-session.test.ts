@@ -460,6 +460,26 @@ describe("parkLiveSession", () => {
     expect(api.jar()).toHaveLength(2);
   });
 
+  test("leaves a sign-in in the browser when one of its named cookies cannot be saved", async () => {
+    const api = fakeCookies([
+      cookie("Session.0", "live-a"),
+      cookie("Session.1", "bad\u0001value"),
+    ]);
+    const { env } = environment(api);
+    const chunked: SavedSessionSpec = {
+      ...spec(() => KEY_A),
+      isAuthCookie: (name) => name.startsWith("Session."),
+      isSessionCookie: (name) => name.startsWith("Session."),
+    };
+
+    await expect(
+      parkLiveSession(chunked, [instance(A, KEY_A)], services, env),
+    ).resolves.toBe("unavailable");
+
+    await expect(readSavedSession(A)).resolves.toBeUndefined();
+    expect(api.jar()).toHaveLength(2);
+  });
+
   test("leaves a sign-in no connection owns alone, so the new connection takes it", async () => {
     const api = fakeCookies([cookie("Session", "live-b")]);
     const { env } = environment(api);

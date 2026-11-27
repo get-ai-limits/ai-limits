@@ -401,14 +401,21 @@ export async function parkLiveSession(
     // Captured after that read, so a cookie its response rotated is saved
     // at its new value.
     const captured = await captureLiveSession(spec, api);
-    if (captured.length === 0) return "new_login";
+    // Signed in, but to cookies this extension cannot see or save.
+    if (captured.length === 0) return "unavailable";
     // What storage keeps: the named sign-in cookies come first, so a cookie
     // left out (one storage cannot hold) is never the session itself. Only
     // the kept cookies are cleared, so the browser loses nothing unsaved.
     const cookies =
       normalizeSavedSession({ cookies: captured, savedAt: services.now })
         ?.cookies ?? [];
-    if (!cookies.some(({ name }) => spec.isSessionCookie(name))) {
+    // Every named sign-in cookie (such as each chunk of a split session
+    // token) must be kept, or the saved copy could not sign in.
+    const kept = new Set(cookies.map(({ name }) => name));
+    if (
+      !cookies.some(({ name }) => spec.isSessionCookie(name)) ||
+      captured.some(({ name }) => spec.isAuthCookie(name) && !kept.has(name))
+    ) {
       return "unavailable";
     }
     if (!(await stillConnected(owner))) return "new_login";

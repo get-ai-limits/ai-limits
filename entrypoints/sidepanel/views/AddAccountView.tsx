@@ -163,8 +163,10 @@ export function AddAccountView({
     setOpening(true);
     void onOpenSignIn(providerKind)
       .then((opened) => {
-        if (mounted.current && phase.name === "waiting") {
-          setPhase({ ...phase, tabFailed: !opened });
+        if (mounted.current) {
+          setPhase((current) =>
+            current.name === "waiting" ? { ...current, tabFailed: !opened } : current,
+          );
         }
       })
       .catch(() => undefined)
