@@ -12,6 +12,10 @@ export type PlanExhaustion =
       reopensAt?: number;
     };
 
+// Cards show percentages to two decimals, so a window that reads "100% used"
+// counts as at its limit even when fractional usage leaves a sliver unused.
+const USED_UP_RATIO = 0.99995;
+
 function windowBlocks(quota: QuotaMetric, now: number): boolean {
   const resetsAt = quota.cycle?.resetsAt;
   // A window whose reset time has passed has reopened, even before the next
@@ -19,7 +23,7 @@ function windowBlocks(quota: QuotaMetric, now: number): boolean {
   if (resetsAt !== undefined && Number.isFinite(resetsAt) && resetsAt <= now) {
     return false;
   }
-  return quota.usedRatio >= 1;
+  return quota.usedRatio >= USED_UP_RATIO;
 }
 
 function overflowAvailable(metric: UsageMetric): boolean {
