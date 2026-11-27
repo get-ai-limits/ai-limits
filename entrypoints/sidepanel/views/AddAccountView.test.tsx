@@ -110,6 +110,27 @@ describe("AddAccountView", () => {
     expect(screen.getByRole("button", { name: "Try again" })).toBeInTheDocument();
   });
 
+  it("keeps following the steps under StrictMode", async () => {
+    const props: React.ComponentProps<typeof AddAccountView> = {
+      providerKind: "cursor",
+      instances: [],
+      labelForInstance: () => "Cursor · work",
+      backLabel: "Back",
+      onBack: vi.fn(),
+      onFinish: vi.fn(),
+      onStart: vi.fn(async () => ({ kind: "waiting", instanceId: WAITING }) as const),
+      onOpenSignIn: vi.fn(async () => true),
+      onCancel: vi.fn(),
+    };
+    render(
+      <React.StrictMode>
+        <AddAccountView {...props} />
+      </React.StrictMode>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Allow and continue" }));
+    await screen.findByText("Waiting for you to sign in…");
+  });
+
   it("cancels a waiting card", async () => {
     const { props } = renderView({ kind: "tab_failed", instanceId: WAITING });
     fireEvent.click(screen.getByRole("button", { name: "Allow and continue" }));

@@ -1898,7 +1898,9 @@ describe("generic provider instance service", () => {
 
     describe("with saved sign-ins", () => {
       function savedSignInService({ unsaveable = false } = {}) {
-        const browserState: { key: string | undefined } = { key: KEY_A };
+        const browserState: { key: string | undefined; keyCheckFails?: boolean } = {
+          key: KEY_A,
+        };
         let jar: Browser.cookies.Cookie[] = [];
         const signIn = (key: string) => {
           browserState.key = key;
@@ -1933,7 +1935,13 @@ describe("generic provider instance service", () => {
           ...providerRegistry.chatgpt.savedSession!,
           isAuthCookie: (name) => name === "Session",
           isSessionCookie: (name) => !unsaveable && name === "Session",
-          liveAccountKey: async () => browserState.key,
+          liveAccountKey: async () => {
+            if (browserState.keyCheckFails) {
+              browserState.keyCheckFails = false;
+              return undefined;
+            }
+            return browserState.key;
+          },
         };
         const openSignInTab = vi.fn(async () => undefined);
         const collect = vi.fn((async (instance, services) =>
@@ -2022,6 +2030,45 @@ describe("generic provider instance service", () => {
         expect(browserState.key).toBe(KEY_A);
         expect(openSignInTab).not.toHaveBeenCalled();
         expect((await loadInstanceAppState()).instances).toHaveLength(1);
+      });
+
+      test("Add account does not wait for a sign-in when the browser is still signed in", async () => {
+        const { service, browserState, openSignInTab } = savedSignInService();
+        await connectChatGpt(service);
+        // The sign-in check fails once, so nothing is saved; the read that
+        // follows finds the account already added.
+        browserState.keyCheckFails = true;
+
+        const result = await service.connectBrowserProviderWithSignIn(
+          "chatgpt",
+          await authorizedBrowserIntent(service, "chatgpt"),
+        );
+
+        expect(result.signIn).toBeUndefined();
+        expect(result.report.results.at(-1)?.outcome).toMatchObject({
+          kind: "failure",
+          category: "duplicate_account",
+        });
+        expect(browserState.key).toBe(KEY_A);
+        expect(openSignInTab).not.toHaveBeenCalled();
+        expect((await loadInstanceAppState()).instances).toHaveLength(1);
+      });
+
+      test("Add account replaces an earlier card that never got an account", async () => {
+        const { service } = savedSignInService();
+        await connectChatGpt(service);
+        await connectChatGpt(service);
+        const [, leftover] = (await loadInstanceAppState()).instances;
+
+        const result = await service.connectBrowserProviderWithSignIn(
+          "chatgpt",
+          await authorizedBrowserIntent(service, "chatgpt"),
+        );
+
+        expect(result.signIn).toBe("waiting");
+        const ids = (await loadInstanceAppState()).instances.map(({ id }) => id);
+        expect(ids).toHaveLength(2);
+        expect(ids).not.toContain(leftover!.id);
       });
 
       test("a waiting connection that turns out to be an existing login is removed", async () => {

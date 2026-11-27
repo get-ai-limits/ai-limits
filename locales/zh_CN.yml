@@ -105,7 +105,6 @@ connections:
   addAccountFor: "再添加一个 {provider} 账号"
   accountsConnected: "已连接 {count} 个"
   addAccountSavedSignInHint: "会打开一个简短指南：AI Limits 先为当前卡片保存此浏览器的 {provider} 登录，然后你登录另一个账号。每个账号都会持续刷新。"
-  signInAnotherAccount: "请在刚打开的标签页中登录另一个 {provider} 账号。其他 {provider} 卡片会继续刷新。"
   addAccountSessionHint: "请先在 {provider} 网站上登录要添加的账号。只有当前在网站上登录的账号会刷新，其他账号会保留上次的数据，切换回去后再更新。"
 
 addAccount:
@@ -113,7 +112,7 @@ addAccount:
   subtitle: 浏览器在每个网站只能保持一个登录，所以 AI Limits 会为每个账号各保存一份。
   back: 返回
   step1Title: 允许 AI Limits 保存登录
-  step1Copy: "Chrome 会请求使用 {provider} cookie 的权限。AI Limits 会在此设备上为对应的卡片保存此浏览器正在使用的 {provider} 登录 cookie（其 HttpOnly cookie，防机器人 cookie 除外），只发送给 {provider}，并在你断开该卡片时删除它们。"
+  step1Copy: "浏览器会请求使用 {provider} cookie 的权限。AI Limits 会在此设备上为对应的卡片保存此浏览器正在使用的 {provider} 登录 cookie（其 HttpOnly cookie，防机器人 cookie 除外），只发送给 {provider}，并在你断开该卡片时删除它们。"
   start: 允许并继续
   starting: 正在保存当前登录…
   declined: 没有做任何更改。添加账号需要此权限，准备好后再允许即可。

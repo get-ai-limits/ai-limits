@@ -269,6 +269,15 @@ export function createProviderService(
    */
   const connectingInstanceIds = new Set<string>();
 
+  /** A connection that never read an account: nothing on it would be lost. */
+  function isEmptyConnection(instance: ProviderInstanceRecord): boolean {
+    return (
+      instance.accountKey === undefined &&
+      instance.snapshot === undefined &&
+      instance.history.length === 0
+    );
+  }
+
   async function removeEmptyDuplicates(
     report: RefreshReport,
   ): Promise<RefreshReport> {
@@ -753,6 +762,17 @@ export function createProviderService(
         );
         if (siblings.length > 0) {
           addsAccount = true;
+          // A card from an earlier Add account that never got an account
+          // (the guide was left, or its read failed) would claim the next
+          // sign-in before this one; this card takes its place.
+          for (const sibling of siblings) {
+            if (connectingInstanceIds.has(sibling.id) || !isEmptyConnection(sibling)) {
+              continue;
+            }
+            await disconnectInstanceIf(sibling.id, isEmptyConnection).catch(
+              () => "kept" as const,
+            );
+          }
           parked = await parkLiveSession(
             spec,
             siblings,
@@ -793,14 +813,25 @@ export function createProviderService(
         }
       }
       let signIn: AddAccountSignIn | undefined;
-      if (
+      const finalOutcome = candidateOutcome();
+      if (addsAccount) {
+        // Only a browser that really is signed out waits for a sign-in. A
+        // duplicate (the site signed back in) or a failed read is reported
+        // as it is.
+        if (parked === "unavailable") {
+          signIn = "not_saved";
+        } else if (
+          finalOutcome?.kind === "failure" &&
+          finalOutcome.category === "signed_out"
+        ) {
+          signIn = (await startSignIn(providerKind)) ? "waiting" : "tab_failed";
+        }
+      } else if (
         spec &&
         (parked === "parked" || parked === "signed_out") &&
-        candidateOutcome()?.kind === "failure"
+        finalOutcome?.kind === "failure"
       ) {
         signIn = (await startSignIn(providerKind)) ? "waiting" : "tab_failed";
-      } else if (addsAccount && parked === "unavailable") {
-        signIn = "not_saved";
       }
       // A new connection that turned out to be a login another connection
       // already tracks is removed again, so the same account never shows twice.

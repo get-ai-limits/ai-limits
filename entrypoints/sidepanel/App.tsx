@@ -497,35 +497,12 @@ export function App() {
             (instance) => instance.providerKind === providerKind,
           )?.id
         : undefined);
-    // Adding a second Cursor or ChatGPT account saves each card's own
-    // sign-in; that needs the cookies permission, asked for in the same
-    // prompt, after the Add account row explained it. Reconnect never asks
-    // for it, and saves sign-ins only if it was already granted that way.
-    const usesSavedSignIn =
-      existingInstanceId === undefined &&
-      providerAvailability(currentState, providerKind).savedSignIns === true &&
-      currentState.instances.some(
-        (instance) =>
-          instance.providerKind === providerKind &&
-          instance.id !== existingInstanceId,
-      );
+    // Adding another Cursor or ChatGPT account goes through the Add account
+    // guide (handleStartAddAccount), which explains and asks for cookies.
+    // This path never asks for it.
     let prepared: PermissionIntentResponse;
     try {
       prepared = await preparePermission(providerKind, config, existingInstanceId);
-      if (usesSavedSignIn) {
-        prepared = {
-          ...prepared,
-          permissions: {
-            ...prepared.permissions,
-            permissions: [
-              ...new Set([
-                ...(prepared.permissions.permissions ?? []),
-                "cookies" as const,
-              ]),
-            ],
-          },
-        };
-      }
     } catch {
       announce(
         l10n.t("announcements.connectFailed", {
@@ -537,33 +514,8 @@ export function App() {
     }
     setProviderOperation(prepared.instanceId, "requesting_permission");
     let granted: boolean;
-    let savedSignIn = usesSavedSignIn;
     try {
-      if (usesSavedSignIn) {
-        // Declining cookies still adds the account the old way: only the
-        // account signed in on the site refreshes.
-        let withCookies = false;
-        try {
-          withCookies = Boolean(
-            await browser.permissions.request(prepared.permissions),
-          );
-        } catch {
-          withCookies = false;
-        }
-        if (!withCookies) {
-          savedSignIn = false;
-          prepared = {
-            ...prepared,
-            permissions: {
-              ...prepared.permissions,
-              permissions: (prepared.permissions.permissions ?? []).filter(
-                (permission) => permission !== "cookies",
-              ),
-            },
-          };
-        }
-      }
-      granted = await requestPreparedPermission(prepared, usesSavedSignIn);
+      granted = await requestPreparedPermission(prepared);
     } catch {
       announce(
         l10n.t("announcements.connectFailed", {
@@ -599,23 +551,8 @@ export function App() {
         ({ outcome }) =>
           outcome.kind === "failure" && outcome.category === "duplicate_account",
       );
-      const waitsForSignIn =
-        savedSignIn &&
-        response.report.results.some(
-          ({ instanceId: resultId, outcome }) =>
-            resultId === prepared.instanceId &&
-            outcome.kind === "failure" &&
-            outcome.category === "signed_out",
-        );
       if (duplicate) {
         announce(localizeFailure("duplicate_account"), "attention");
-      } else if (waitsForSignIn) {
-        announce(
-          l10n.t("connections.signInAnotherAccount", {
-            provider: localizeProviderName(providerKind),
-          }),
-          "attention",
-        );
       } else {
         const summary = manualSummary(response.report, response.state);
         announce(summary.message, summary.tone);
@@ -696,6 +633,7 @@ export function App() {
       }
       return { kind: "failed" };
     } catch {
+      await abandonPermissionIntent(prepared.permissionIntentId);
       return { kind: "failed" };
     } finally {
       setProviderOperation(prepared.instanceId);

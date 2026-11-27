@@ -121,12 +121,12 @@ export function AddAccountView({
   const [phase, setPhase] = useState<Phase>({ name: "ready" });
   const [opening, setOpening] = useState(false);
   const mounted = useRef(true);
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
       mounted.current = false;
-    },
-    [],
-  );
+    };
+  }, []);
   const provider = localizeProviderName(providerKind);
 
   // The sign-in is read in the background; follow the waiting card.
