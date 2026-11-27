@@ -1897,7 +1897,7 @@ describe("generic provider instance service", () => {
     });
 
     describe("with saved sign-ins", () => {
-      function savedSignInService() {
+      function savedSignInService({ unsaveable = false } = {}) {
         const browserState: { key: string | undefined } = { key: KEY_A };
         let jar: Browser.cookies.Cookie[] = [];
         const signIn = (key: string) => {
@@ -1932,7 +1932,7 @@ describe("generic provider instance service", () => {
         const savedSession: SavedSessionSpec = {
           ...providerRegistry.chatgpt.savedSession!,
           isAuthCookie: (name) => name === "Session",
-          isSessionCookie: (name) => name === "Session",
+          isSessionCookie: (name) => !unsaveable && name === "Session",
           liveAccountKey: async () => browserState.key,
         };
         const openSignInTab = vi.fn(async () => undefined);
@@ -1989,6 +1989,39 @@ describe("generic provider instance service", () => {
         expect(
           (await loadInstanceAppState()).instances.map(({ accountKey }) => accountKey),
         ).toEqual([KEY_A, KEY_B]);
+      });
+
+      test("Add account tells the guide whether the sign-in page is waiting", async () => {
+        const { service, openSignInTab } = savedSignInService();
+        await connectChatGpt(service);
+
+        const waiting = await service.connectBrowserProviderWithSignIn(
+          "chatgpt",
+          await authorizedBrowserIntent(service, "chatgpt"),
+        );
+        expect(waiting.signIn).toBe("waiting");
+
+        openSignInTab.mockRejectedValueOnce(new Error("no window"));
+        await expect(service.openSignIn("chatgpt")).resolves.toBe(false);
+        await expect(service.openSignIn("chatgpt")).resolves.toBe(true);
+      });
+
+      test("Add account says the sign-in was not saved when it cannot be", async () => {
+        const { service, browserState, openSignInTab } = savedSignInService({
+          unsaveable: true,
+        });
+        await connectChatGpt(service);
+
+        const result = await service.connectBrowserProviderWithSignIn(
+          "chatgpt",
+          await authorizedBrowserIntent(service, "chatgpt"),
+        );
+
+        expect(result.signIn).toBe("not_saved");
+        // Still signed in, nothing opened, and no second card.
+        expect(browserState.key).toBe(KEY_A);
+        expect(openSignInTab).not.toHaveBeenCalled();
+        expect((await loadInstanceAppState()).instances).toHaveLength(1);
       });
 
       test("a waiting connection that turns out to be an existing login is removed", async () => {

@@ -1,5 +1,6 @@
 import type {
   ApiKeyProviderKind,
+  BrowserSessionProviderKind,
   ProviderInstanceId,
 } from "../../domain/public-protocol";
 
@@ -9,6 +10,7 @@ export type CockpitScreen =
   | { name: "history"; instanceId: ProviderInstanceId; metricId?: string }
   | { name: "settings" }
   | { name: "add-provider" }
+  | { name: "add-account"; providerKind: BrowserSessionProviderKind }
   | {
       name: "api-key-connect";
       providerKind: ApiKeyProviderKind;
@@ -51,6 +53,10 @@ function sameScreen(left: CockpitScreen, right: CockpitScreen): boolean {
     return (
       left.instanceId === right.instanceId && left.metricId === right.metricId
     );
+  }
+
+  if (left.name === "add-account" && right.name === "add-account") {
+    return left.providerKind === right.providerKind;
   }
 
   if (left.name === "api-key-connect" && right.name === "api-key-connect") {

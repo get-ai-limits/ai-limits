@@ -11,6 +11,7 @@ import type {
   RefreshTrigger,
 } from "../domain/model";
 import type {
+  AddAccountSignIn,
   ApiKeyConnectionStatus,
   ConnectApiKeyProviderResult,
   DisconnectInstanceResult,
@@ -122,6 +123,13 @@ export interface ProviderService {
     providerKind: BrowserSessionProviderKind,
     permissionIntentId: string,
   ): Promise<RefreshReport>;
+  /** Connects, and says how Add account's sign-in for the next account went. */
+  connectBrowserProviderWithSignIn(
+    providerKind: BrowserSessionProviderKind,
+    permissionIntentId: string,
+  ): Promise<{ report: RefreshReport; signIn?: AddAccountSignIn }>;
+  /** Opens the provider's sign-in page again and watches for the sign-in. */
+  openSignIn(providerKind: ProviderKind): Promise<boolean>;
   connectApiKeyProvider(
     request: ConnectApiKeyProviderRequest,
   ): Promise<ConnectApiKeyProviderResult>;
@@ -595,6 +603,14 @@ export function createProviderService(
     providerKind: BrowserSessionProviderKind,
     permissionIntentId: string,
   ): Promise<RefreshReport> {
+    return (await connectBrowserProviderWithSignIn(providerKind, permissionIntentId))
+      .report;
+  }
+
+  async function connectBrowserProviderWithSignIn(
+    providerKind: BrowserSessionProviderKind,
+    permissionIntentId: string,
+  ): Promise<{ report: RefreshReport; signIn?: AddAccountSignIn }> {
     const startedAt = clock();
     const providerPackage = packages[providerKind];
     if (providerPackage.credentialKind !== "none") {
@@ -701,10 +717,12 @@ export function createProviderService(
         }
       }
       if (!committed || !operationWasCurrent) {
-        return connectReport(candidate.id, startedAt, clock(), {
-          kind: "skipped",
-          reason: "superseded",
-        });
+        return {
+          report: connectReport(candidate.id, startedAt, clock(), {
+            kind: "skipped",
+            reason: "superseded",
+          }),
+        };
       }
       if (!existing && providerPackage.cardinality === "multiple") {
         // Connections made before accounts were tracked learn their login on
@@ -727,12 +745,14 @@ export function createProviderService(
       // being refused as a duplicate.
       const spec = providerPackage.savedSession;
       let parked: Awaited<ReturnType<typeof parkLiveSession>> = "unavailable";
+      let addsAccount = false;
       if (spec && !existing && providerPackage.cardinality === "multiple") {
         const siblings = (await connectionRepository.list()).filter(
           (instance) =>
             instance.id !== candidate.id && instance.providerKind === providerKind,
         );
         if (siblings.length > 0) {
+          addsAccount = true;
           parked = await parkLiveSession(
             spec,
             siblings,
@@ -772,12 +792,15 @@ export function createProviderService(
           }
         }
       }
+      let signIn: AddAccountSignIn | undefined;
       if (
         spec &&
         (parked === "parked" || parked === "signed_out") &&
         candidateOutcome()?.kind === "failure"
       ) {
-        await startSignIn(providerKind);
+        signIn = (await startSignIn(providerKind)) ? "waiting" : "tab_failed";
+      } else if (addsAccount && parked === "unavailable") {
+        signIn = "not_saved";
       }
       // A new connection that turned out to be a login another connection
       // already tracks is removed again, so the same account never shows twice.
@@ -792,7 +815,7 @@ export function createProviderService(
       ) {
         await disconnectInstance(candidate.id);
       }
-      return report;
+      return signIn === undefined ? { report } : { report, signIn };
     } finally {
       connectingInstanceIds.delete(candidate.id);
     }
@@ -1083,6 +1106,8 @@ export function createProviderService(
     abandonProviderPermission,
     sweepPermissionIntents,
     connectBrowserProvider,
+    connectBrowserProviderWithSignIn,
+    openSignIn: startSignIn,
     connectApiKeyProvider,
     refreshInstance: async (instanceId, trigger) =>
       removeEmptyDuplicates(

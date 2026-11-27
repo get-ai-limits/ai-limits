@@ -144,7 +144,7 @@ async function activateBackground(
       return currentView();
     },
     async connectBrowserProvider(providerKind, permissionIntentId) {
-      const report = await service.connectBrowserProvider(
+      const { report, signIn } = await service.connectBrowserProviderWithSignIn(
         providerKind,
         permissionIntentId,
       );
@@ -152,7 +152,11 @@ async function activateBackground(
       return {
         state: projectAppViewState(state),
         report: projectRefreshReport(report),
+        ...(signIn === undefined ? {} : { signIn }),
       };
+    },
+    async openSignIn(providerKind) {
+      return { opened: await service.openSignIn(providerKind) };
     },
     async connectApiKeyProvider(command) {
       const { type: _type, ...request } = command;

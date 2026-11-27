@@ -3468,3 +3468,59 @@ a.detail-history-action:hover {
     animation-iteration-count: 1 !important;
   }
 }
+
+.add-account-guide__marker--done {
+  background: color-mix(in srgb, #16a34a 16%, transparent);
+  color: #15803d;
+}
+
+.add-account-guide__marker--error {
+  background: color-mix(in srgb, #e11d48 14%, transparent);
+  color: #be123c;
+}
+
+.add-account-guide__marker--todo {
+  opacity: 0.55;
+}
+
+.add-account-guide .api-key-guide__steps > li[data-status="todo"] h3 {
+  color: var(--text-muted);
+}
+
+.add-account-guide__progress {
+  margin-top: 6px !important;
+  color: var(--text) !important;
+  font-weight: 600;
+}
+
+.add-account-guide__problem {
+  margin-top: 6px !important;
+  color: #be123c !important;
+}
+
+.add-account-guide__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 7px;
+}
+
+.add-account-guide__actions .button {
+  margin-top: 0;
+}
+
+.add-account-guide__note {
+  display: block;
+  margin-top: 8px !important;
+}
+
+@media (prefers-color-scheme: dark) {
+  .add-account-guide__marker--done {
+    color: #4ade80;
+  }
+
+  .add-account-guide__marker--error,
+  .add-account-guide__problem {
+    color: #fb7185 !important;
+  }
+}

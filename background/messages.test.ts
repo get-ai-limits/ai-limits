@@ -28,8 +28,16 @@ describe("strict instance runtime protocol", () => {
       setDisplayMode: vi.fn(async () => "display"),
       setAutoRefresh: vi.fn(async () => "auto"),
       deleteLocalData: vi.fn(async () => "deleted"),
+      openSignIn: vi.fn(async () => "opened"),
     };
     const handle = createRuntimeCommandHandler(handlers);
+
+    await expect(
+      handle({ type: "OPEN_SIGN_IN", providerKind: "cursor" }),
+    ).resolves.toBe("opened");
+    expect(
+      handle({ type: "OPEN_SIGN_IN", providerKind: "openrouter" }),
+    ).toBeUndefined();
 
     await expect(handle({ type: "REFRESH_ALL" })).resolves.toBe("all");
     await expect(
