@@ -209,7 +209,9 @@ These origins are requested one provider at a time after the user clicks
   back when no Cursor or ChatGPT connection remains. It also reads that
   site's bot-protection cookies (Cloudflare `__cf_bm`, `cf_clearance`,
   `_cfuvid`, `__cflb`; ChatGPT `oai-did`) to send alongside a saved sign-in;
-  those are not saved.
+  those are not saved. A saved Cursor sign-in reads only base usage: Grok
+  Bot, extra-credit and usage-detail values are read only for the account
+  the browser is signed in to.
 - `scripting`: requested with Kimi, Cursor, Grok, or Gumloop access. For Kimi, it reads only
   the exact `access_token` and `refresh_token` browser-storage entries from an already-open or
   recovery-created matching Kimi page. If a credential is missing or rejected,
@@ -230,7 +232,7 @@ These origins are requested one provider at a time after the user clicks
   already-open cursor.com tab and never opens a new one. During Add account
   for a second Cursor account, a second bundled function asks up to three
   open cursor.com tabs whether they are still signed in, by requesting
-  `/api/auth/me` and returning only whether the answer was OK. For Grok, Connect or manual Refresh can run a
+  `/api/auth/me` and returning only whether it names a signed-in account. For Grok, Connect or manual Refresh can run a
   bundled exact-origin function in one already-open `grok.com` page. If none is
   open, that interactive path may create one inactive `https://grok.com/` tab,
   wait up to 10 seconds, and close only the tab it created. It never activates
@@ -410,7 +412,9 @@ The full policy is in [PRIVACY.md](../../PRIVACY.md).
    approve `cookies`, and confirm the browser is signed
    out of cursor.com and a sign-in tab opens. Sign in to the second account
    there and confirm a second card appears with its own usage, while the first
-   card keeps refreshing. Disconnect one card and confirm the other stays;
+   card keeps refreshing its usage. (Cursor's Grok Bot, extra-credit and
+   usage-detail values refresh only for the account the browser is signed in
+   to; other cards keep their last values.) Disconnect one card and confirm the other stays;
    disconnect both and confirm `cookies` is no longer granted. The same flow
    applies to ChatGPT.
 6. **Grok:** sign in at `grok.com`. You do **not** have to pre-open a Grok

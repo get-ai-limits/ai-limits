@@ -345,8 +345,10 @@ the browser is signed out of that site on this device. It does not use the
 site's own Log out, which would end the session on the provider's servers.
 For Cursor, it then asks each open `cursor.com` tab, up to three, whether that
 tab is still signed in, by running a bundled function there that requests
-`https://cursor.com/api/auth/me` and returns only whether the answer was OK.
-If one still is, Add account says so instead of opening the sign-in page. It then opens the provider's sign-in page,
+`https://cursor.com/api/auth/me` and returns only whether it names a signed-in
+account; the response itself stays in the page.
+If one still is, Add account says so instead of opening the sign-in page.
+Otherwise it opens the provider's sign-in page,
 so you can sign in to the other account. For 15 minutes after opening that
 page, it watches for that site's sign-in cookie to change, and then reads the
 waiting connection. Whenever a connection is read with the browser's own
@@ -373,8 +375,8 @@ back. The request is sent without the browser's own
 cookies, and the rule is removed as soon as the request finishes. AI Limits
 sends these requests one at a time per site, so one account's request never
 carries another account's sign-in. Your open tabs and the browser's own
-sign-in are not affected. For Cursor, page-only Grok Bot and extra-credit
-values are read only for the account the browser is signed in to. Other
+sign-in are not affected. For Cursor, page-only Grok Bot, extra-credit, and
+usage-detail values are read only for the account the browser is signed in to. Other
 Cursor connections keep their last values for those.
 
 Saved sign-ins are stored in `chrome.storage.local` under a separate record

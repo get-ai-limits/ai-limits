@@ -44,4 +44,33 @@ describe("siteTabStillSignedIn", () => {
     contains.mockResolvedValue(true as never);
     await expect(siteTabStillSignedIn(chatGptSavedSession)).resolves.toBe(false);
   });
+
+  test("counts a tab as signed in only when the identity names an account", async () => {
+    vi.spyOn(browser.permissions, "contains").mockResolvedValue(true as never);
+    vi.spyOn(browser.tabs, "query").mockResolvedValue(tabs(1) as never);
+    const responses = [
+      new Response(JSON.stringify({ sub: "user_1" })),
+      new Response("{}"),
+      new Response("<html>Sign in</html>"),
+      new Response(null, { status: 401 }),
+    ];
+    const pageFetch = vi.fn(async () => responses.shift()!);
+    vi.stubGlobal("fetch", pageFetch);
+    vi.spyOn(browser.scripting, "executeScript").mockImplementation((async (
+      injection: { func: (url: string) => Promise<boolean>; args: [string] },
+    ) => [{ result: await injection.func(...injection.args) }]) as never);
+    try {
+      const results = [];
+      for (let i = 0; i < 4; i += 1) {
+        results.push(await siteTabStillSignedIn(cursorSavedSession));
+      }
+      expect(results).toEqual([true, false, false, false]);
+      expect(pageFetch).toHaveBeenCalledWith(
+        "https://cursor.com/api/auth/me",
+        expect.objectContaining({ redirect: "manual", credentials: "include" }),
+      );
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
 });

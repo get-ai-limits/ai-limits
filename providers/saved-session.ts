@@ -116,16 +116,39 @@ function onDomain(cookie: Browser.cookies.Cookie, domain: string): boolean {
   return host === domain || host.endsWith(`.${domain}`);
 }
 
+function partitionKeyOf(
+  cookie: Browser.cookies.Cookie,
+): CookiePartitionKey | undefined {
+  return (cookie as { partitionKey?: CookiePartitionKey }).partitionKey;
+}
+
+/**
+ * The site's cookies. Only clearing asks for partitioned copies too: they
+ * can keep a page on the site signed in, but they are never saved or sent.
+ */
 async function siteCookies(
   spec: SavedSessionSpec,
   api: CookiesApi,
+  { partitioned = false }: { partitioned?: boolean } = {},
 ): Promise<Browser.cookies.Cookie[]> {
-  // An empty partition key also returns partitioned cookies, which a page on
-  // the site can be signed in with too; browsers before it reject the key.
-  const all = await api
-    .getAll({ domain: spec.cookieDomain, partitionKey: {} })
-    .catch(() => api.getAll({ domain: spec.cookieDomain }));
-  return all.filter((cookie) => onDomain(cookie, spec.cookieDomain));
+  const unpartitioned = () => api.getAll({ domain: spec.cookieDomain });
+  let all: Browser.cookies.Cookie[];
+  if (partitioned) {
+    try {
+      // An empty partition key also returns partitioned cookies. Browsers
+      // before it reject the key, some by throwing before the call starts.
+      all = await api.getAll({ domain: spec.cookieDomain, partitionKey: {} });
+    } catch {
+      all = await unpartitioned();
+    }
+  } else {
+    all = await unpartitioned();
+  }
+  return all.filter(
+    (cookie) =>
+      onDomain(cookie, spec.cookieDomain) &&
+      (partitioned || !partitionKeyOf(cookie)),
+  );
 }
 
 /**
@@ -178,19 +201,21 @@ export async function clearLiveSession(
   /** Only these exact cookies, so one the site rotated since is kept. */
   only?: readonly SavedSessionCookie[],
 ): Promise<void> {
-  for (const cookie of await siteCookies(spec, api)) {
+  for (const cookie of await siteCookies(spec, api, { partitioned: true })) {
     if (!isSignInCookie(spec, cookie)) continue;
+    const partitionKey = partitionKeyOf(cookie);
+    // A partitioned copy is never saved, so it matches a saved cookie by
+    // name alone.
     if (
       only &&
       !only.some(
-        ({ name, value }) => name === cookie.name && value === cookie.value,
+        ({ name, value }) =>
+          name === cookie.name && (partitionKey || value === cookie.value),
       )
     ) {
       continue;
     }
     const host = cookie.domain.replace(/^\./, "");
-    const partitionKey = (cookie as { partitionKey?: CookiePartitionKey })
-      .partitionKey;
     await api.remove({
       url: `https://${host}${cookie.path || "/"}`,
       name: cookie.name,

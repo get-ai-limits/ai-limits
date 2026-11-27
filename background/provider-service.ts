@@ -874,6 +874,9 @@ export function createProviderService(
           signIn = "not_saved";
         } else if (
           spec &&
+          // Only once the current account is saved (now or on an earlier
+          // try), which the message says.
+          (parked === "parked" || parked === "signed_out") &&
           finalOutcome?.kind === "failure" &&
           finalOutcome.category !== "duplicate_account" &&
           (await tabStillSignedIn(spec))

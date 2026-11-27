@@ -1,13 +1,25 @@
 import type { SavedSessionSpec } from "../providers/saved-session";
 
-/** Runs in a page of the site: whether the page is signed in there. */
+/**
+ * Runs in a page of the site: whether the page is signed in there, meaning
+ * the identity endpoint names an account (a string `sub`). Only that yes or
+ * no leaves the page; the response itself is dropped.
+ */
 async function pageSignedInCheck(url: string): Promise<boolean> {
   try {
     const response = await fetch(url, {
       credentials: "include",
       cache: "no-store",
+      redirect: "manual",
+      signal: AbortSignal.timeout(3000),
     });
-    return response.ok;
+    if (!response.ok) return false;
+    const body: unknown = await response.json();
+    const sub =
+      typeof body === "object" && body !== null
+        ? (body as Record<string, unknown>).sub
+        : undefined;
+    return typeof sub === "string" && sub.length > 0;
   } catch {
     return false;
   }

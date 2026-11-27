@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import type { ProviderInstanceRecord } from "../domain/model";
 import {
+  captureLiveSession,
   clearLiveSession,
   collectWithSavedSession,
   parkLiveSession,
@@ -621,9 +622,24 @@ describe("parkLiveSession", () => {
     });
   });
 
+  test("never saves a partitioned copy, but clears it with the saved sign-in", async () => {
+    const partitioned = {
+      ...cookie("Session", "embedded"),
+      partitionKey: { topLevelSite: "https://example.com" },
+    } as Browser.cookies.Cookie;
+    const api = fakeCookies([partitioned]);
+    await expect(captureLiveSession(spec(() => undefined), api)).resolves.toEqual([]);
+    await clearLiveSession(spec(() => undefined), api, [
+      { name: "Session", value: "live-a" },
+    ]);
+    expect(api.jar()).toHaveLength(0);
+  });
+
   test("reads cookies without a partition key where the browser rejects one", async () => {
     const api = fakeCookies([cookie("Session", "x")]);
-    vi.mocked(api.getAll).mockRejectedValueOnce(new Error("Unexpected property"));
+    vi.mocked(api.getAll).mockImplementationOnce(() => {
+      throw new TypeError("Unexpected property: 'partitionKey'");
+    });
     await clearLiveSession(spec(() => undefined), api);
     expect(api.getAll).toHaveBeenLastCalledWith({ domain: "cursor.com" });
     expect(api.jar()).toHaveLength(0);
