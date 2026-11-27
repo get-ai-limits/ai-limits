@@ -159,6 +159,12 @@ overview:
   allHiddenTitle: Every provider is hidden
   allHiddenCopy: They are still connected and keep refreshing. Show them again here or in Settings.
   showAll: Show all
+  allExhaustedTitle: Every plan is used up for now
+  allExhaustedCopy: Plans come back here when a limit resets. To see them now, turn off Hide used-up plans in Settings.
+  usedUp: Used up
+  usedUpUntil: "Used up · {reset}"
+  view: View
+  viewNamed: "View {label}"
   movedTo: "{label} moved to position {position} of {total}."
 
 providerDetail:
@@ -435,6 +441,8 @@ settings:
   automaticRefreshDescription: Checks connected providers about every 15 minutes. Scheduled refresh stays non-interactive and never takes over the browser.
   automaticOn: On · about every 15 minutes
   automaticOff: Off · refresh manually from the header
+  hideExhausted: Hide used-up plans
+  hideExhaustedDescription: Moves a plan off the Overview while every one of its usage pools is at its limit and no extra credits are left. It comes back when a limit resets. Hidden plans stay connected and keep refreshing.
   language: Language
   languageDescription: English and Simplified Chinese only. Other browser languages fall back to English. The browser’s own menus and the extension name stay in the browser’s language.
   languageFollowChrome: Follow browser
@@ -588,6 +596,7 @@ announcements:
   renameFailed: "Couldn’t rename {label}."
   arrangeFailed: Couldn’t save the provider order. Try again.
   visibilityFailed: "Couldn’t update {label}. Try again."
+  hideExhaustedFailed: Couldn’t update Hide used-up plans. Try again.
   localDataDeleted: Local usage data deleted and providers disconnected.
   localDataPartial: Local usage data deleted. Some provider access could not be removed.
   localDataFailed: Couldn’t delete local data.

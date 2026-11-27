@@ -29,6 +29,7 @@ import { ProviderMark } from "../components/ProviderMark";
 
 export interface SettingsViewProps {
   autoRefresh: boolean;
+  hideExhausted?: boolean;
   autoRefreshPending: boolean;
   localeOverride?: SupportedLocale;
   instances: ProviderInstanceView[];
@@ -40,6 +41,7 @@ export interface SettingsViewProps {
   onClose: () => void;
   onAddProvider: () => void;
   onAutoRefreshChange: (enabled: boolean) => void;
+  onHideExhaustedChange?: (enabled: boolean) => void;
   onLocaleOverrideChange: (locale: SupportedLocale | undefined) => void;
   onReconnectProvider: (
     providerKind: ProviderKind,
@@ -78,6 +80,7 @@ function freshness(instance: ProviderInstanceView, now: number): string {
 
 export function SettingsView({
   autoRefresh,
+  hideExhausted = false,
   autoRefreshPending,
   localeOverride,
   instances,
@@ -89,6 +92,7 @@ export function SettingsView({
   onClose,
   onAddProvider,
   onAutoRefreshChange,
+  onHideExhaustedChange = () => undefined,
   onLocaleOverrideChange,
   onReconnectProvider,
   onDisconnectInstance,
@@ -261,6 +265,31 @@ export function SettingsView({
               ? l10n.t("settings.automaticOn")
               : l10n.t("settings.automaticOff")}
           </p>
+        </section>
+
+        <section className="settings-surface" aria-labelledby="hide-exhausted-title">
+          <label className="settings-toggle">
+            <span className="settings-toggle__copy">
+              <strong id="hide-exhausted-title">
+                {l10n.t("settings.hideExhausted")}
+              </strong>
+              <small>{l10n.t("settings.hideExhaustedDescription")}</small>
+            </span>
+            <span className="settings-toggle__control">
+              <input
+                type="checkbox"
+                role="switch"
+                aria-label={l10n.t("settings.hideExhausted")}
+                checked={hideExhausted}
+                onChange={(event) =>
+                  onHideExhaustedChange(event.currentTarget.checked)
+                }
+              />
+              <span className="settings-toggle__track" aria-hidden="true">
+                <span />
+              </span>
+            </span>
+          </label>
         </section>
 
         <section className="settings-surface" aria-labelledby="connected-providers-title">

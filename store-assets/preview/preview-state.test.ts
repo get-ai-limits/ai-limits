@@ -168,7 +168,7 @@ describe("preview view state", () => {
     }));
 
     const work = updated.instances.find((instance) => instance.id === workId)!;
-    expect(updated.preferences).toEqual({ displayMode: "left", autoRefresh: false });
+    expect(updated.preferences).toEqual({ displayMode: "left", autoRefresh: false, hideExhausted: false });
     expect(work.userLabel).toBe("Renamed work relay");
     expect(Object.hasOwn(work, "snapshot")).toBe(false);
     expect(parseAppViewState(updated)).toEqual(updated);

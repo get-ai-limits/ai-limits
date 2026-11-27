@@ -219,7 +219,7 @@ export function createFixtureState(
   }
 
   return {
-    preferences: { displayMode: "used", autoRefresh: true },
+    preferences: { displayMode: "used", autoRefresh: true, hideExhausted: false },
     providers: fixtureProviderAvailability,
     instances,
   };
@@ -227,7 +227,7 @@ export function createFixtureState(
 
 export function createEmptyFixtureState(): AppViewState {
   return {
-    preferences: { displayMode: "used", autoRefresh: true },
+    preferences: { displayMode: "used", autoRefresh: true, hideExhausted: false },
     providers: fixtureProviderAvailability,
     instances: [],
   };

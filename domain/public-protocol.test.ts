@@ -32,7 +32,7 @@ const providers = [
 describe("public side-panel protocol", () => {
   test("reconstructs every accepted public state object instead of retaining source references", () => {
     const source = {
-      preferences: { displayMode: "used", autoRefresh: true },
+      preferences: { displayMode: "used", autoRefresh: true, hideExhausted: false },
       providers,
       instances: [
         {
@@ -118,7 +118,7 @@ describe("public side-panel protocol", () => {
 
   test("carries only a true hidden flag for an instance", () => {
     const view = (hidden: unknown) => ({
-      preferences: { displayMode: "used", autoRefresh: true },
+      preferences: { displayMode: "used", autoRefresh: true, hideExhausted: false },
       providers,
       instances: [
         {
@@ -141,7 +141,7 @@ describe("public side-panel protocol", () => {
     const baseUrl = "https://relay.example/gateway?token=synthetic-secret";
     expect(() =>
       parseAppViewState({
-        preferences: { displayMode: "used", autoRefresh: true },
+        preferences: { displayMode: "used", autoRefresh: true, hideExhausted: false },
         providers,
         instances: [
           {
@@ -188,7 +188,7 @@ describe("public side-panel protocol", () => {
     for (const instance of [inheritedId, inheritedOptional]) {
       expect(() =>
         parseAppViewState({
-          preferences: { displayMode: "used", autoRefresh: true },
+          preferences: { displayMode: "used", autoRefresh: true, hideExhausted: false },
           providers,
           instances: [instance],
         }),

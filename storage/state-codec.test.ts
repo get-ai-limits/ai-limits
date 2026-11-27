@@ -46,7 +46,7 @@ describe("V5 instance state codec", () => {
   test("starts with zero instances instead of materializing the catalog", () => {
     expect(createEmptyInstanceAppState()).toEqual({
       version: 5,
-      preferences: { displayMode: "used", autoRefresh: true },
+      preferences: { displayMode: "used", autoRefresh: true, hideExhausted: false },
       instances: [],
     });
     expect(normalizeInstanceAppState(undefined, now)).toEqual(
@@ -107,7 +107,7 @@ describe("V5 instance state codec", () => {
     const table = normalizeInstanceAppState(
       {
         version: 5,
-        preferences: { displayMode: "used", autoRefresh: true },
+        preferences: { displayMode: "used", autoRefresh: true, hideExhausted: false },
         instances: [instance],
       },
       now,
@@ -134,7 +134,7 @@ describe("V5 instance state codec", () => {
       normalizeInstanceAppState(
         {
           version: 5,
-          preferences: { displayMode: "used", autoRefresh: true },
+          preferences: { displayMode: "used", autoRefresh: true, hideExhausted: false },
           instances: [instance],
         },
         now,
@@ -153,7 +153,7 @@ describe("V5 instance state codec", () => {
       normalizeInstanceAppState(
         {
           version: 5,
-          preferences: { displayMode: "used", autoRefresh: true },
+          preferences: { displayMode: "used", autoRefresh: true, hideExhausted: false },
           instances: [instance],
         },
         now,
@@ -180,7 +180,7 @@ describe("V5 instance state codec", () => {
     const state = normalizeInstanceAppState(
       {
         version: 5,
-        preferences: { displayMode: "used", autoRefresh: true },
+        preferences: { displayMode: "used", autoRefresh: true, hideExhausted: false },
         instances: [valid, malformed],
       },
       now,
@@ -204,7 +204,7 @@ describe("V5 instance state codec", () => {
     const state = normalizeInstanceAppState(
       {
         version: 5,
-        preferences: { displayMode: "used", autoRefresh: true },
+        preferences: { displayMode: "used", autoRefresh: true, hideExhausted: false },
         instances: [
           firstKimi,
           { ...firstKimi, id: "kimi:550e8400-e29b-41d4-a716-446655440000" },
@@ -247,7 +247,7 @@ describe("V5 instance state codec", () => {
     const state = normalizeInstanceAppState(
       {
         version: 5,
-        preferences: { displayMode: "used", autoRefresh: true },
+        preferences: { displayMode: "used", autoRefresh: true, hideExhausted: false },
         instances: [
           { ...base, accountKey: key },
           {
@@ -393,7 +393,7 @@ describe("V5 instance state codec", () => {
     const [normalized] = normalizeInstanceAppState(
       {
         version: 5,
-        preferences: { displayMode: "used", autoRefresh: true },
+        preferences: { displayMode: "used", autoRefresh: true, hideExhausted: false },
         instances: [instance],
       },
       now,
@@ -467,7 +467,7 @@ describe("V5 instance state codec", () => {
     const state = normalizeInstanceAppState(
       {
         version: 5,
-        preferences: { displayMode: "used", autoRefresh: true },
+        preferences: { displayMode: "used", autoRefresh: true, hideExhausted: false },
         instances: ["true", true, "yes"].map((hidden, index) => ({
           id: ["kimi:default", "claude:default", "grok:default"][index],
           providerKind: ["kimi", "claude", "grok"][index],

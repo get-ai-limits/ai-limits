@@ -127,7 +127,7 @@ function toPublicState(state: AppViewState): AppViewState {
 
 function twoBlankSameOriginInstances(): AppViewState {
   return {
-    preferences: { displayMode: "used", autoRefresh: true },
+    preferences: { displayMode: "used", autoRefresh: true, hideExhausted: false },
     providers: createEmptyFixtureState().providers,
     instances: [
       {
@@ -322,7 +322,7 @@ describe("side-panel App", () => {
     const personalId = "newapi:11111111-1111-4111-8111-111111111111";
     const workId = "newapi:22222222-2222-4222-8222-222222222222";
     const state: AppViewState = {
-      preferences: { displayMode: "used", autoRefresh: true },
+      preferences: { displayMode: "used", autoRefresh: true, hideExhausted: false },
       providers: createEmptyFixtureState().providers,
       instances: [
         {
@@ -1791,6 +1791,40 @@ describe("side-panel App", () => {
     await act(async () => finishHide?.(saved));
     fireEvent.click(screen.getByRole("button", { name: "Done" }));
     expect(screen.getByText("1 hidden")).toBeInTheDocument();
+  });
+
+  test("saves hiding used-up plans and restores the switch when saving fails", async () => {
+    const state = createFixtureState(NOW);
+    const commands: Record<string, unknown>[] = [];
+    let failSave: ((reason: unknown) => void) | undefined;
+    vi.spyOn(browser.runtime, "sendMessage").mockImplementation(
+      async (message: unknown) => {
+        const command = message as Record<string, unknown>;
+        commands.push(command);
+        if (command.type === "SET_HIDE_EXHAUSTED") {
+          return new Promise((_resolve, reject) => {
+            failSave = reject;
+          }) as never;
+        }
+        return toPublicState(state) as never;
+      },
+    );
+
+    render(<App />);
+    await screen.findByText("ChatGPT");
+    fireEvent.click(screen.getByRole("button", { name: "Settings" }));
+    fireEvent.click(screen.getByRole("switch", { name: "Hide used-up plans" }));
+
+    expect(screen.getByRole("switch", { name: "Hide used-up plans" })).toBeChecked();
+    expect(commands).toContainEqual({ type: "SET_HIDE_EXHAUSTED", enabled: true });
+
+    await act(async () => failSave?.(new Error("worker unavailable")));
+    expect(
+      screen.getByRole("switch", { name: "Hide used-up plans" }),
+    ).not.toBeChecked();
+    expect(
+      await screen.findByText("Couldn’t update Hide used-up plans. Try again."),
+    ).toBeInTheDocument();
   });
 
   test("keeps an unsaved hide when another setting's response predates it", async () => {

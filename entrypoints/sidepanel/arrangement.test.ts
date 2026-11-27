@@ -12,7 +12,7 @@ const ids = ["chatgpt:default", "claude:default", "kimi:default"];
 
 function state(): AppViewState {
   return {
-    preferences: { displayMode: "used", autoRefresh: true },
+    preferences: { displayMode: "used", autoRefresh: true, hideExhausted: false },
     providers: [],
     instances: ids.map((id, index) => ({
       id,

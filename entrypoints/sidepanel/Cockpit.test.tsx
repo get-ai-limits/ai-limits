@@ -187,7 +187,7 @@ function twoNewApiInstances(): AppViewState {
     },
   ];
   return {
-    preferences: { displayMode: "used", autoRefresh: true },
+    preferences: { displayMode: "used", autoRefresh: true, hideExhausted: false },
     providers: createEmptyFixtureState().providers,
     instances: [
       {
@@ -1806,7 +1806,7 @@ describe("Cockpit", () => {
 
   it("labels an existing permission-required Cursor action as Reconnect", () => {
     const state: AppViewState = {
-      preferences: { displayMode: "used", autoRefresh: true },
+      preferences: { displayMode: "used", autoRefresh: true, hideExhausted: false },
       providers: createEmptyFixtureState().providers,
       instances: [
         {

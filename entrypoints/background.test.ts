@@ -32,7 +32,7 @@ function deferred<T>() {
 
 const emptyState: InstanceAppState = {
   version: 5,
-  preferences: { displayMode: "used", autoRefresh: true },
+  preferences: { displayMode: "used", autoRefresh: true, hideExhausted: false },
   instances: [],
 };
 
@@ -98,6 +98,7 @@ function fakeService(overrides: Partial<ProviderService> = {}): ProviderService 
     getState: vi.fn(async () => emptyState),
     setDisplayMode: vi.fn(async () => undefined),
     setAutoRefresh: vi.fn(async () => undefined),
+    setHideExhausted: vi.fn(async () => undefined),
   };
   return { ...service, ...overrides };
 }
@@ -209,7 +210,7 @@ describe("service-worker activation barrier", () => {
     vault.resolve();
     await registration.activation;
     await expect(stateResponse).resolves.toEqual({
-      preferences: { displayMode: "used", autoRefresh: true },
+      preferences: { displayMode: "used", autoRefresh: true, hideExhausted: false },
       providers: expect.any(Array),
       instances: [],
     });
@@ -520,7 +521,7 @@ describe("instance runtime wiring", () => {
 
     const response = await invoke(runtimeListener!, { type: "GET_STATE" });
     expect(response).toEqual({
-      preferences: { displayMode: "used", autoRefresh: true },
+      preferences: { displayMode: "used", autoRefresh: true, hideExhausted: false },
       providers: expect.any(Array),
       instances: [
         {

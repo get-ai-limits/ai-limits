@@ -82,7 +82,7 @@ describe("published 0.2.3 storage migration", () => {
     expect(result).toEqual({
       state: {
         version: 5,
-        preferences: { displayMode: "left", autoRefresh: false },
+        preferences: { displayMode: "left", autoRefresh: false, hideExhausted: false },
         instances: [],
       },
       credentialState: { version: 2, credentials: {} },
@@ -652,7 +652,7 @@ describe("published 0.2.3 storage migration", () => {
       {
         aiLimitsState: {
           version: 5,
-          preferences: { displayMode: "used", autoRefresh: true },
+          preferences: { displayMode: "used", autoRefresh: true, hideExhausted: false },
           instances: [],
         },
         aiLimitsCredentials: {
@@ -750,7 +750,7 @@ describe("published 0.2.3 storage migration", () => {
       {
         aiLimitsState: {
           version: 5,
-          preferences: { displayMode: "used", autoRefresh: true },
+          preferences: { displayMode: "used", autoRefresh: true, hideExhausted: false },
           instances: [
             {
               id: "elevenlabs:default",

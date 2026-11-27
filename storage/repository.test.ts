@@ -35,7 +35,7 @@ describe("queued instance repositories", () => {
   test("starts with an empty V5 state", async () => {
     await expect(repository.loadInstanceAppState()).resolves.toEqual({
       version: 5,
-      preferences: { displayMode: "used", autoRefresh: true },
+      preferences: { displayMode: "used", autoRefresh: true, hideExhausted: false },
       instances: [],
     });
   });
@@ -176,7 +176,7 @@ describe("queued instance repositories", () => {
 
     await expect(repository.loadInstanceAppState()).resolves.toEqual({
       version: 5,
-      preferences: { displayMode: "used", autoRefresh: true },
+      preferences: { displayMode: "used", autoRefresh: true, hideExhausted: false },
       instances: [{ ...instance, userLabel: "After" }],
     });
     expect(JSON.stringify(await browser.storage.local.get("aiLimitsState")))
@@ -416,11 +416,12 @@ describe("queued instance repositories", () => {
 
     await repository.preferencesRepository.setDisplayMode("left");
     await repository.preferencesRepository.setAutoRefresh(false);
+    await repository.preferencesRepository.setHideExhausted(true);
     await repository.connectionRepository.delete(first.id);
 
     await expect(repository.loadInstanceAppState()).resolves.toEqual({
       version: 5,
-      preferences: { displayMode: "left", autoRefresh: false },
+      preferences: { displayMode: "left", autoRefresh: false, hideExhausted: true },
       instances: [second],
     });
   });
@@ -499,7 +500,7 @@ describe("queued instance repositories", () => {
 
     await expect(repository.deleteAllInstanceData()).resolves.toEqual({
       version: 5,
-      preferences: { displayMode: "used", autoRefresh: true },
+      preferences: { displayMode: "used", autoRefresh: true, hideExhausted: false },
       instances: [],
     });
     await expect(browser.storage.local.get("unrelated")).resolves.toEqual({

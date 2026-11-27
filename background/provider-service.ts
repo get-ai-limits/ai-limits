@@ -149,6 +149,7 @@ export interface ProviderService {
   getState(): Promise<InstanceAppState>;
   setDisplayMode(mode: DisplayMode): Promise<void>;
   setAutoRefresh(enabled: boolean): Promise<void>;
+  setHideExhausted(enabled: boolean): Promise<void>;
 }
 
 export interface ProviderServiceOptions {
@@ -1200,5 +1201,7 @@ export function createProviderService(
     getState: loadInstanceAppState,
     setDisplayMode: (mode) => preferencesRepository.setDisplayMode(mode),
     setAutoRefresh: (enabled) => preferencesRepository.setAutoRefresh(enabled),
+    setHideExhausted: (enabled) =>
+      preferencesRepository.setHideExhausted(enabled),
   };
 }
