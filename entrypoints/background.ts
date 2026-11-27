@@ -197,6 +197,10 @@ async function activateBackground(
       await service.setDisplayMode(mode);
       return currentView();
     },
+    async setHideExhausted(enabled) {
+      await service.setHideExhausted(enabled);
+      return currentView();
+    },
     async setAutoRefresh(enabled) {
       await updateAutoRefreshTransaction(enabled, {
         readState: () => service.getState(),

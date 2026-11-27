@@ -27,6 +27,7 @@ describe("strict instance runtime protocol", () => {
       getState: vi.fn(async () => "state"),
       setDisplayMode: vi.fn(async () => "display"),
       setAutoRefresh: vi.fn(async () => "auto"),
+      setHideExhausted: vi.fn(async () => "hide-exhausted"),
       deleteLocalData: vi.fn(async () => "deleted"),
     };
     const handle = createRuntimeCommandHandler(handlers);
@@ -84,6 +85,8 @@ describe("strict instance runtime protocol", () => {
     await expect(handle({ type: "GET_STATE" })).resolves.toBe("state");
     await expect(handle({ type: "SET_DISPLAY_MODE", mode: "left" })).resolves.toBe("display");
     await expect(handle({ type: "SET_AUTO_REFRESH", enabled: false })).resolves.toBe("auto");
+    await expect(handle({ type: "SET_HIDE_EXHAUSTED", enabled: true })).resolves.toBe("hide-exhausted");
+    expect(handlers.setHideExhausted).toHaveBeenCalledWith(true);
     await expect(handle({ type: "DELETE_LOCAL_DATA" })).resolves.toBe("deleted");
     await expect(
       handle({
@@ -181,6 +184,9 @@ describe("strict instance runtime protocol", () => {
       config: { kind: "fixed", password: "nested-secret" },
       apiKey: "secret",
     },
+    { type: "SET_HIDE_EXHAUSTED" },
+    { type: "SET_HIDE_EXHAUSTED", enabled: "true" },
+    { type: "SET_HIDE_EXHAUSTED", enabled: true, extra: 1 },
   ])("rejects malformed, legacy, or secret-extended command %#", (command) => {
     expect(isRuntimeCommand(command)).toBe(false);
   });

@@ -6,7 +6,7 @@ import { createEmptyFixtureState } from "../../providers/fixtures";
 import { prepareFidelityViewState } from "./fidelity-state";
 
 const state: AppViewState = {
-  preferences: { displayMode: "used", autoRefresh: true },
+  preferences: { displayMode: "used", autoRefresh: true, hideExhausted: false },
   providers: createEmptyFixtureState().providers,
   instances: [
     {

@@ -28,29 +28,57 @@ function instance(
   };
 }
 
-function arrangedState(instances: ProviderInstanceView[]): AppViewState {
+function arrangedState(
+  instances: ProviderInstanceView[],
+  hideExhausted = false,
+): AppViewState {
   return {
-    preferences: { displayMode: "used", autoRefresh: true },
+    preferences: { displayMode: "used", autoRefresh: true, hideExhausted },
     providers: createEmptyFixtureState().providers,
     instances,
   };
 }
 
-function renderArranged(instances: ProviderInstanceView[]) {
+function renderArranged(
+  instances: ProviderInstanceView[],
+  { hideExhausted = false }: { hideExhausted?: boolean } = {},
+) {
   const onReorderInstances = vi.fn();
   const onSetInstanceHidden = vi.fn();
+  const onHideExhaustedChange = vi.fn();
   const view = render(
     <Cockpit
-      state={arrangedState(instances)}
+      state={arrangedState(instances, hideExhausted)}
       now={NOW}
       onDisplayModeChange={vi.fn()}
       onRefresh={vi.fn()}
       onConnectProvider={vi.fn()}
       onReorderInstances={onReorderInstances}
       onSetInstanceHidden={onSetInstanceHidden}
+      onHideExhaustedChange={onHideExhaustedChange}
     />,
   );
-  return { ...view, onReorderInstances, onSetInstanceHidden };
+  return { ...view, onReorderInstances, onSetInstanceHidden, onHideExhaustedChange };
+}
+
+function usedUpClaude(resetsAt = NOW + 2 * 60 * 60 * 1_000): Partial<ProviderInstanceView> {
+  return {
+    snapshot: {
+      providerKind: "claude",
+      source: "web-session",
+      fetchedAt: NOW,
+      metrics: [
+        {
+          type: "quota",
+          id: "five-hour",
+          label: "5-hour messages",
+          scope: "general",
+          usedRatio: 1,
+          cycle: { cadence: "rolling", resetsAt },
+        },
+      ],
+    },
+  };
 }
 
 function overviewCardNames() {
@@ -90,6 +118,120 @@ describe("provider arrangement", () => {
       ["chatgpt:default", false],
       ["claude:default", false],
     ]);
+  });
+
+  it("keeps used-up plans on the Overview until the setting hides them", () => {
+    renderArranged([
+      instance("chatgpt:default"),
+      instance("claude:default", usedUpClaude()),
+    ]);
+    expect(overviewCardNames()).toEqual(["ChatGPT", "Claude"]);
+    expect(screen.queryByText(/hidden$/)).toBeNull();
+  });
+
+  it("moves used-up plans into the hidden list with when they come back", () => {
+    const resetsAt = NOW + 2 * 60 * 60 * 1_000;
+    renderArranged(
+      [
+        instance("chatgpt:default"),
+        instance("claude:default", usedUpClaude(resetsAt)),
+        instance("kimi:default", { hidden: true }),
+      ],
+      { hideExhausted: true },
+    );
+
+    expect(overviewCardNames()).toEqual(["ChatGPT"]);
+    expect(screen.getByText("2 hidden")).toBeInTheDocument();
+    expect(screen.getByText(/^Used up · Resets /)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Show Kimi" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "View Claude" }));
+    expect(
+      screen.getByRole("heading", { level: 1, name: /Claude/ }),
+    ).toBeVisible();
+  });
+
+  it("reopens the hidden list when returning from a used-up plan", () => {
+    renderArranged(
+      [instance("chatgpt:default"), instance("claude:default", usedUpClaude())],
+      { hideExhausted: true },
+    );
+    fireEvent.click(screen.getByText("1 hidden"));
+    fireEvent.click(screen.getByRole("button", { name: "View Claude" }));
+    fireEvent.click(screen.getByRole("button", { name: "Overview" }));
+
+    const view = screen.getByRole("button", { name: "View Claude" });
+    expect(view.closest("details")).toHaveProperty("open", true);
+    expect(view).toHaveFocus();
+  });
+
+  it("keeps a used-up plan's card when its last refresh failed", () => {
+    renderArranged(
+      [
+        instance("claude:default", {
+          ...usedUpClaude(),
+          lastAttempt: {
+            trigger: "manual_provider",
+            startedAt: NOW,
+            finishedAt: NOW,
+            outcome: { kind: "failure", category: "signed_out" },
+          },
+        }),
+      ],
+      { hideExhausted: true },
+    );
+    expect(overviewCardNames()).toEqual(["Claude"]);
+  });
+
+  it("moves focus to the hidden list when a focused card becomes used up", () => {
+    const view = renderArranged(
+      [instance("chatgpt:default"), instance("claude:default")],
+      { hideExhausted: true },
+    );
+    screen.getByRole("button", { name: "Refresh Claude" }).focus();
+    view.rerender(
+      <Cockpit
+        state={arrangedState(
+          [instance("chatgpt:default"), instance("claude:default", usedUpClaude())],
+          true,
+        )}
+        now={NOW}
+        onDisplayModeChange={vi.fn()}
+        onRefresh={vi.fn()}
+        onConnectProvider={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("1 hidden")).toHaveFocus();
+  });
+
+  it("brings a used-up plan back once its window resets", () => {
+    renderArranged(
+      [instance("claude:default", usedUpClaude(NOW - 1))],
+      { hideExhausted: true },
+    );
+    expect(overviewCardNames()).toEqual(["Claude"]);
+  });
+
+  it("explains an Overview where every plan is used up", () => {
+    renderArranged(
+      [instance("claude:default", usedUpClaude())],
+      { hideExhausted: true },
+    );
+    expect(
+      screen.getByRole("heading", { name: "Every plan is used up for now" }),
+    ).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Show all" })).toBeNull();
+    expect(screen.getByText("1 hidden")).toBeInTheDocument();
+  });
+
+  it("turns hiding used-up plans on from Settings", () => {
+    const { onHideExhaustedChange } = renderArranged([instance("chatgpt:default")]);
+    fireEvent.click(screen.getByRole("button", { name: "Settings" }));
+
+    const toggle = screen.getByRole("switch", { name: "Hide used-up plans" });
+    expect(toggle).not.toBeChecked();
+    fireEvent.click(toggle);
+    expect(onHideExhaustedChange).toHaveBeenCalledWith(true);
   });
 
   it("arranges connected providers by keyboard without moving ones awaiting reconnection", () => {

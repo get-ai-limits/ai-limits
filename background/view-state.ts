@@ -188,6 +188,7 @@ export function projectAppViewState(state: InstanceAppState): AppViewState {
     preferences: {
       displayMode: state.preferences.displayMode,
       autoRefresh: state.preferences.autoRefresh,
+      hideExhausted: state.preferences.hideExhausted,
     },
     providers: providerKinds.map((providerKind) => {
       const provider = providerRegistry[providerKind];

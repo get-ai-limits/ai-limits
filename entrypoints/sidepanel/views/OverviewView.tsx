@@ -22,6 +22,8 @@ export interface OverviewProvider {
   providerKind: ProviderKind;
   card: Omit<ProviderCardProps, "operation" | "action">;
   hidden?: boolean;
+  /** Set while Settings hides used-up plans and every pool of this one is used up. */
+  exhausted?: { reopensLabel?: string };
   needsApiKeyReplacement?: boolean;
 }
 
@@ -59,8 +61,16 @@ export function OverviewView({
   const focusOnModeChange = useRef(false);
   const overviewRef = useRef<HTMLElement>(null);
   const focusShownProvider = useRef<ProviderInstanceId | undefined>(undefined);
-  const visibleProviders = providers.filter(({ hidden }) => !hidden);
+  const visibleProviders = providers.filter(
+    ({ hidden, exhausted }) => !hidden && !exhausted,
+  );
   const hiddenProviders = providers.filter(({ hidden }) => hidden);
+  const exhaustedProviders = providers.filter(
+    ({ hidden, exhausted }) => !hidden && exhausted,
+  );
+  const tuckedAwayCount = hiddenProviders.length + exhaustedProviders.length;
+  const hiddenSummaryRef = useRef<HTMLElement>(null);
+  const exhaustedIds = useRef<Set<ProviderInstanceId> | undefined>(undefined);
 
   useEffect(() => {
     if (!focusOnModeChange.current) return;
@@ -81,6 +91,22 @@ export function OverviewView({
         `[data-focus-key="overview-provider-${instanceId}"]`,
       )
       ?.focus();
+  }, [providers]);
+
+  // A card that becomes used up while it holds focus leaves the Overview, so
+  // focus moves to the hidden list that now counts it.
+  useEffect(() => {
+    const previous = exhaustedIds.current;
+    exhaustedIds.current = new Set(
+      exhaustedProviders.map(({ instanceId }) => instanceId),
+    );
+    if (!previous) return;
+    const newlyUsedUp = exhaustedProviders.some(
+      ({ instanceId }) => !previous.has(instanceId),
+    );
+    const focusLost =
+      document.activeElement === null || document.activeElement === document.body;
+    if (newlyUsedUp && focusLost) hiddenSummaryRef.current?.focus();
   }, [providers]);
 
   const showProvider = (instanceId: ProviderInstanceId) => {
@@ -129,7 +155,12 @@ export function OverviewView({
       <h2 className="visually-hidden" id="overview-title">
         {l10n.t("overview.screen")}
       </h2>
-      {visibleProviders.length === 0 ? (
+      {visibleProviders.length === 0 && hiddenProviders.length === 0 ? (
+        <div className="overview-all-hidden">
+          <h3>{l10n.t("overview.allExhaustedTitle")}</h3>
+          <p>{l10n.t("overview.allExhaustedCopy")}</p>
+        </div>
+      ) : visibleProviders.length === 0 ? (
         <div className="overview-all-hidden">
           <h3>{l10n.t("overview.allHiddenTitle")}</h3>
           <p>{l10n.t("overview.allHiddenCopy")}</p>
@@ -196,12 +227,38 @@ export function OverviewView({
           );
         })}
       </div>
-      {hiddenProviders.length > 0 && visibleProviders.length > 0 ? (
+      {exhaustedProviders.length > 0 ||
+      (hiddenProviders.length > 0 && visibleProviders.length > 0) ? (
         <details className="overview-hidden">
-          <summary>
-            {l10n.count("overview.hiddenCount", hiddenProviders.length)}
+          <summary ref={hiddenSummaryRef}>
+            {l10n.count("overview.hiddenCount", tuckedAwayCount)}
           </summary>
           <ul>
+            {exhaustedProviders.map(({ instanceId, providerKind, card, exhausted }) => (
+              <li key={instanceId}>
+                <ProviderMark providerId={providerKind} size="sm" />
+                <span>
+                  {card.instanceLabel}
+                  <small className="overview-hidden__note">
+                    {exhausted?.reopensLabel === undefined
+                      ? l10n.t("overview.usedUp")
+                      : l10n.t("overview.usedUpUntil", {
+                          reset: exhausted.reopensLabel,
+                        })}
+                  </small>
+                </span>
+                <button
+                  type="button"
+                  data-focus-key={`overview-provider-${instanceId}`}
+                  aria-label={l10n.t("overview.viewNamed", {
+                    label: card.instanceLabel,
+                  })}
+                  onClick={() => onOpenProvider(instanceId)}
+                >
+                  <span aria-hidden="true">{l10n.t("overview.view")}</span>
+                </button>
+              </li>
+            ))}
             {hiddenProviders.map(({ instanceId, providerKind, card }) => (
               <li key={instanceId}>
                 <ProviderMark providerId={providerKind} size="sm" />

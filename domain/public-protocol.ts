@@ -156,6 +156,7 @@ export {
   type ProviderBalanceCategory,
   type ProviderPresentation,
 } from "./provider-presentation";
+export { planExhaustion, type PlanExhaustion } from "./usage-pools";
 
 export interface ProviderAvailabilityView {
   providerKind: ProviderKind;
@@ -203,6 +204,7 @@ export interface AppViewState {
   preferences: {
     displayMode: DisplayMode;
     autoRefresh: boolean;
+    hideExhausted: boolean;
   };
   providers: ProviderAvailabilityView[];
   instances: ProviderInstanceView[];
@@ -281,6 +283,7 @@ export type RuntimeCommand =
   | { type: "GET_STATE" }
   | { type: "SET_DISPLAY_MODE"; mode: DisplayMode }
   | { type: "SET_AUTO_REFRESH"; enabled: boolean }
+  | { type: "SET_HIDE_EXHAUSTED"; enabled: boolean }
   | { type: "DELETE_LOCAL_DATA" };
 
 export interface RuntimeCommandFailure {
@@ -965,10 +968,15 @@ function parseProviderAvailability(value: unknown): ProviderAvailabilityView {
 export function parseAppViewState(value: unknown): AppViewState {
   if (
     !hasExactKeys(value, ["preferences", "providers", "instances"]) ||
-    !hasExactKeys(value.preferences, ["displayMode", "autoRefresh"]) ||
+    !hasExactKeys(value.preferences, [
+      "displayMode",
+      "autoRefresh",
+      "hideExhausted",
+    ]) ||
     (value.preferences.displayMode !== "used" &&
       value.preferences.displayMode !== "left") ||
     typeof value.preferences.autoRefresh !== "boolean" ||
+    typeof value.preferences.hideExhausted !== "boolean" ||
     !Array.isArray(value.providers) ||
     !Array.isArray(value.instances)
   ) {
@@ -978,6 +986,7 @@ export function parseAppViewState(value: unknown): AppViewState {
     preferences: {
       displayMode: value.preferences.displayMode,
       autoRefresh: value.preferences.autoRefresh,
+      hideExhausted: value.preferences.hideExhausted,
     },
     providers: value.providers.map(parseProviderAvailability),
     instances: value.instances.map(parseProviderInstanceView),

@@ -23,6 +23,7 @@ import {
   fallbackPolicy,
   meterPolicy,
   paceStatus,
+  planExhaustion,
   providerAvailability,
   providerKinds,
   providerPresentation,
@@ -99,6 +100,7 @@ export interface CockpitProps {
   onSubmitApiKey?: (submission: ApiKeySubmission) => Promise<ApiKeyConnectAttemptResult>;
   onRefreshInstance?: (instanceId: ProviderInstanceId) => void;
   onAutoRefreshChange?: (enabled: boolean) => void;
+  onHideExhaustedChange?: (enabled: boolean) => void;
   onLocaleOverrideChange?: (locale: SupportedLocale | undefined) => void;
   onDisconnectInstance?: (instanceId: ProviderInstanceId) => void;
   onRenameInstance?: (
@@ -485,6 +487,7 @@ export function Cockpit({
   onSubmitApiKey = async () => "temporary_error",
   onRefreshInstance = () => undefined,
   onAutoRefreshChange = () => undefined,
+  onHideExhaustedChange = () => undefined,
   onLocaleOverrideChange = () => undefined,
   onDisconnectInstance = () => undefined,
   onRenameInstance = async () => true,
@@ -529,6 +532,10 @@ export function Cockpit({
       const dynamicTarget = cockpitRef.current?.querySelector<HTMLElement>(
         `[data-focus-key="${focusKey}"]`,
       );
+      // A target in a collapsed list, such as a used-up plan's View button,
+      // can't take focus until its list is open again.
+      const collapsed = dynamicTarget?.closest("details");
+      if (!staticTarget && collapsed) collapsed.open = true;
       (staticTarget ?? dynamicTarget)?.focus();
     }
   }, [view]);
@@ -680,11 +687,28 @@ export function Cockpit({
       instance.lastAttempt?.outcome.kind === "failure"
         ? instance.lastAttempt.outcome.category
         : undefined;
+    // A plan whose last refresh failed keeps its card, so its error and any
+    // reconnect or replace-key action stay on the Overview.
+    const exhaustion =
+      state.preferences.hideExhausted &&
+      instance.hidden !== true &&
+      failureCategory === undefined
+        ? planExhaustion(instance.snapshot, now)
+        : undefined;
     return {
       instanceId: instance.id,
       providerKind: instance.providerKind,
       card,
       hidden: instance.hidden === true,
+      ...(exhaustion?.exhausted
+        ? {
+            exhausted: {
+              ...(exhaustion.reopensAt === undefined
+                ? {}
+                : { reopensLabel: formatReset(exhaustion.reopensAt) }),
+            },
+          }
+        : {}),
       needsApiKeyReplacement:
         providerAvailability(state, instance.providerKind).credentialKind === "api-key" &&
         (failureCategory === "credential_invalid" ||
@@ -904,6 +928,7 @@ export function Cockpit({
       ) : view.name === "settings" ? (
         <SettingsView
           autoRefresh={state.preferences.autoRefresh}
+          hideExhausted={state.preferences.hideExhausted}
           autoRefreshPending={autoRefreshPending}
           localeOverride={localeOverride}
           instances={state.instances}
@@ -921,6 +946,7 @@ export function Cockpit({
             pushScreen({ name: "add-provider" }, "settings-add-provider")
           }
           onAutoRefreshChange={onAutoRefreshChange}
+          onHideExhaustedChange={onHideExhaustedChange}
           onLocaleOverrideChange={onLocaleOverrideChange}
           onReconnectProvider={connectProvider}
           onDisconnectInstance={disconnectInstance}

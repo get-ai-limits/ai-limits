@@ -410,6 +410,16 @@ export function App() {
       }),
     );
 
+  const handleHideExhaustedChange = (enabled: boolean) =>
+    mutateArrangement(
+      (state) => ({
+        ...state,
+        preferences: { ...state.preferences, hideExhausted: enabled },
+      }),
+      { type: "SET_HIDE_EXHAUSTED", enabled },
+      l10n.t("announcements.hideExhaustedFailed"),
+    );
+
   const abandonPermissionIntent = async (permissionIntentId: string) => {
     try {
       commitViewState(
@@ -978,6 +988,7 @@ export function App() {
       onSubmitApiKey={handleSubmitApiKey}
       onRefreshInstance={(instanceId) => void handleRefreshInstance(instanceId)}
       onAutoRefreshChange={(enabled) => void handleAutoRefreshChange(enabled)}
+      onHideExhaustedChange={(enabled) => void handleHideExhaustedChange(enabled)}
       onLocaleOverrideChange={(locale) => void handleLocaleOverrideChange(locale)}
       onDisconnectInstance={(instanceId) => void handleDisconnectInstance(instanceId)}
       onRenameInstance={handleRenameInstance}
