@@ -56,6 +56,15 @@ function fakeService(overrides: Partial<ProviderService> = {}): ProviderService 
       finishedAt: 2,
       results: [],
     })),
+    connectBrowserProviderWithSignIn: vi.fn(async () => ({
+      report: {
+        trigger: "connect" as const,
+        startedAt: 1,
+        finishedAt: 2,
+        results: [],
+      },
+    })),
+    openSignIn: vi.fn(async () => true),
     connectApiKeyProvider: vi.fn(async () => ({
       report: {
         trigger: "connect" as const,

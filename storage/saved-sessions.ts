@@ -9,7 +9,7 @@ import { isProviderInstanceId, type ProviderInstanceId } from "../domain/model";
 
 export const SAVED_SESSION_STORAGE_KEY = "aiLimitsSavedSessions";
 /** The most cookies one saved sign-in keeps. */
-export const MAX_SAVED_SESSION_COOKIES = 32;
+export const MAX_SAVED_SESSION_COOKIES = 64;
 const MAX_COOKIE_NAME_LENGTH = 128;
 const MAX_COOKIE_VALUE_LENGTH = 8_192;
 
@@ -36,10 +36,11 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
 
-// Cookie names are RFC 6265 tokens; values are cookie-octets. Anything else
+// Cookie names are RFC 6265 tokens. Values may be any printable ASCII but
+// `;`, as browsers send them: anything else (a control character or a `;`)
 // could break or inject into the Cookie header, so it is dropped.
 const COOKIE_NAME = /^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/;
-const COOKIE_VALUE = /^[\x21\x23-\x2B\x2D-\x3A\x3C-\x5B\x5D-\x7E]*$/;
+const COOKIE_VALUE = /^[\x20-\x3A\x3C-\x7E]*$/;
 
 function normalizeCookie(value: unknown): SavedSessionCookie | undefined {
   if (!isRecord(value)) return undefined;

@@ -262,7 +262,8 @@ its own card, History, and name, which you can change in Settings.
   account has its own key, so all of them refresh.
 - **ChatGPT and Cursor** read the account signed in on chatgpt.com or
   cursor.com, and a browser holds only one at a time. When you choose **Add
-  account**, AI Limits asks for the optional `cookies` permission. It saves
+  account**, a short guide in the side panel walks you through it. AI Limits
+  asks for the optional `cookies` permission, saves
   the current sign-in for its card, signs the browser out of that site on
   this device, and opens the sign-in page for the next account. After that,
   every account keeps refreshing, whichever one the browser is signed in to.

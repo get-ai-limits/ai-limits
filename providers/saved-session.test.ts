@@ -421,11 +421,35 @@ describe("parkLiveSession", () => {
     expect(api.jar().map(({ name }) => name).sort()).toEqual(["_ga", "cf_clearance"]);
   });
 
-  test("leaves a sign-in too large to save whole in the browser", async () => {
-    const extra = Array.from({ length: 40 }, (_, index) =>
-      cookie(`extra-${index}`, "sealed"),
+  test("saves the sign-in cookies storage can hold and leaves the rest in the browser", async () => {
+    const extra = Array.from({ length: 70 }, (_, index) =>
+      cookie(`extra-${String(index).padStart(2, "0")}`, "sealed"),
     );
-    const api = fakeCookies([cookie("Session", "live-a"), ...extra]);
+    const api = fakeCookies([
+      ...extra,
+      cookie("Session", "live-a"),
+      cookie("odd", "bad\u0001value"),
+    ]);
+    const { env } = environment(api);
+
+    await expect(
+      parkLiveSession(spec(() => KEY_A), [instance(A, KEY_A)], services, env),
+    ).resolves.toBe("parked");
+
+    const saved = await readSavedSession(A);
+    expect(saved?.cookies[0]).toMatchObject({ name: "Session", value: "live-a" });
+    expect(saved?.cookies).toHaveLength(64);
+    expect(saved?.cookies.map(({ name }) => name)).not.toContain("odd");
+    // Only what was saved left the browser.
+    expect(api.jar()).toHaveLength(72 - 64);
+    expect(api.jar().map(({ name }) => name)).toContain("odd");
+  });
+
+  test("leaves a sign-in whose session cookie cannot be saved in the browser", async () => {
+    const api = fakeCookies([
+      cookie("Session", "bad\u0001value"),
+      cookie("restore-session", "sealed-a"),
+    ]);
     const { env } = environment(api);
 
     await expect(
@@ -433,18 +457,23 @@ describe("parkLiveSession", () => {
     ).resolves.toBe("unavailable");
 
     await expect(readSavedSession(A)).resolves.toBeUndefined();
-    expect(api.jar()).toHaveLength(41);
+    expect(api.jar()).toHaveLength(2);
   });
 
-  test("leaves a sign-in with a cookie it cannot save in the browser", async () => {
+  test("leaves a sign-in in the browser when one of its named cookies cannot be saved", async () => {
     const api = fakeCookies([
-      cookie("Session", "live-a"),
-      cookie("restore-session", '"quoted value"'),
+      cookie("Session.0", "live-a"),
+      cookie("Session.1", "bad\u0001value"),
     ]);
     const { env } = environment(api);
+    const chunked: SavedSessionSpec = {
+      ...spec(() => KEY_A),
+      isAuthCookie: (name) => name.startsWith("Session."),
+      isSessionCookie: (name) => name.startsWith("Session."),
+    };
 
     await expect(
-      parkLiveSession(spec(() => KEY_A), [instance(A, KEY_A)], services, env),
+      parkLiveSession(chunked, [instance(A, KEY_A)], services, env),
     ).resolves.toBe("unavailable");
 
     await expect(readSavedSession(A)).resolves.toBeUndefined();

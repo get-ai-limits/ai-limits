@@ -268,6 +268,7 @@ export type RuntimeCommand =
   | { type: "ABANDON_PROVIDER_PERMISSION"; permissionIntentId: string }
   | ConnectApiKeyProviderCommand
   | { type: "REFRESH_INSTANCE"; instanceId: ProviderInstanceId }
+  | { type: "OPEN_SIGN_IN"; providerKind: BrowserSessionProviderKind }
   | {
       type: "RENAME_INSTANCE";
       instanceId: ProviderInstanceId;
@@ -304,9 +305,37 @@ export interface ConnectApiKeyProviderResult {
   result: ApiKeyConnectionStatus;
 }
 
+/**
+ * How Add account got the browser ready for the next account's sign-in:
+ * `waiting` when the browser is signed out and the sign-in page is open,
+ * `tab_failed` when it is signed out but the page could not open, and
+ * `not_saved` when the current sign-in could not be saved, so the browser
+ * was left signed in.
+ */
+export type AddAccountSignIn = "waiting" | "tab_failed" | "not_saved";
+
+const addAccountSignIns = new Set<AddAccountSignIn>([
+  "waiting",
+  "tab_failed",
+  "not_saved",
+]);
+
 export interface RefreshResponse {
   state: AppViewState;
   report: RefreshReport;
+  /** Only on Add account for a provider with saved sign-ins. */
+  signIn?: AddAccountSignIn;
+}
+
+export interface OpenSignInResponse {
+  opened: boolean;
+}
+
+export function parseOpenSignInResponse(value: unknown): OpenSignInResponse {
+  if (!hasExactKeys(value, ["opened"]) || typeof value.opened !== "boolean") {
+    throw new Error("Missing sign-in response");
+  }
+  return { opened: value.opened };
 }
 
 export interface DeleteResponse {
@@ -1116,12 +1145,19 @@ export function parseRefreshReport(value: unknown): RefreshReport {
 }
 
 export function parseRefreshResponse(value: unknown): RefreshResponse {
-  if (!hasExactKeys(value, ["state", "report"])) {
+  if (
+    !hasExactKeys(value, ["state", "report"], ["signIn"]) ||
+    (value.signIn !== undefined &&
+      !addAccountSignIns.has(value.signIn as AddAccountSignIn))
+  ) {
     throw new Error("Missing refresh response");
   }
   return {
     state: parseAppViewState(value.state),
     report: parseRefreshReport(value.report),
+    ...(value.signIn === undefined
+      ? {}
+      : { signIn: value.signIn as AddAccountSignIn }),
   };
 }
 

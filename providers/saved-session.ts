@@ -4,7 +4,6 @@ import type { CollectionResult, ProviderRuntimeServices } from "./types";
 import { extensionOriginHost } from "./warp/origin-rule";
 import {
   deleteSavedSession,
-  MAX_SAVED_SESSION_COOKIES,
   normalizeSavedSession,
   readSavedSession,
   saveSession,
@@ -401,14 +400,21 @@ export async function parkLiveSession(
     if (!owner) return "new_login";
     // Captured after that read, so a cookie its response rotated is saved
     // at its new value.
-    const cookies = await captureLiveSession(spec, api);
-    if (cookies.length === 0) return "new_login";
-    // Never clear a sign-in that could not be saved whole.
+    const captured = await captureLiveSession(spec, api);
+    // Signed in, but to cookies this extension cannot see or save.
+    if (captured.length === 0) return "unavailable";
+    // What storage keeps: the named sign-in cookies come first, so a cookie
+    // left out (one storage cannot hold) is never the session itself. Only
+    // the kept cookies are cleared, so the browser loses nothing unsaved.
+    const cookies =
+      normalizeSavedSession({ cookies: captured, savedAt: services.now })
+        ?.cookies ?? [];
+    // Every named sign-in cookie (such as each chunk of a split session
+    // token) must be kept, or the saved copy could not sign in.
+    const kept = new Set(cookies.map(({ name }) => name));
     if (
-      cookies.length > MAX_SAVED_SESSION_COOKIES ||
-      normalizeSavedSession({ cookies, savedAt: services.now })?.cookies
-        .length !== cookies.length ||
-      !cookies.some(({ name }) => spec.isSessionCookie(name))
+      !cookies.some(({ name }) => spec.isSessionCookie(name)) ||
+      captured.some(({ name }) => spec.isAuthCookie(name) && !kept.has(name))
     ) {
       return "unavailable";
     }

@@ -88,6 +88,14 @@ function isPermissionIntentId(value: unknown): value is string {
 export function isRuntimeCommand(value: unknown): value is RuntimeCommand {
   if (!isRecord(value)) return false;
 
+  if (value.type === "OPEN_SIGN_IN") {
+    return (
+      hasExactKeys(value, ["type", "providerKind"]) &&
+      isProviderKind(value.providerKind) &&
+      !isApiKeyProviderKind(value.providerKind)
+    );
+  }
+
   if (value.type === "CONNECT_BROWSER_PROVIDER") {
     return (
       hasExactKeys(value, ["type", "providerKind", "permissionIntentId"]) &&
@@ -229,6 +237,7 @@ export interface RuntimeCommandHandlers {
   ): unknown;
   connectApiKeyProvider(command: ConnectApiKeyProviderCommand): unknown;
   refreshInstance(instanceId: ProviderInstanceId): unknown;
+  openSignIn(providerKind: BrowserSessionProviderKind): unknown;
   renameInstance(instanceId: ProviderInstanceId, userLabel?: string): unknown;
   disconnectInstance(instanceId: ProviderInstanceId): unknown;
   setInstanceHidden(instanceId: ProviderInstanceId, hidden: boolean): unknown;
@@ -284,6 +293,8 @@ export function createRuntimeCommandHandler(handlers: RuntimeCommandHandlers) {
         return handlers.connectApiKeyProvider(value);
       case "REFRESH_INSTANCE":
         return handlers.refreshInstance(value.instanceId);
+      case "OPEN_SIGN_IN":
+        return handlers.openSignIn(value.providerKind);
       case "RENAME_INSTANCE":
         return handlers.renameInstance(value.instanceId, value.userLabel);
       case "DISCONNECT_INSTANCE":

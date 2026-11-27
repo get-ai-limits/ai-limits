@@ -193,7 +193,7 @@ These origins are requested one provider at a time after the user clicks
   site's sign-in cookies and saves them for the connection they belong to:
   Cursor's `WorkosCursorSessionToken`, ChatGPT's
   `__Secure-next-auth.session-token` (including numbered chunks) and
-  `_account` workspace cookie, and any other HttpOnly cookie on that site
+  `_account` workspace cookie, and other HttpOnly cookies on that site
   except bot protection, since a second sign-in cookie can restore the first.
   It then removes those cookies so the user can
   sign in to the next account, and opens the sign-in page. For 15 minutes
@@ -400,7 +400,8 @@ The full policy is in [PRIVACY.md](../../PRIVACY.md).
    explain why they were not refreshed.
    **Second account (optional `cookies`):** with a second reviewer-owned
    Cursor account, open **Add provider** and choose **Add account** next to
-   Cursor. Read the hint, approve `cookies`, and confirm the browser is signed
+   Cursor. A step-by-step guide opens: read step 1, choose **Allow and continue**,
+   approve `cookies`, and confirm the browser is signed
    out of cursor.com and a sign-in tab opens. Sign in to the second account
    there and confirm a second card appears with its own usage, while the first
    card keeps refreshing. Disconnect one card and confirm the other stays;

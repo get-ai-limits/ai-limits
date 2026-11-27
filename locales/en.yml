@@ -104,9 +104,36 @@ connections:
   addAccount: Add account
   addAccountFor: "Add another {provider} account"
   accountsConnected: "{count} connected"
-  addAccountSavedSignInHint: "Adding an account asks for permission to use {provider} cookies. AI Limits saves the {provider} sign-in cookies this browser uses now (its HttpOnly cookies, except bot protection) on this device, for its card, sends them only to {provider}, and deletes them when you disconnect that card. It then signs this browser out of {provider} and opens the sign-in page. Sign in to the other account there, and every account keeps refreshing. Avoid Log out on the {provider} site: it ends the saved sign-in too."
-  signInAnotherAccount: "Sign in to the other {provider} account in the tab that just opened. Your other {provider} cards keep refreshing."
+  addAccountSavedSignInHint: "Opens a short guide: AI Limits saves the {provider} sign-in this browser uses now for its card, then you sign in to the other account. Every account keeps refreshing."
   addAccountSessionHint: "First sign in to the account you want to add on the {provider} site. Only the account signed in there refreshes; the others keep their last numbers until you switch back."
+
+addAccount:
+  title: "Add another {provider} account"
+  subtitle: A browser holds one sign-in per site, so AI Limits keeps one for each account.
+  back: Back
+  step1Title: Allow AI Limits to save sign-ins
+  step1Copy: "Your browser asks for permission to use {provider} cookies. AI Limits saves the {provider} sign-in cookies this browser uses now (its HttpOnly cookies, except bot protection) on this device, for the card they belong to. It sends them only to {provider} and deletes them when you disconnect that card."
+  start: Allow and continue
+  starting: Saving your current sign-in…
+  declined: Nothing changed. Adding an account needs this permission; allow it when you are ready.
+  step2Title: "Save your current account and sign this browser out"
+  step2Copy: "AI Limits saves the account signed in now for its card, then signs this browser out of {provider}, on this device only. That account keeps refreshing."
+  step2Done: "Saved. This browser is signed out of {provider}."
+  notSaved: "AI Limits couldn't save the {provider} sign-in this browser uses now, so it left you signed in and changed nothing. Try again, or sign in to {provider} again first if it keeps happening."
+  step3Title: "Sign in to the other account"
+  step3Copy: "In the {provider} tab that opened, sign in with the account you want to add, not one you already added. This guide moves on by itself once you're in."
+  step3Waiting: Waiting for you to sign in…
+  tabFailed: "The sign-in page didn't open. Open it here."
+  openSignIn: "Open {provider} sign-in"
+  sameAccount: "That's an account you already added. Sign in with a different {provider} account."
+  noLogout: "Don't use Log out on the {provider} site: it would end the saved sign-in of your other account too."
+  step4Title: Done
+  step4Copy: Every account now refreshes on its own.
+  added: "Added {label}."
+  finish: Back to overview
+  tryAgain: Try again
+  cancel: Cancel
+  failed: "Something went wrong while adding the account. Nothing was changed; try again."
 
 overview:
   screen: Overview

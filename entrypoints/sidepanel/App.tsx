@@ -6,6 +6,7 @@ import {
   parseAppViewState,
   parseDeleteResponse,
   parseDisconnectResponse,
+  parseOpenSignInResponse,
   parsePermissionIntentResponse,
   parseRefreshResponse,
   providerAvailability,
@@ -38,6 +39,7 @@ import type { ApiKeySubmission } from "./Cockpit";
 import { instanceLabels } from "./instance-label";
 import { withInstanceHidden, withInstanceOrder } from "./arrangement";
 import type { ApiKeyConnectAttemptResult } from "./views/ApiKeyConnectView";
+import type { AddAccountStart } from "./views/AddAccountView";
 
 interface Announcement {
   id: number;
@@ -505,35 +507,12 @@ export function App() {
             (instance) => instance.providerKind === providerKind,
           )?.id
         : undefined);
-    // Adding a second Cursor or ChatGPT account saves each card's own
-    // sign-in; that needs the cookies permission, asked for in the same
-    // prompt, after the Add account row explained it. Reconnect never asks
-    // for it, and saves sign-ins only if it was already granted that way.
-    const usesSavedSignIn =
-      existingInstanceId === undefined &&
-      providerAvailability(currentState, providerKind).savedSignIns === true &&
-      currentState.instances.some(
-        (instance) =>
-          instance.providerKind === providerKind &&
-          instance.id !== existingInstanceId,
-      );
+    // Adding another Cursor or ChatGPT account goes through the Add account
+    // guide (handleStartAddAccount), which explains and asks for cookies.
+    // This path never asks for it.
     let prepared: PermissionIntentResponse;
     try {
       prepared = await preparePermission(providerKind, config, existingInstanceId);
-      if (usesSavedSignIn) {
-        prepared = {
-          ...prepared,
-          permissions: {
-            ...prepared.permissions,
-            permissions: [
-              ...new Set([
-                ...(prepared.permissions.permissions ?? []),
-                "cookies" as const,
-              ]),
-            ],
-          },
-        };
-      }
     } catch {
       announce(
         l10n.t("announcements.connectFailed", {
@@ -545,33 +524,8 @@ export function App() {
     }
     setProviderOperation(prepared.instanceId, "requesting_permission");
     let granted: boolean;
-    let savedSignIn = usesSavedSignIn;
     try {
-      if (usesSavedSignIn) {
-        // Declining cookies still adds the account the old way: only the
-        // account signed in on the site refreshes.
-        let withCookies = false;
-        try {
-          withCookies = Boolean(
-            await browser.permissions.request(prepared.permissions),
-          );
-        } catch {
-          withCookies = false;
-        }
-        if (!withCookies) {
-          savedSignIn = false;
-          prepared = {
-            ...prepared,
-            permissions: {
-              ...prepared.permissions,
-              permissions: (prepared.permissions.permissions ?? []).filter(
-                (permission) => permission !== "cookies",
-              ),
-            },
-          };
-        }
-      }
-      granted = await requestPreparedPermission(prepared, usesSavedSignIn);
+      granted = await requestPreparedPermission(prepared);
     } catch {
       announce(
         l10n.t("announcements.connectFailed", {
@@ -607,23 +561,8 @@ export function App() {
         ({ outcome }) =>
           outcome.kind === "failure" && outcome.category === "duplicate_account",
       );
-      const waitsForSignIn =
-        savedSignIn &&
-        response.report.results.some(
-          ({ instanceId: resultId, outcome }) =>
-            resultId === prepared.instanceId &&
-            outcome.kind === "failure" &&
-            outcome.category === "signed_out",
-        );
       if (duplicate) {
         announce(localizeFailure("duplicate_account"), "attention");
-      } else if (waitsForSignIn) {
-        announce(
-          l10n.t("connections.signInAnotherAccount", {
-            provider: localizeProviderName(providerKind),
-          }),
-          "attention",
-        );
       } else {
         const summary = manualSummary(response.report, response.state);
         announce(summary.message, summary.tone);
@@ -636,6 +575,93 @@ export function App() {
       );
     } finally {
       setProviderOperation(prepared.instanceId);
+    }
+  };
+
+  /**
+   * Add account for a provider with saved sign-ins, driven by the step-by-step
+   * guide: one permission prompt (the provider plus `cookies`), then the
+   * background saves the current sign-in, signs the browser out and opens the
+   * sign-in page.
+   */
+  const handleStartAddAccount = async (
+    providerKind: BrowserSessionProviderKind,
+  ): Promise<AddAccountStart> => {
+    const currentState = viewStateRef.current;
+    if (!currentState) return { kind: "failed" };
+    clearAnnouncement();
+    let prepared: PermissionIntentResponse;
+    try {
+      prepared = await preparePermission(
+        providerKind,
+        rawProviderConfig(currentState, providerKind),
+      );
+    } catch {
+      return { kind: "failed" };
+    }
+    prepared = {
+      ...prepared,
+      permissions: {
+        ...prepared.permissions,
+        permissions: [
+          ...new Set([
+            ...(prepared.permissions.permissions ?? []),
+            "cookies" as const,
+          ]),
+        ],
+      },
+    };
+    setProviderOperation(prepared.instanceId, "requesting_permission");
+    try {
+      if (!(await requestPreparedPermission(prepared))) {
+        return { kind: "declined" };
+      }
+      setProviderOperation(prepared.instanceId, "fetching");
+      const response = parseRefreshResponse(
+        await browser.runtime.sendMessage({
+          type: "CONNECT_BROWSER_PROVIDER",
+          providerKind,
+          permissionIntentId: prepared.permissionIntentId,
+        } satisfies RuntimeCommand),
+      );
+      commitViewState(response.state);
+      const outcome = response.report.results.find(
+        ({ instanceId }) => instanceId === prepared.instanceId,
+      )?.outcome;
+      if (response.signIn === "waiting" || response.signIn === "tab_failed") {
+        return { kind: response.signIn, instanceId: prepared.instanceId };
+      }
+      if (response.signIn === "not_saved") return { kind: "not_saved" };
+      if (outcome?.kind === "success") {
+        return { kind: "added", instanceId: prepared.instanceId };
+      }
+      if (
+        outcome?.kind === "failure" &&
+        outcome.category === "duplicate_account"
+      ) {
+        return { kind: "same_account" };
+      }
+      return { kind: "failed" };
+    } catch {
+      await abandonPermissionIntent(prepared.permissionIntentId);
+      return { kind: "failed" };
+    } finally {
+      setProviderOperation(prepared.instanceId);
+    }
+  };
+
+  const handleOpenSignIn = async (
+    providerKind: BrowserSessionProviderKind,
+  ): Promise<boolean> => {
+    try {
+      return parseOpenSignInResponse(
+        await browser.runtime.sendMessage({
+          type: "OPEN_SIGN_IN",
+          providerKind,
+        } satisfies RuntimeCommand),
+      ).opened;
+    } catch {
+      return false;
     }
   };
 
@@ -987,6 +1013,8 @@ export function App() {
       onOpenApiKeySetup={handleOpenApiKeySetup}
       onSubmitApiKey={handleSubmitApiKey}
       onRefreshInstance={(instanceId) => void handleRefreshInstance(instanceId)}
+      onStartAddAccount={handleStartAddAccount}
+      onOpenSignIn={handleOpenSignIn}
       onAutoRefreshChange={(enabled) => void handleAutoRefreshChange(enabled)}
       onHideExhaustedChange={(enabled) => void handleHideExhaustedChange(enabled)}
       onLocaleOverrideChange={(locale) => void handleLocaleOverrideChange(locale)}

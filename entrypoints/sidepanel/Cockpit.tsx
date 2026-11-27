@@ -30,6 +30,7 @@ import {
   shouldDisplayBalance,
   type ApiKeyProviderKind,
   type AppViewState,
+  type BrowserSessionProviderKind,
   type BalanceMetric,
   type CounterMetric,
   type DisplayMode,
@@ -67,6 +68,7 @@ import {
   type ApiKeyConnectAttemptResult,
 } from "./views/ApiKeyConnectView";
 import { NewApiConnectView } from "./views/NewApiConnectView";
+import { AddAccountView, type AddAccountStart } from "./views/AddAccountView";
 import { usageGroupViews } from "./usage-groups";
 import { balanceMetrics, counterMetrics, historyMetrics, quotaMetrics } from "./metrics";
 import { instanceLabels } from "./instance-label";
@@ -99,6 +101,11 @@ export interface CockpitProps {
   onOpenApiKeySetup?: (providerKind: ApiKeyProviderKind) => void;
   onSubmitApiKey?: (submission: ApiKeySubmission) => Promise<ApiKeyConnectAttemptResult>;
   onRefreshInstance?: (instanceId: ProviderInstanceId) => void;
+  /** Adds another account of a provider with saved sign-ins, step by step. */
+  onStartAddAccount?: (
+    providerKind: BrowserSessionProviderKind,
+  ) => Promise<AddAccountStart>;
+  onOpenSignIn?: (providerKind: BrowserSessionProviderKind) => Promise<boolean>;
   onAutoRefreshChange?: (enabled: boolean) => void;
   onHideExhaustedChange?: (enabled: boolean) => void;
   onLocaleOverrideChange?: (locale: SupportedLocale | undefined) => void;
@@ -486,6 +493,8 @@ export function Cockpit({
   onOpenApiKeySetup = () => undefined,
   onSubmitApiKey = async () => "temporary_error",
   onRefreshInstance = () => undefined,
+  onStartAddAccount,
+  onOpenSignIn,
   onAutoRefreshChange = () => undefined,
   onHideExhaustedChange = () => undefined,
   onLocaleOverrideChange = () => undefined,
@@ -624,6 +633,24 @@ export function Cockpit({
   ) => {
     if (providerAvailability(state, providerKind).credentialKind === "api-key") {
       openApiKeyConnect(providerKind as ApiKeyProviderKind, "connect", instanceId);
+      return;
+    }
+
+    const availability = providerAvailability(state, providerKind);
+    if (
+      !instanceId &&
+      onStartAddAccount &&
+      availability.savedSignIns === true &&
+      availability.cardinality === "multiple" &&
+      state.instances.some((instance) => instance.providerKind === providerKind)
+    ) {
+      pushScreen(
+        {
+          name: "add-account",
+          providerKind: providerKind as BrowserSessionProviderKind,
+        },
+        `connect-provider-${providerKind}`,
+      );
       return;
     }
 
@@ -854,7 +881,21 @@ export function Cockpit({
         />
       ) : null}
 
-      {view.name === "api-key-connect" ? (
+      {view.name === "add-account" ? (
+        <AddAccountView
+          providerKind={view.providerKind}
+          instances={state.instances}
+          labelForInstance={labelForInstance}
+          backLabel={l10n.t("addAccount.back")}
+          onBack={popScreen}
+          onFinish={goHome}
+          onStart={
+            onStartAddAccount ?? (async () => ({ kind: "failed" }) as const)
+          }
+          onOpenSignIn={onOpenSignIn ?? (async () => false)}
+          onCancel={(instanceId) => onDisconnectInstance?.(instanceId)}
+        />
+      ) : view.name === "api-key-connect" ? (
         providerAvailability(state, view.providerKind).configKind ===
         "dynamic-origin" ? (
           <NewApiConnectView

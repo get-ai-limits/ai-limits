@@ -333,9 +333,12 @@ With it, AI Limits copies the sign-in cookies the browser holds for that
 site and saves them for the connection whose account they belong to. These
 are the named sign-in cookies (Cursor's `WorkosCursorSessionToken`;
 ChatGPT's `__Secure-next-auth.session-token`, including any numbered chunks,
-and its `_account` workspace cookie). They also include every other HttpOnly
-cookie the site sets, other than the bot-protection cookies listed below,
-because a site can keep a second sign-in cookie that restores the first. That
+and its `_account` workspace cookie). They also include the site's other HttpOnly
+cookies, other than the bot-protection cookies listed below, because a site
+can keep a second sign-in cookie that restores the first. It saves at most 64
+cookies, sign-in cookies first; a cookie it cannot save (too long, or with
+characters a cookie header cannot carry) stays in the browser. If that is one
+of the named sign-in cookies, it saves nothing and the browser stays signed in. That
 connection is identified by the opaque login key described above. AI Limits
 then removes those cookies from the browser, so the browser is signed out of that site on
 this device. It does not use the site's own Log out, which would end the
