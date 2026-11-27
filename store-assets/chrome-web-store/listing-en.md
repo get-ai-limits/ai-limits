@@ -200,9 +200,10 @@ These origins are requested one provider at a time after the user clicks
   It then removes those cookies so the user can
   sign in to the next account, and opens the sign-in page. For 15 minutes
   after that, it watches only for that site's sign-in cookie, so it can read
-  the new connection once the sign-in lands. Once that connection reads its
-  account, its own sign-in is saved the same way, without signing the
-  browser out, while the provider has more than one connection. Saved sign-ins are kept in a
+  the new connection once the sign-in lands. Whenever a connection is read
+  with the browser's own sign-in and has no saved copy yet (such as that new
+  connection), its sign-in is saved the same way, without signing the browser
+  out, while the provider has more than one connection. Saved sign-ins are kept in a
   `chrome.storage.local` record restricted to trusted extension contexts. They
   are sent only to the site they came from, as described under
   `declarativeNetRequestWithHostAccess`. They are deleted with their connection, on Delete all

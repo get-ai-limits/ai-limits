@@ -112,7 +112,7 @@ addAccount:
   subtitle: 浏览器在每个网站只能保持一个登录，所以 AI Limits 会为每个账号各保存一份。
   back: 返回
   step1Title: 允许 AI Limits 保存登录
-  step1Copy: "浏览器会请求使用 {provider} cookie 的权限。AI Limits 会在此设备上为对应的卡片保存每个 {provider} 账号的登录 cookie（其 HttpOnly cookie，防机器人 cookie 除外）：当前登录的账号，以及新账号登录之后的，只发送给 {provider}，并在你断开该卡片时删除它们。"
+  step1Copy: "浏览器会请求使用 {provider} cookie 的权限。AI Limits 会在此设备上为对应的卡片保存每个 {provider} 账号的登录 cookie（其 HttpOnly cookie，防机器人 cookie 除外）：包括当前登录的账号，以及浏览器登录其他账号时读取到的账号。它们只会发送给 {provider}，并在你断开该卡片时删除。"
   start: 允许并继续
   starting: 正在保存当前登录…
   declined: 没有做任何更改。添加账号需要此权限，准备好后再允许即可。

@@ -461,6 +461,34 @@ describe("saveLiveSession", () => {
     });
   });
 
+  test("saves nothing when the sign-in changes during the account check", async () => {
+    const api = fakeCookies([cookie("Session", "live-a")]);
+    const changing = spec(() => KEY_A);
+    vi.mocked(changing.liveAccountKey).mockImplementationOnce(async () => {
+      api.jar()[0]!.value = "live-b";
+      return KEY_A;
+    });
+    await expect(
+      saveLiveSession(changing, instance(A, KEY_A), services, environment(api).env),
+    ).resolves.toBe(false);
+    await expect(readSavedSession(A)).resolves.toBeUndefined();
+  });
+
+  test("removes the copy again for a connection removed while saving", async () => {
+    const api = fakeCookies([cookie("Session", "live-a")]);
+    let checks = 0;
+    await expect(
+      saveLiveSession(
+        spec(() => KEY_A),
+        instance(A, KEY_A),
+        services,
+        environment(api).env,
+        async () => ++checks === 1,
+      ),
+    ).resolves.toBe(false);
+    await expect(readSavedSession(A)).resolves.toBeUndefined();
+  });
+
   test("needs the cookies permission", async () => {
     await expect(
       saveLiveSession(spec(() => KEY_A), instance(A, KEY_A), services, environment(undefined).env),

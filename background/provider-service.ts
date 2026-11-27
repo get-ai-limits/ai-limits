@@ -78,6 +78,8 @@ import {
   type StoredPermissionIntent,
 } from "./permission-intents";
 
+const SAVE_SIGN_IN_TIMEOUT_MS = 15_000;
+
 export type ProviderPackageRegistry = {
   [Kind in ProviderKind]: ProviderPackage;
 };
@@ -308,7 +310,8 @@ export function createProviderService(
       await saveLiveSession(
         spec,
         instance,
-        { fetch, signal: new AbortController().signal, now: clock() },
+        // A hung check must not hold the site's lock for later reads.
+        { fetch, signal: AbortSignal.timeout(SAVE_SIGN_IN_TIMEOUT_MS), now: clock() },
         savedSessionEnvironment,
         async () => (await connectionRepository.get(instance.id)) !== undefined,
       ).catch(() => false);

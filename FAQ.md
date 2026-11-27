@@ -267,8 +267,9 @@ its own card, History, and name, which you can change in Settings.
   account**, a short guide in the side panel walks you through it. AI Limits
   asks for the optional `cookies` permission, saves
   the current sign-in for its card, signs the browser out of that site on
-  this device, and opens the sign-in page for the next account. Once the new
-  account is read, its sign-in is saved too. After that, every account keeps
+  this device, and opens the sign-in page for the next account. Every other
+  account's sign-in is saved too, the next time it is read while the browser
+  is signed in to it. After that, every account keeps
   refreshing, whichever one the browser is signed in to.
   Don't use **Log out** on the ChatGPT or Cursor site to switch accounts,
   because that ends the saved sign-in too. A saved sign-in lasts as long as

@@ -345,8 +345,10 @@ this device. It does not use the site's own Log out, which would end the
 session on the provider's servers. It then opens the provider's sign-in page,
 so you can sign in to the other account. For 15 minutes after opening that
 page, it watches for that site's sign-in cookie to change, and then reads the
-waiting connection. Once the new connection reads its account, AI Limits saves
-its sign-in the same way, without signing the browser out, so it keeps
+waiting connection. Whenever a connection is read with the browser's own
+sign-in and has no saved copy yet (such as the new connection once it reads
+its account, or a connection that existed before this version), AI Limits
+saves its sign-in the same way, without signing the browser out, so it keeps
 refreshing after the browser moves to another account. This happens only
 while the provider has more than one connection and the `cookies` permission
 is granted; a provider's only connection never gets a saved sign-in. A
