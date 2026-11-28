@@ -18,6 +18,7 @@ import {
   slugify,
 } from "./build-site.mjs";
 import { providerNames } from "../domain/provider-presentation";
+import { CONNECTION_HELP_ANCHORS } from "../i18n/presentation";
 
 let out;
 beforeAll(async () => {
@@ -146,5 +147,32 @@ describe("helpers", () => {
 
   it("escapes redirect targets", () => {
     expect(redirectPage("/x/", 'https://a.test/"<b>')).not.toContain('"<b>');
+  });
+});
+
+describe("connections help page", () => {
+  const ids = async (path) =>
+    new Set([...(await page(path)).matchAll(/ id="([^"]+)"/g)].map((match) => match[1]));
+
+  it("has a section for every anchor the extension links to, in both languages", async () => {
+    for (const [locale, path] of [
+      ["en", "/connections/"],
+      ["zh_CN", "/zh-CN/connections/"],
+    ]) {
+      const sections = await ids(path);
+      for (const anchor of Object.values(CONNECTION_HELP_ANCHORS)) {
+        expect(sections, `${path} ${anchor}`).toContain(anchor);
+      }
+      const catalog = await readFile(join("locales", `${locale}.yml`), "utf8");
+      const historyAnchors = [...catalog.matchAll(/^ +helpAnchor: "?([^"\n]+)"?$/gm)].map(
+        (match) => match[1],
+      );
+      expect(historyAnchors).toHaveLength(2);
+      for (const anchor of historyAnchors) {
+        expect(sections, `${path} ${anchor}`).toContain(anchor);
+      }
+      const base = catalog.match(/^ +helpPageUrl: "?([^"\n]+)"?$/m)?.[1];
+      expect(base).toBe(`https://get-ai-limits.com${path}`);
+    }
   });
 });

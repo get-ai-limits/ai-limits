@@ -2,6 +2,7 @@ import React, { useState } from "react";
 
 import { l10n, type MessageKey } from "../../../i18n/index";
 import {
+  helpPageUrl,
   localizeDisplayMode,
   localizeMetricLabel,
   localizeProviderName,
@@ -274,7 +275,15 @@ export function HistoryView({
         ) : null}
 
         <p className="illustrative-note">
-          {l10n.t(selectedBalance ? "history.balance.note" : "history.note")}
+          <a
+            href={helpPageUrl(
+              l10n.t(selectedBalance ? "history.balance.helpAnchor" : "history.helpAnchor"),
+            )}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {l10n.t("history.aboutChart")}
+          </a>
         </p>
       </div>
     </section>

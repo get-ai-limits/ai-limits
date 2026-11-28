@@ -134,12 +134,6 @@ export function NewApiConnectView({
           </div>
         </div>
 
-        <p className="settings-copy">
-          {isNewApi
-            ? l10n.t("newapi.explanation")
-            : l10n.t("dynamicApi.explanation", { provider })}
-        </p>
-
         <form
           className="api-key-guide__form"
           aria-label={
@@ -250,9 +244,6 @@ export function NewApiConnectView({
           </button>
         </form>
 
-        <p className="settings-copy">
-          {isNewApi ? l10n.t("newapi.excluded") : l10n.t("dynamicApi.excluded")}
-        </p>
         {feedback ? <p className="health-message">{feedback}</p> : null}
       </div>
     </section>

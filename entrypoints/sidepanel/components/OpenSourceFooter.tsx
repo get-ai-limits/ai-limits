@@ -28,7 +28,6 @@ export function OpenSourceFooter({ showIssues = true }: OpenSourceFooterProps) {
       />
       <div>
         <h2>{l10n.t("footer.heading")}</h2>
-        <p>{l10n.t("footer.copy")}</p>
         {version ? (
           <p className="open-source-footer__version">
             {l10n.t("footer.version", { version })}

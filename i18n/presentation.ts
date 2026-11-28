@@ -266,22 +266,76 @@ export function localizeConnectLabel(providerKind: ProviderKind): string {
   return translate(`providers.${providerKind}.connect`);
 }
 
-export function localizeConnectionDisclosure(providerKind: ProviderKind): string {
-  return translate(`providers.${providerKind}.connectionDisclosure`);
-}
+const CONNECT_NOTE_PROVIDERS = new Set<ProviderKind>([
+  "kimi",
+  "cursor",
+  "grok",
+  "gumloop",
+  "openrouter",
+  "zai",
+  "warp",
+]);
 
-export function localizeManualRefreshDisclosure(
+const MULTI_INSTANCE_PROVIDERS = new Set<ProviderKind>([
+  "newapi",
+  "litellm",
+  "clawrouter",
+  "sub2api",
+  "llmProxy",
+]);
+
+/**
+ * One short line shown before connecting, only where it could change the
+ * decision to connect. The full explanation lives on the help page.
+ */
+export function localizeConnectNote(
   providerKind: ProviderKind,
 ): string | undefined {
-  if (
-    providerKind !== "kimi" &&
-    providerKind !== "cursor" &&
-    providerKind !== "grok" &&
-    providerKind !== "gumloop"
-  ) {
-    return undefined;
+  if (CONNECT_NOTE_PROVIDERS.has(providerKind)) {
+    return translate(`providers.${providerKind}.connectNote`);
   }
-  return translate(`providers.${providerKind}.manualRefreshDisclosure`);
+  if (MULTI_INSTANCE_PROVIDERS.has(providerKind)) {
+    return l10n.t("connections.multipleInstances");
+  }
+  return undefined;
+}
+
+/** Section anchors on get-ai-limits.com/connections/, one per provider. */
+export const CONNECTION_HELP_ANCHORS: Record<ProviderKind, string> = {
+  chatgpt: "chatgpt",
+  claude: "claude",
+  kimi: "kimi",
+  cursor: "cursor",
+  grok: "grok",
+  mistral: "mistral",
+  perplexity: "perplexity",
+  elevenlabs: "elevenlabs",
+  newapi: "new-api",
+  litellm: "litellm",
+  clawrouter: "clawrouter",
+  sub2api: "sub2api",
+  llmProxy: "llm-proxy",
+  deepseek: "deepseek",
+  moonshot: "moonshot",
+  deepinfra: "deepinfra",
+  fireworks: "fireworks",
+  openai: "openai",
+  groqcloud: "groqcloud",
+  openrouter: "openrouter",
+  factory: "droid",
+  zai: "glm",
+  warp: "warp",
+  gumloop: "gumloop",
+};
+
+/** Help page section, in the panel's language. */
+export function helpPageUrl(anchor: string): string {
+  return `${l10n.t("connections.helpPageUrl")}#${anchor}`;
+}
+
+/** The provider's section of the "How AI Limits connects" help page. */
+export function connectionHelpUrl(providerKind: ProviderKind): string {
+  return helpPageUrl(CONNECTION_HELP_ANCHORS[providerKind]);
 }
 
 export function providerCapabilityIds(

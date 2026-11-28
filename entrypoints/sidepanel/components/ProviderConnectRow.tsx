@@ -3,10 +3,10 @@ import React from "react";
 import { formatList } from "../../../i18n/format";
 import { l10n } from "../../../i18n/index";
 import {
+  connectionHelpUrl,
   localizeCapability,
   localizeConnectLabel,
-  localizeConnectionDisclosure,
-  localizeManualRefreshDisclosure,
+  localizeConnectNote,
   localizeOperation,
   localizeProviderName,
   providerCapabilityIds,
@@ -49,7 +49,7 @@ export function ProviderConnectRow({
       localizeCapability(providerKind, id),
     ),
   );
-  const manualDisclosure = localizeManualRefreshDisclosure(providerKind);
+  const connectNote = localizeConnectNote(providerKind);
   const addsAccount = !isReconnect && connectedCount > 0;
   const actionLabel = isReconnect
     ? l10n.t("connections.reconnectProvider", { provider: name })
@@ -69,7 +69,10 @@ export function ProviderConnectRow({
                 ? l10n.t("connections.accountsConnected", {
                     count: connectedCount,
                   })
-                : l10n.t("connections.canShow", { capabilities })}
+                : l10n.t("connections.canShow", {
+                    method: connectionMethod,
+                    capabilities,
+                  })}
             </p>
           </div>
         </div>
@@ -97,19 +100,21 @@ export function ProviderConnectRow({
         </button>
       </div>
       <p className="provider-connect-row__disclosure">
-        <strong>{connectionMethod}</strong> —{" "}
-        <span>{localizeConnectionDisclosure(providerKind)}</span>
+        {connectNote ? <span>{connectNote} </span> : null}
+        <a
+          href={connectionHelpUrl(providerKind)}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label={l10n.t("connections.howItConnectsNamed", {
+            provider: name,
+          })}
+        >
+          {l10n.t("connections.howItConnects")}
+        </a>
       </p>
-      {addsAccount && credentialKind === "none" ? (
+      {addsAccount && credentialKind === "none" && !savedSignIns ? (
         <p className="provider-connect-row__manual-disclosure">
-          {savedSignIns
-            ? l10n.t("connections.addAccountSavedSignInHint", { provider: name })
-            : l10n.t("connections.addAccountSessionHint", { provider: name })}
-        </p>
-      ) : null}
-      {manualDisclosure ? (
-        <p className="provider-connect-row__manual-disclosure">
-          {manualDisclosure}
+          {l10n.t("connections.addAccountSessionHint", { provider: name })}
         </p>
       ) : null}
       {operation ? (

@@ -9,8 +9,6 @@ import {
   type SupportedLocale,
 } from "../../../i18n/index";
 import {
-  localizeConnectionDisclosure,
-  localizeManualRefreshDisclosure,
   localizePlanLabel,
   localizeProviderName,
 } from "../../../i18n/presentation";
@@ -200,7 +198,6 @@ export function SettingsView({
     >
       <PageHeader
         title={l10n.t("settings.title")}
-        subtitle={l10n.t("settings.subtitle")}
         backLabel={closeLabel}
         onBack={onClose}
       />
@@ -210,7 +207,6 @@ export function SettingsView({
           <div className="settings-language">
             <span className="settings-toggle__copy">
               <strong id="language-title">{l10n.t("settings.language")}</strong>
-              <small>{l10n.t("settings.languageDescription")}</small>
             </span>
             <select
               className="settings-language__select"
@@ -241,7 +237,6 @@ export function SettingsView({
               <strong id="automatic-refresh-title">
                 {l10n.t("settings.automaticRefresh")}
               </strong>
-              <small>{l10n.t("settings.automaticRefreshDescription")}</small>
             </span>
             <span className="settings-toggle__control">
               <input
@@ -361,22 +356,10 @@ export function SettingsView({
                           {l10n.t("settings.freshnessMethod", {
                             freshness: freshness(instance, now),
                             method: connectionMethod,
-                            readOnly: l10n.t("common.readOnly"),
                           })}
                         </small>
                         {planLabel ? (
                           <small>{planLabel}</small>
-                        ) : null}
-                        {usesApiKey ? (
-                          <small>{l10n.t("settings.apiKeySaved")}</small>
-                        ) : null}
-                        <small>
-                          {localizeConnectionDisclosure(instance.providerKind)}
-                        </small>
-                        {localizeManualRefreshDisclosure(instance.providerKind) ? (
-                          <small>
-                            {localizeManualRefreshDisclosure(instance.providerKind)}
-                          </small>
                         ) : null}
                       </div>
                       <div className="settings-provider-actions">
@@ -614,9 +597,6 @@ export function SettingsView({
               {l10n.t("settings.orderExplanation")}
             </p>
           ) : null}
-          <p className="settings-copy">
-            {l10n.t("settings.disconnectExplanation")}
-          </p>
         </section>
 
         <section className="danger-zone settings-surface" aria-labelledby="local-data-title">

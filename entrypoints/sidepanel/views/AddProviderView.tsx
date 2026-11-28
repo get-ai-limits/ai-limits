@@ -37,7 +37,6 @@ export function AddProviderView({
     <section className="screen" aria-label={l10n.t("addProvider.screen")}>
       <PageHeader
         title={l10n.t("addProvider.title")}
-        subtitle={l10n.t("addProvider.subtitle")}
         backLabel={
           origin === "settings"
             ? l10n.t("common.settings")
@@ -81,7 +80,6 @@ export function AddProviderView({
         ) : (
           <p className="empty-surface">{l10n.t("addProvider.allConnected")}</p>
         )}
-        <p className="illustrative-note">{l10n.t("addProvider.permissionNote")}</p>
       </div>
     </section>
   );
