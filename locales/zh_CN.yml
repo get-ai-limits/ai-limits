@@ -139,6 +139,7 @@ overview:
   replaceKey: 更换密钥
   replaceKeyNamed: "更换 {label} 的 API 密钥"
   refreshNamed: "刷新 {label}"
+  reconnectNamed: "重新连接 {label}"
   arrange: 排列
   arrangeTitle: 排列服务
   arrangeHint: "拖动，或在拖动手柄上按 ↑ ↓，即可调整顺序。隐藏的服务会继续刷新。"
@@ -573,6 +574,8 @@ announcements:
   validationTemporary: "暂时无法验证 {label}。请稍后再试。"
   accessUnchanged: "{label} 的访问权限未更改。"
   connected: "已连接 {label}。"
+  reconnectSignIn: "已保存此浏览器当前登录的 {provider} 账号，并让浏览器退出了该账号。请在打开的标签页中登录这张卡片的账号；登录后卡片会自动更新。"
+  reconnectTabFailed: "已保存此浏览器当前登录的 {provider} 账号，并让浏览器退出了该账号，但登录页面没有打开。请打开 {provider}，登录这张卡片的账号。"
   invalidKeyNamed: "请输入有效的 {provider} API 密钥。"
   elevenlabsScope: 请允许 User → Read 并检查 IP 限制，然后重试。
   newapiScope: 此中继密钥无法读取用量。请检查密钥和任何 IP 限制。
@@ -684,7 +687,7 @@ errors:
   challengeBlocked: 请打开该服务并完成安全验证后再试。
   providerChanged: AI Limits 无法读取此服务的用量响应。
   temporaryError: AI Limits 无法刷新此服务。请稍后再试。
-  otherAccount: 该服务网站当前登录的是另一个账号。请在网站上切换回这个账号；如果你是通过“添加账号”添加的多个账号，也可以选择重新连接，让此卡片重新登录。
+  otherAccount: 该服务网站当前登录的是另一个账号。请在网站上切换回这个账号，或选择重新连接：它会保存当前登录的账号，并让此卡片重新登录。
   duplicateAccount: 该服务网站当前登录的账号已经连接过了。请先在网站上登录另一个账号，再添加。
   kimiRetrySession: Kimi 仍在启动。请再点一次刷新，或打开/重新加载 Kimi。
   gumloopRetrySession: 无法读取你的 Gumloop 登录状态。请打开 gumloop.com，确认已登录，然后点击刷新。

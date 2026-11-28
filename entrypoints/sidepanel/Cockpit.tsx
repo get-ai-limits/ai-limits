@@ -70,6 +70,7 @@ import { AddAccountView, type AddAccountStart } from "./views/AddAccountView";
 import { usageGroupViews } from "./usage-groups";
 import { balanceMetrics, counterMetrics, historyMetrics, quotaMetrics } from "./metrics";
 import { instanceLabels } from "./instance-label";
+import { needsSignInSwitch } from "./sign-in-switch";
 import { mergeSubsetOrder, moveInstanceId } from "./arrangement";
 
 export interface ApiKeySubmission {
@@ -730,6 +731,7 @@ export function Cockpit({
             },
           }
         : {}),
+      needsSignIn: needsSignInSwitch(instance, state.instances, state.providers),
       needsApiKeyReplacement:
         providerAvailability(state, instance.providerKind).credentialKind === "api-key" &&
         (failureCategory === "credential_invalid" ||
@@ -1080,6 +1082,7 @@ export function Cockpit({
             onReorderInstances(mergeSubsetOrder(allInstanceIds, instanceIds))
           }
           onSetProviderHidden={onSetInstanceHidden}
+          onReconnectInstance={connectProvider}
         />
       )}
       {view.name !== "overview" || isFirstRun ? (

@@ -13,6 +13,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ProviderKind } from "../../domain/model";
 import type {
   AppViewState,
+  ProviderInstanceId,
   ProviderInstanceView,
   ProviderOperation,
 } from "../../domain/public-protocol";
@@ -3182,6 +3183,51 @@ describe("Cockpit", () => {
     expect(
       state.instances.find((instance) => instance.providerKind === "cursor"),
     ).toEqual(cursorBefore);
+  });
+
+  it("offers Reconnect on a saved-sign-in card whose account the browser isn't on", () => {
+    const state = createFixtureState(NOW);
+    state.providers = state.providers.map((provider) =>
+      provider.providerKind === "cursor"
+        ? { ...provider, cardinality: "multiple", savedSignIns: true }
+        : provider,
+    );
+    const cursor = state.instances.find((instance) => instance.providerKind === "cursor")!;
+    const otherId = "cursor:33333333-3333-4333-8333-333333333333" as ProviderInstanceId;
+    state.instances = [
+      ...state.instances.map((instance) =>
+        instance.id === cursor.id
+          ? {
+              ...instance,
+              lastAttempt: {
+                trigger: "scheduled" as const,
+                startedAt: NOW - 2_000,
+                finishedAt: NOW - 1_000,
+                outcome: { kind: "failure" as const, category: "other_account" as const },
+              },
+            }
+          : instance,
+      ),
+      { ...cursor, id: otherId, lastAttempt: undefined },
+    ];
+    const onConnectProvider = vi.fn();
+    render(
+      <Cockpit
+        state={state}
+        now={NOW}
+        onDisplayModeChange={vi.fn()}
+        onRefresh={vi.fn()}
+        onConnectProvider={onConnectProvider}
+      />,
+    );
+
+    const reconnect = screen.getAllByRole("button", { name: /^Reconnect Cursor/ });
+    expect(reconnect).toHaveLength(1);
+    fireEvent.click(reconnect[0]!);
+    expect(onConnectProvider).toHaveBeenCalledWith("cursor", cursor.id);
+
+    fireEvent.click(screen.getByRole("button", { name: "Settings" }));
+    expect(screen.getAllByRole("button", { name: /^Reconnect Cursor/ })).toHaveLength(1);
   });
 
   it("controls automatic refresh and connected-provider disconnects", () => {

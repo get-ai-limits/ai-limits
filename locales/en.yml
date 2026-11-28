@@ -139,6 +139,7 @@ overview:
   replaceKey: Replace key
   replaceKeyNamed: "Replace {label} API key"
   refreshNamed: "Refresh {label}"
+  reconnectNamed: "Reconnect {label}"
   arrange: Arrange
   arrangeTitle: Arrange providers
   arrangeHint: "Drag, or press ↑ ↓ on a handle, to reorder. Hidden providers keep refreshing."
@@ -573,6 +574,8 @@ announcements:
   validationTemporary: "{label} could not be validated right now. Try again later."
   accessUnchanged: "{label} access was not changed."
   connected: "Connected {label}."
+  reconnectSignIn: "Saved the account {provider} is signed in to here and signed the browser out of it. Sign in with this card's account in the tab that opened; the card updates once you do."
+  reconnectTabFailed: "Saved the account {provider} is signed in to here and signed the browser out of it, but the sign-in page didn't open. Open {provider} and sign in with this card's account."
   invalidKeyNamed: "Enter a valid {provider} API key."
   elevenlabsScope: Allow User → Read and check any IP restrictions, then try again.
   newapiScope: This relay key could not read its usage. Check the key and any IP restrictions.
@@ -684,7 +687,7 @@ errors:
   challengeBlocked: Open the provider and complete its security check before trying again.
   providerChanged: AI Limits could not read this provider's usage response.
   temporaryError: AI Limits could not refresh this provider. Try again later.
-  otherAccount: A different account is signed in on this provider's site. Switch back to this account there, or, if you added accounts with Add account, choose Reconnect to sign this card in again.
+  otherAccount: "A different account is signed in on this provider's site. Switch back to this account there, or choose Reconnect: it saves the account that is signed in now and signs this card in again."
   duplicateAccount: The account signed in on this provider's site is already connected. Sign in to a different account there, then add it.
   kimiRetrySession: Kimi was still starting. Try Refresh once more, or open or reload Kimi.
   gumloopRetrySession: Could not read your Gumloop sign-in. Open gumloop.com, make sure you are signed in, then press Refresh.

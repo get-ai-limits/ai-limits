@@ -21,6 +21,7 @@ import {
   type ProviderKind,
 } from "../../../domain/public-protocol";
 import { instanceLabels } from "../instance-label";
+import { needsSignInSwitch } from "../sign-in-switch";
 import { Icon } from "../components/Icon";
 import { OpenSourceFooter } from "../components/OpenSourceFooter";
 import { PageHeader } from "../components/PageHeader";
@@ -474,7 +475,9 @@ export function SettingsView({
                             <span aria-hidden="true">{l10n.t("common.replaceKey")}</span>
                           </button>
                         ) : null}
-                        {!usesApiKey && instance.access === "required" ? (
+                        {!usesApiKey &&
+                        (instance.access === "required" ||
+                          needsSignInSwitch(instance, instances, providers)) ? (
                           <button
                             type="button"
                             aria-label={l10n.t("settings.reconnectNamed", { label })}

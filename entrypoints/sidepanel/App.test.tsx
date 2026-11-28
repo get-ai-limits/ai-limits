@@ -1070,6 +1070,34 @@ describe("side-panel App", () => {
     );
   });
 
+  test("tells the user to sign in when a reconnect opened the sign-in page", async () => {
+    const state = createEmptyFixtureState();
+    vi.spyOn(browser.permissions, "request").mockResolvedValue(true as never);
+    installMessageHandler((message, respond) => {
+      if (message.type === "CONNECT_BROWSER_PROVIDER") {
+        respond({
+          state,
+          report: report(
+            { chatgpt: { kind: "failure", category: "signed_out" } as const },
+            "connect",
+          ),
+          signIn: "waiting",
+        });
+        return;
+      }
+      respond(state);
+    });
+
+    render(<App />);
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Connect ChatGPT" }),
+    );
+
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      "Sign in with this card's account in the tab that opened",
+    );
+  });
+
   test("announces a declined permission decision", async () => {
     const state = createEmptyFixtureState();
     vi.spyOn(browser.permissions, "request").mockResolvedValue(false as never);
