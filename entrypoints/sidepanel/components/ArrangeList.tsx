@@ -192,10 +192,7 @@ export function ArrangeList({ items, onReorder, onSetHidden }: ArrangeListProps)
   return (
     <>
       <p className="arrange-hint" id={hintId}>
-        {l10n.t("overview.arrangeHint")}{" "}
-        <span className="visually-hidden">
-          {l10n.t("overview.arrangeKeyboardHint")}
-        </span>
+        {l10n.t("overview.arrangeHint")}
       </p>
       <ol className="arrange-list">
         {orderedItems.map((item) => {

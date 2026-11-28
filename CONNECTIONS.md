@@ -72,7 +72,7 @@ Reads usage from your signed-in browser session, stores normalized usage locally
 
 Uses an API key you provide, stores it locally in AI Limits, and refreshes about every 15 minutes.
 
-User → Read. Leave generation and write permissions off. ElevenLabs does not publish the exact endpoint-to-scope mapping, so validation confirms access.
+When you create the key, select User → Read. Leave generation and write permissions off. ElevenLabs does not publish the exact endpoint-to-scope mapping, so validation confirms access.
 
 ### DeepSeek
 

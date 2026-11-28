@@ -79,8 +79,8 @@ firstRun:
   brand: AI Limits
   title: 连接你的服务
   introduction: 连接你付费使用的服务，在同一处查看所有已报告的额度窗口。
-  bulletOptIn: "连接之前不会读取任何内容。"
-  bulletLocal: "数据只保存在此浏览器中。无需账号，不会同步。"
+  bulletOptIn: "连接服务之前不会读取任何内容。"
+  bulletLocal: "你的数据只保存在此浏览器中。无需账号，不会同步。"
   supportedProviders: "支持的服务 · {count}"
 
 addProvider:
@@ -109,7 +109,7 @@ addAccount:
   title: "再添加一个 {provider} 账号"
   back: 返回
   step1Title: 允许 AI Limits 保存登录
-  step1Copy: "浏览器会请求允许 AI Limits 使用 {provider} cookie。AI Limits 会在此设备上保存每个 {provider} 账号的登录 cookie，只发送给 {provider}，并在你断开该账号时删除。"
+  step1Copy: "浏览器会请求允许 AI Limits 使用 {provider} cookie。AI Limits 会在此设备上保存每个 {provider} 账号的登录 cookie（其 HttpOnly cookie，防机器人 cookie 除外），只发送给 {provider}，并在你断开该账号时删除。"
   start: 允许并继续
   starting: 正在保存当前登录…
   declined: "没有做任何更改。添加账号需要此权限。"
@@ -141,8 +141,7 @@ overview:
   refreshNamed: "刷新 {label}"
   arrange: 排列
   arrangeTitle: 排列服务
-  arrangeHint: "拖动以调整顺序。隐藏的服务会继续刷新。"
-  arrangeKeyboardHint: "聚焦拖动手柄后按 ↑ 或 ↓ 移动。"
+  arrangeHint: "拖动，或在拖动手柄上按 ↑ ↓，即可调整顺序。隐藏的服务会继续刷新。"
   done: 完成
   moveNamed: "移动 {label}"
   showOnOverviewNamed: "在总览中显示 {label}"
@@ -196,7 +195,7 @@ history:
   unavailableTitle: 历史不可用
   unavailableSubtitle: 当前没有可用的额度指标
   titleNamed: "{label} 历史"
-  subtitle: "{provider} · 最近 30 天，保存在本设备"
+  subtitle: "{provider} · 保留 30 天，仅在本设备"
   range: 历史范围
   range48h: 48 小时
   range7d: 7 天
@@ -418,7 +417,7 @@ history:
     many: "{count} 条读数 · 只保存在这台设备上。"
     other: "{count} 条读数 · 只保存在这台设备上。"
   balance:
-    subtitle: "{provider} · 最近 30 天，保存在本设备"
+    subtitle: "{provider} · 保留 30 天，仅在本设备"
     chartName: "{provider} {label} 余额历史"
     statusNoChange: "{range}内没有变化"
     statusChange: "{range}内 {change}"
@@ -1035,7 +1034,7 @@ providers:
   warp:
     name: Warp
     connect: 连接 Warp
-    connectNote: "Warp 密钥无法设为只读。请使用设有过期时间的专用密钥。"
+    connectNote: "Warp 密钥可以启动由你付费的运行。请使用设有过期时间的专用密钥。"
     capabilities:
       includedCredits: 包含的额度
       addOnCredits: 附加额度

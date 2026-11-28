@@ -9,6 +9,7 @@ import {
   type SupportedLocale,
 } from "../../../i18n/index";
 import {
+  localizeConnectNote,
   localizePlanLabel,
   localizeProviderName,
 } from "../../../i18n/presentation";
@@ -360,6 +361,10 @@ export function SettingsView({
                         </small>
                         {planLabel ? (
                           <small>{planLabel}</small>
+                        ) : null}
+                        {!usesApiKey && instance.access === "required" &&
+                        localizeConnectNote(instance.providerKind) ? (
+                          <small>{localizeConnectNote(instance.providerKind)}</small>
                         ) : null}
                       </div>
                       <div className="settings-provider-actions">

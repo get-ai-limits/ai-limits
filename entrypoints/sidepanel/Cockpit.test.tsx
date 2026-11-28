@@ -785,7 +785,7 @@ describe("Cockpit", () => {
     renderCockpit(state);
     fireEvent.click(screen.getByRole("button", { name: "Open OpenRouter details" }));
     fireEvent.click(screen.getByRole("button", { name: "Open OpenRouter history" }));
-    expect(screen.getByText(/Last 30 days, on this device/)).toBeVisible();
+    expect(screen.getByText(/Kept 30 days, on this device/)).toBeVisible();
     expect(screen.getByRole("radiogroup", { name: "Show used or left" })).toBeVisible();
 
     chooseWindow("Credits");
@@ -1117,7 +1117,7 @@ describe("Cockpit", () => {
     expect(
       screen.getByRole("heading", { level: 1, name: "AI Limits" }),
     ).toBeVisible();
-    expect(screen.getByText("Nothing is read until you connect it.")).toBeVisible();
+    expect(screen.getByText("Nothing is read until you connect a provider.")).toBeVisible();
     expect(screen.queryByText(/no auto-discovery or demo usage/)).not.toBeInTheDocument();
     expect(screen.getByText("Supported providers · 24")).toBeVisible();
     expect(screen.queryByRole("button", { name: "Refresh usage" })).not.toBeInTheDocument();
@@ -2678,7 +2678,7 @@ describe("Cockpit", () => {
     expect(within(chatGpt).getByRole("link", { name: "How ChatGPT connects" })).toBeVisible();
     expect(
       within(screen.getByRole("article", { name: "Warp" })).getByText(
-        "Warp keys can't be read-only. Use a separate key with an expiry.",
+        "Warp keys can start runs billed to you. Use a separate key with an expiry.",
       ),
     ).toBeVisible();
   });
