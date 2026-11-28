@@ -697,13 +697,27 @@ export function Cockpit({
             : undefined,
     };
   });
+  // A signed-out card that Reconnect can fix says why it is signed out: its
+  // saved sign-in is missing or ended (the site's Log out ends it).
+  const withSignInSwitch = <T extends { attemptMessage?: string }>(
+    card: T,
+    instance: ProviderInstanceView,
+  ): T =>
+    instance.lastAttempt?.outcome.kind === "failure" &&
+    instance.lastAttempt.outcome.category === "signed_out" &&
+    needsSignInSwitch(instance, state.instances, state.providers)
+      ? { ...card, attemptMessage: l10n.t("errors.savedSignInEnded") }
+      : card;
   const overviewProviders = connectedInstances.map((instance) => {
-    const card = providerView(
+    const card = withSignInSwitch(
+      providerView(
+        instance,
+        mode,
+        now,
+        labelsByInstance.get(instance.id)!,
+        providerAvailability(state, instance.providerKind).recoveryGuidance,
+      ),
       instance,
-      mode,
-      now,
-      labelsByInstance.get(instance.id)!,
-      providerAvailability(state, instance.providerKind).recoveryGuidance,
     );
     const failureCategory =
       instance.lastAttempt?.outcome.kind === "failure"
@@ -778,12 +792,15 @@ export function Cockpit({
         )
       : undefined;
   const detailProvider = detailRecord
-    ? providerView(
+    ? withSignInSwitch(
+        providerView(
+          detailRecord,
+          mode,
+          now,
+          labelsByInstance.get(detailRecord.id)!,
+          providerAvailability(state, detailRecord.providerKind).recoveryGuidance,
+        ),
         detailRecord,
-        mode,
-        now,
-        labelsByInstance.get(detailRecord.id)!,
-        providerAvailability(state, detailRecord.providerKind).recoveryGuidance,
       )
     : undefined;
   const activeHistoryInstanceId =
