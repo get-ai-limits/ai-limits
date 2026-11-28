@@ -563,6 +563,18 @@ export function App() {
       );
       if (duplicate) {
         announce(localizeFailure("duplicate_account"), "attention");
+      } else if (response.signIn === "waiting" || response.signIn === "tab_failed") {
+        // Reconnecting a card whose account the browser isn't on: the
+        // background saved the current account and opened the sign-in page.
+        announce(
+          l10n.t(
+            response.signIn === "waiting"
+              ? "announcements.reconnectSignIn"
+              : "announcements.reconnectTabFailed",
+            { provider: localizeProviderName(providerKind) },
+          ),
+          response.signIn === "waiting" ? "success" : "attention",
+        );
       } else {
         const summary = manualSummary(response.report, response.state);
         announce(summary.message, summary.tone);

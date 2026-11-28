@@ -12,7 +12,7 @@ import {
   type SavedSessionEnvironment,
   type SavedSessionSpec,
 } from "../providers/saved-session";
-import { readSavedSession } from "../storage/saved-sessions";
+import { deleteSavedSession, readSavedSession } from "../storage/saved-sessions";
 import {
   initializeCredentialVault,
   readCredentialWithRevision,
@@ -1998,6 +1998,50 @@ describe("generic provider instance service", () => {
         expect(
           (await loadInstanceAppState()).instances.map(({ accountKey }) => accountKey),
         ).toEqual([KEY_A, KEY_B]);
+      });
+
+      test("Reconnect signs in a card with no saved sign-in, keeping it and its account", async () => {
+        const { service, signIn, openSignInTab, browserState } = savedSignInService();
+        await connectChatGpt(service);
+        await connectChatGpt(service);
+        signIn(KEY_B);
+        await service.refreshAll("manual_all");
+        const [first, second] = (await loadInstanceAppState()).instances;
+        // A card added before saved sign-ins: it reads only as the browser.
+        await deleteSavedSession(first!.id);
+        const stuck = await service.refreshAll("manual_all");
+        expect(stuck.results[0]?.outcome).toMatchObject({ category: "other_account" });
+        openSignInTab.mockClear();
+
+        const prepared = await service.prepareProviderPermission({
+          providerKind: "chatgpt",
+          instanceId: first!.id,
+          config: { kind: "fixed" },
+        });
+        await service.resolveProviderPermission(prepared.permissionIntentId, true);
+        const result = await service.connectBrowserProviderWithSignIn(
+          "chatgpt",
+          prepared.permissionIntentId,
+        );
+
+        expect(result.signIn).toBe("waiting");
+        expect(openSignInTab).toHaveBeenCalledWith("https://chatgpt.com/auth/login");
+        expect(browserState.key).toBeUndefined();
+        await expect(readSavedSession(second!.id)).resolves.toBeDefined();
+        expect(
+          (await loadInstanceAppState()).instances.map(({ id, accountKey }) => [id, accountKey]),
+        ).toEqual([
+          [first!.id, KEY_A],
+          [second!.id, KEY_B],
+        ]);
+
+        signIn(KEY_A);
+        const refreshed = await service.refreshAll("manual_all");
+        expect(refreshed.results.map(({ outcome }) => outcome.kind)).toEqual([
+          "success",
+          "success",
+        ]);
+        await expect(readSavedSession(first!.id)).resolves.toBeDefined();
       });
 
       test("Add account tells the guide whether the sign-in page is waiting", async () => {

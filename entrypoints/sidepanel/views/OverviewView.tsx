@@ -25,6 +25,8 @@ export interface OverviewProvider {
   /** Set while Settings hides used-up plans and every pool of this one is used up. */
   exhausted?: { reopensLabel?: string };
   needsApiKeyReplacement?: boolean;
+  /** The browser is on another account; Reconnect signs this card in again. */
+  needsSignIn?: boolean;
 }
 
 export interface OverviewViewProps {
@@ -41,6 +43,10 @@ export interface OverviewViewProps {
   ) => void;
   onReorderProviders?: (instanceIds: ProviderInstanceId[]) => void;
   onSetProviderHidden?: (instanceId: ProviderInstanceId, hidden: boolean) => void;
+  onReconnectInstance?: (
+    providerKind: ProviderKind,
+    instanceId: ProviderInstanceId,
+  ) => void;
 }
 
 export function OverviewView({
@@ -54,6 +60,7 @@ export function OverviewView({
   onReplaceApiKey,
   onReorderProviders = () => undefined,
   onSetProviderHidden = () => undefined,
+  onReconnectInstance,
 }: OverviewViewProps) {
   const [arranging, setArranging] = useState(false);
   const arrangeButtonRef = useRef<HTMLButtonElement>(null);
@@ -180,7 +187,7 @@ export function OverviewView({
         </div>
       ) : null}
       <div className="provider-list">
-        {visibleProviders.map(({ instanceId, providerKind, card, needsApiKeyReplacement }) => {
+        {visibleProviders.map(({ instanceId, providerKind, card, needsApiKeyReplacement, needsSignIn }) => {
           const operation = providerOperations[instanceId];
           return (
             <ProviderCard
@@ -213,6 +220,18 @@ export function OverviewView({
                             providerKind as ApiKeyProviderKind,
                             instanceId,
                           ),
+                      }
+                  : needsSignIn && onReconnectInstance
+                    ? {
+                        label: l10n.t("common.reconnect"),
+                        accessibleLabel: l10n.t("overview.reconnectNamed", {
+                          label: card.instanceLabel,
+                        }),
+                        title: l10n.t("overview.reconnectNamed", {
+                          label: card.instanceLabel,
+                        }),
+                        focusKey: `overview-reconnect-${instanceId}`,
+                        onClick: () => onReconnectInstance(providerKind, instanceId),
                       }
                   : {
                       label: l10n.t("common.refresh"),
