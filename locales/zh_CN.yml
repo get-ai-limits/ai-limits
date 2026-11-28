@@ -30,7 +30,6 @@ common:
   defaultInstance: 默认
   apiKey: API 密钥
   browserSession: 浏览器会话
-  readOnly: 只读
   now: 现在
   window: 窗口
   history: 历史
@@ -110,7 +109,7 @@ addAccount:
   title: "再添加一个 {provider} 账号"
   back: 返回
   step1Title: 允许 AI Limits 保存登录
-  step1Copy: "浏览器会请求允许 AI Limits 保存 {provider} 登录。它们只保存在此设备上，只发送给 {provider}，并在你断开连接时删除。"
+  step1Copy: "浏览器会请求允许 AI Limits 使用 {provider} cookie。AI Limits 会在此设备上保存每个 {provider} 账号的登录 cookie，只发送给 {provider}，并在你断开该账号时删除。"
   start: 允许并继续
   starting: 正在保存当前登录…
   declined: "没有做任何更改。添加账号需要此权限。"
@@ -160,7 +159,7 @@ overview:
   allHiddenCopy: "它们会继续刷新。可在这里或设置中重新显示。"
   showAll: 全部显示
   allExhaustedTitle: 所有套餐的额度暂时都已用完
-  allExhaustedCopy: "额度重置后会重新显示。"
+  allExhaustedCopy: "额度重置后会重新显示。如需立即查看，请在设置中关闭“隐藏已用完的套餐”。"
   usedUp: 已用完
   usedUpUntil: "已用完 · {reset}"
   view: 查看
@@ -187,7 +186,7 @@ providerDetail:
   connectionTitle: "连接"
   disconnectNamed: "断开 {label}"
   disconnectConfirmGroup: 确认断开连接
-  disconnectConfirmWarning: "将删除此账号的登录或密钥、用量和历史。此操作无法撤销。"
+  disconnectConfirmWarning: "将删除此连接保存的凭据、设置、用量和历史。此操作无法撤销。"
   disconnectConfirm: 确认断开
   disconnectConfirmNamed: "确认断开 {label}"
   disconnectCancelNamed: "取消断开 {label}"
@@ -564,7 +563,7 @@ card:
   values: "{provider} 数值"
   countersAndBalances: 计数与余额
   noUsageStored: "尚未存储 {provider} 用量。"
-  reconnectToUpdate: "重新连接以继续更新。"
+  reconnectToUpdate: "重新连接以更新。"
   identityNamed: "{provider} {instance}"
 
 announcements:
@@ -890,14 +889,14 @@ providers:
   kimi:
     name: Kimi
     connect: 连接 Kimi
-    connectNote: "从 kimi.com 读取 Kimi 的登录令牌。"
+    connectNote: "从 kimi.com 读取 Kimi 的登录令牌，并通过 auth.kimi.com 续期。连接或刷新时可能会短暂打开一个 Kimi 标签页。"
     capabilities:
       subscriptionUsage: 订阅用量
       codingLimits: 编程限制
   cursor:
     name: Cursor
     connect: 连接 Cursor
-    connectNote: "部分数据需要打开 cursor.com 标签页。"
+    connectNote: "部分数据需在 cursor.com 标签页中运行只读代码读取。连接或刷新时可能会短暂打开一个。"
     capabilities:
       monthlyUsage: 每月用量
       grokBotUsage: Grok Bot 用量
@@ -908,7 +907,7 @@ providers:
   grok:
     name: Grok
     connect: 连接 Grok
-    connectNote: "从已打开的 grok.com 标签页读取。"
+    connectNote: "在 grok.com 标签页中运行只读代码读取。连接或刷新时可能会短暂打开一个。"
     capabilities:
       usagePool: 用量池
       planTier: 套餐等级
@@ -1043,7 +1042,7 @@ providers:
   gumloop:
     name: Gumloop
     connect: 连接 Gumloop
-    connectNote: "从 gumloop.com 读取 Gumloop 的登录令牌。"
+    connectNote: "从 gumloop.com 读取 Gumloop 的登录令牌，并通过 Google 登录服务续期。连接或刷新时可能会短暂打开一个 gumloop.com 标签页。"
     capabilities:
       monthlyCredits: 每月额度
 

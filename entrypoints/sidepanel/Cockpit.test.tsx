@@ -1197,7 +1197,7 @@ describe("Cockpit", () => {
     expect(within(usage).getByText("$8.20 / $20.00 spent")).toBeVisible();
     expect(screen.getByRole("button", { name: "Open Claude history" })).toBeVisible();
     expect(screen.getByRole("heading", { name: "Connection" })).toBeVisible();
-    expect(screen.getByRole("link", { name: "How Claude connects" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "How it connects" })).toHaveAttribute(
       "href",
       "https://get-ai-limits.com/connections/#claude",
     );
@@ -1547,7 +1547,7 @@ describe("Cockpit", () => {
     ).toBeVisible();
     expect(
       screen.getByText(
-        "Deletes this account's sign-in or key, usage and history. This can't be undone.",
+        "Deletes this connection's saved credentials, settings, usage and history. This can't be undone.",
       ),
     ).toBeVisible();
 
@@ -2188,7 +2188,8 @@ describe("Cockpit", () => {
   });
 
   it("shows Kimi's sign-in token note and help link on First Run and Add Provider", () => {
-    const connectionDisclosure = "Reads Kimi's sign-in token from kimi.com.";
+    const connectionDisclosure =
+      "Reads Kimi's sign-in tokens from kimi.com and renews them at auth.kimi.com. May briefly open a Kimi tab on Connect or Refresh.";
 
     renderCockpit(createEmptyFixtureState());
     let kimi = screen.getByRole("article", { name: "Kimi" });

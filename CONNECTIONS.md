@@ -20,6 +20,10 @@ Moves a plan off the Overview while every one of its usage pools is at its limit
 
 English and Simplified Chinese only. Other browser languages fall back to English. The browser’s own menus and the extension name stay in the browser’s language.
 
+### Disconnecting
+
+Disconnecting deletes that connection's saved credentials, configuration, usage, and history right away. Removing the browser's site permission can be delayed, and is skipped while another connection to the same site still needs it. Delete all local data in Settings removes everything at once; there is no cloud copy.
+
 ### Adding another account (Cursor, ChatGPT)
 
 A browser holds one sign-in per site, so AI Limits keeps one for each Cursor or ChatGPT account. When you add an account, your browser asks for permission to use that service's cookies. AI Limits saves each account's sign-in cookies (its HttpOnly cookies, except bot protection) on this device, for the card they belong to: the account signed in now, and each other account when it is read while this browser is signed in to it. It sends them only to that service and deletes them when you disconnect that card. Don't use Log out on the service's site: it would end the saved sign-in of your other account too.
@@ -44,13 +48,11 @@ Connect and manual Refresh may briefly open one inactive Kimi tab when recovery 
 
 Reads base usage from your signed-in Cursor session and refreshes it about every 15 minutes. To request Grok Bot and extra-credit JSON, AI Limits may run bundled read-only code in one already-open cursor.com page, including during scheduled refresh. Only Connect or manual Refresh may briefly open one inactive spending tab when none is open. It does not inspect page content, browser storage, or cookie values directly; the browser attaches signed-in Cursor cookies to those fixed same-origin requests.
 
-Connect and manual Refresh prefer an already-open Cursor tab. If none is open, they may briefly open one inactive spending tab. Scheduled refresh may read from an already-open Cursor tab and never opens one.
+Connect and manual Refresh prefer an already-open Cursor tab. Scheduled refresh never opens one.
 
 ### Grok
 
 Reads usage from an already-open grok.com page. On Connect or manual Refresh, AI Limits may run bundled read-only code there, or briefly open one inactive grok.com tab if none is open. It does not inspect page content, browser storage, or cookie values directly; the browser attaches signed-in Grok cookies to those same-origin requests. Scheduled refresh may inject into an already-open grok.com tab and never opens a new one.
-
-Connect and manual Refresh prefer an already-open grok.com tab. If none is open, they may briefly open one inactive grok.com tab. Scheduled refresh may inject into an already-open grok.com tab and never opens a new one.
 
 ### Gumloop
 
@@ -116,7 +118,7 @@ Uses a Warp API key you create, stores it locally in AI Limits, sends it only to
 
 Supports multiple independent connections. Each stores its own New API instance URL, relay key, label, usage, and History locally; same-origin connections share only the browser's host permission.
 
-Each New API connection keeps its own relay key, label, usage, and history. It shows key-specific granted, used, and remaining quota. Unlimited keys show absolute usage without an invented percentage. Same-origin connections share only the browser's host permission. New API also shows key-specific granted, used, and remaining quota; unlimited keys show absolute usage without an invented percentage.
+It shows the key's granted, used, and remaining quota. Unlimited keys show absolute usage without an invented percentage.
 
 Paste the homepage, dashboard URL, or an API URL such as /v1/messages. AI Limits removes known console and API suffixes, then validates the instance through /api/status. HTTPS is required, except localhost for development.
 
@@ -146,7 +148,7 @@ Each LiteLLM, ClawRouter, sub2api, LLM Proxy connection keeps its own instance U
 
 Paste the base URL of the instance. AI Limits validates and normalizes it before requesting only that instance's read-only usage endpoint. HTTPS is required, except localhost for development.
 
-Saved locally and sent only to the configured instance origin for its read-only usage request.
+Each key is stored locally and sent only to its own instance, for that read-only usage request.
 
 AI Limits does not inspect provider pages or send this key to any other origin. Each configured instance is read independently.
 

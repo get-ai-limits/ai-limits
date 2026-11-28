@@ -30,7 +30,6 @@ common:
   defaultInstance: default
   apiKey: API key
   browserSession: Browser session
-  readOnly: read-only
   now: Now
   window: Window
   history: History
@@ -110,7 +109,7 @@ addAccount:
   title: "Add another {provider} account"
   back: Back
   step1Title: Allow AI Limits to save sign-ins
-  step1Copy: "Your browser will ask to let AI Limits save {provider} sign-ins. They stay on this device, go only to {provider}, and are deleted when you disconnect."
+  step1Copy: "Your browser will ask to let AI Limits use {provider} cookies. AI Limits saves each {provider} account's sign-in cookies on this device, sends them only to {provider}, and deletes them when you disconnect that account."
   start: Allow and continue
   starting: Saving your current sign-in…
   declined: "Nothing changed. Adding an account needs this permission."
@@ -160,7 +159,7 @@ overview:
   allHiddenCopy: "They keep refreshing. Show them here or in Settings."
   showAll: Show all
   allExhaustedTitle: Every plan is used up for now
-  allExhaustedCopy: "They come back when a limit resets."
+  allExhaustedCopy: "They come back when a limit resets. To see them now, turn off Hide used-up plans in Settings."
   usedUp: Used up
   usedUpUntil: "Used up · {reset}"
   view: View
@@ -187,7 +186,7 @@ providerDetail:
   connectionTitle: "Connection"
   disconnectNamed: "Disconnect {label}"
   disconnectConfirmGroup: Confirm disconnect
-  disconnectConfirmWarning: "Deletes this account's sign-in or key, usage and history. This can't be undone."
+  disconnectConfirmWarning: "Deletes this connection's saved credentials, settings, usage and history. This can't be undone."
   disconnectConfirm: Confirm disconnect
   disconnectConfirmNamed: "Confirm disconnect {label}"
   disconnectCancelNamed: "Cancel disconnect {label}"
@@ -564,7 +563,7 @@ card:
   values: "{provider} values"
   countersAndBalances: Counters and balances
   noUsageStored: "No {provider} usage has been stored yet."
-  reconnectToUpdate: "Reconnect to keep this updated."
+  reconnectToUpdate: "Reconnect to update."
   identityNamed: "{provider} {instance}"
 
 announcements:
@@ -890,14 +889,14 @@ providers:
   kimi:
     name: Kimi
     connect: Connect Kimi
-    connectNote: "Reads Kimi's sign-in token from kimi.com."
+    connectNote: "Reads Kimi's sign-in tokens from kimi.com and renews them at auth.kimi.com. May briefly open a Kimi tab on Connect or Refresh."
     capabilities:
       subscriptionUsage: Subscription usage
       codingLimits: Coding limits
   cursor:
     name: Cursor
     connect: Connect Cursor
-    connectNote: "Some values need an open cursor.com tab."
+    connectNote: "Runs read-only code in a cursor.com tab for some values. May briefly open one on Connect or Refresh."
     capabilities:
       monthlyUsage: Monthly usage
       grokBotUsage: Grok Bot usage
@@ -908,7 +907,7 @@ providers:
   grok:
     name: Grok
     connect: Connect Grok
-    connectNote: "Reads from an open grok.com tab."
+    connectNote: "Runs read-only code in a grok.com tab. May briefly open one on Connect or Refresh."
     capabilities:
       usagePool: Usage pool
       planTier: Plan tier
@@ -1043,7 +1042,7 @@ providers:
   gumloop:
     name: Gumloop
     connect: Connect Gumloop
-    connectNote: "Reads Gumloop's sign-in token from gumloop.com."
+    connectNote: "Reads Gumloop's sign-in tokens from gumloop.com and renews them through Google's sign-in service. May briefly open a gumloop.com tab on Connect or Refresh."
     capabilities:
       monthlyCredits: Monthly credits
 

@@ -2185,8 +2185,7 @@ section[aria-labelledby="overview-title"] .provider-list {
   line-height: 1.5;
 }
 
-.first-run__header ul,
-.connection-surface ul {
+.first-run__header ul {
   display: grid;
   gap: 5px;
   margin: 10px 0 0;
@@ -2197,14 +2196,12 @@ section[aria-labelledby="overview-title"] .provider-list {
   list-style: none;
 }
 
-.first-run__header li,
-.connection-surface li {
+.first-run__header li {
   position: relative;
   padding-left: 14px;
 }
 
-.first-run__header li::before,
-.connection-surface li::before {
+.first-run__header li::before {
   position: absolute;
   left: 1px;
   color: var(--quota);
@@ -2248,14 +2245,20 @@ section[aria-labelledby="overview-title"] .provider-list {
   font-size: 12px;
 }
 
+.provider-connect-row__name {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
 .provider-connect-row__help {
   display: inline-flex;
+  flex: none;
   align-items: center;
   justify-content: center;
-  width: 16px;
-  height: 16px;
-  margin-left: 4px;
-  vertical-align: -3px;
+  width: 24px;
+  height: 24px;
+  margin: -5px 0;
   color: var(--text-muted);
   border-radius: 50%;
 }

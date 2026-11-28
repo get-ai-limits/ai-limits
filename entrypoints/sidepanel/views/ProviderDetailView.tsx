@@ -4,7 +4,6 @@ import { l10n } from "../../../i18n/index";
 import {
   connectionHelpUrl,
   localizeOperation,
-  localizeProviderName,
 } from "../../../i18n/presentation";
 import {
   type ProviderInstanceId,
@@ -304,9 +303,6 @@ export function ProviderDetailView({
               href={connectionHelpUrl(provider.providerId)}
               target="_blank"
               rel="noopener noreferrer"
-              aria-label={l10n.t("connections.howItConnectsNamed", {
-                provider: localizeProviderName(provider.providerId),
-              })}
             >
               {l10n.t("connections.howItConnects")}
             </a>

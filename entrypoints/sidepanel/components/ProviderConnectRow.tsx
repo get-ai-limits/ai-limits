@@ -64,8 +64,8 @@ export function ProviderConnectRow({
         <div className="provider-connect-row__identity">
           <ProviderMark providerId={providerKind} size="md" />
           <div>
-            <h3>
-              <span id={headingId}>{name}</span>
+            <div className="provider-connect-row__name">
+              <h3 id={headingId}>{name}</h3>
               <a
                 className="provider-connect-row__help"
                 href={connectionHelpUrl(providerKind)}
@@ -78,7 +78,7 @@ export function ProviderConnectRow({
               >
                 <Icon name="info" />
               </a>
-            </h3>
+            </div>
             <p>
               {addsAccount
                 ? l10n.t("connections.accountsConnected", {
