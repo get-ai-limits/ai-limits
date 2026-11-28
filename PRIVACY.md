@@ -389,7 +389,7 @@ sends back. The page's own requests never carry the marker, so they are not
 changed, and the rule is removed when the read ends. The values are used only
 if `/api/auth/me` names that connection's account. Only the identity's `sub`
 (hashed, never stored) and the three dashboard answers leave the page. Without
-an open cursor.com tab, those values keep their last values.
+an open cursor.com tab, they stay at their last values.
 
 Saved sign-ins are stored in `chrome.storage.local` under a separate record
 from usage state. In Chromium builds they have the same trusted-context

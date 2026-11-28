@@ -236,17 +236,22 @@ export async function readCursorDashboardJsonAsSavedAccount(
   }
   const tagged = (path: string) =>
     `https://cursor.com${path}?ai-limits-read=${encodeURIComponent(marker)}`;
+  // Short limits keep the whole read well inside the refresh deadline, so
+  // it ends (and its rule is removed) before the base usage read starts.
   const request = async (
     path: string,
     init: RequestInit,
+    timeoutMs: number,
   ): Promise<CursorDashboardEndpointResult> => {
     try {
+      // `omit`: only the saved sign-in rule supplies cookies, so a request
+      // that misses the rule is signed out, never the browser's account.
       const response = await globalThis.fetch(tagged(path), {
         ...init,
-        credentials: "include",
+        credentials: "omit",
         cache: "no-store",
         redirect: "manual",
-        signal: AbortSignal.timeout(8_000),
+        signal: AbortSignal.timeout(timeoutMs),
       });
       if (!response.ok) return { ok: false, status: response.status };
       return { ok: true, value: await response.json() };
@@ -254,7 +259,7 @@ export async function readCursorDashboardJsonAsSavedAccount(
       return { ok: false };
     }
   };
-  const me = await request("/api/auth/me", { method: "GET" });
+  const me = await request("/api/auth/me", { method: "GET" }, 3_000);
   const body = me.ok ? me.value : undefined;
   const sub =
     typeof body === "object" && body !== null
@@ -269,9 +274,9 @@ export async function readCursorDashboardJsonAsSavedAccount(
     body: "{}",
   };
   const [grok, credits, aggregated] = await Promise.all([
-    request("/api/dashboard/get-sand-usage-status", post),
-    request("/api/dashboard/get-credit-grants-balance", post),
-    request("/api/dashboard/get-aggregated-usage-events", post),
+    request("/api/dashboard/get-sand-usage-status", post, 5_000),
+    request("/api/dashboard/get-credit-grants-balance", post, 5_000),
+    request("/api/dashboard/get-aggregated-usage-events", post, 5_000),
   ]);
   return { sub, grok, credits, aggregated };
 }
@@ -298,7 +303,8 @@ export interface SavedDashboardBridge {
   marker(): string;
 }
 
-const SAVED_READ_TABS = 2;
+/** One tab, so the read stays within about eight seconds. */
+const SAVED_READ_TABS = 1;
 
 /**
  * Reads the dashboard JSON for a connection the browser is not signed in to,
@@ -351,7 +357,11 @@ export async function readSavedCursorDashboard(
         continue;
       }
       const sub = (value as { sub?: unknown }).sub;
-      if (typeof sub !== "string" || !(await bridge.isConnectionAccount(sub))) {
+      if (typeof sub !== "string") {
+        failure = { kind: "inject_empty", detail: "saved read found no account" };
+        continue;
+      }
+      if (!(await bridge.isConnectionAccount(sub))) {
         failure = { kind: "inject_unusable", detail: "saved read was another account" };
         continue;
       }

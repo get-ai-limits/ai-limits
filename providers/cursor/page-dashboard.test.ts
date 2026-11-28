@@ -814,7 +814,7 @@ describe("saved-account dashboard read", () => {
   });
 
   test("the page function tags every request and asks for the account first", async () => {
-    const fetchPage = vi.fn(async (input: RequestInfo | URL) =>
+    const fetchPage = vi.fn(async (input: RequestInfo | URL, _init?: RequestInit) =>
       String(input).includes("/api/auth/me")
         ? jsonResponse({ sub: "user_1", email: "kept-in-page@example.com" })
         : jsonResponse({ ok: 1 }),
@@ -834,6 +834,10 @@ describe("saved-account dashboard read", () => {
       expect(urls[0]).toBe(`https://cursor.com/api/auth/me?ai-limits-read=${MARKER}`);
       expect(urls.every((url) => url.endsWith(`?ai-limits-read=${MARKER}`))).toBe(true);
       expect(urls).toHaveLength(4);
+      // Only the saved sign-in rule supplies cookies.
+      expect(
+        fetchPage.mock.calls.every(([, init]) => init?.credentials === "omit"),
+      ).toBe(true);
     } finally {
       vi.unstubAllGlobals();
     }
