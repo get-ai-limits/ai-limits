@@ -1094,7 +1094,7 @@ describe("side-panel App", () => {
     );
 
     expect(await screen.findByRole("status")).toHaveTextContent(
-      "Sign in with this card's account in the tab that opened",
+      "Sign in with this card's ChatGPT account in the tab that opened",
     );
   });
 

@@ -41,21 +41,24 @@ function card(
 }
 
 describe("needsSignInSwitch", () => {
-  test("is true for a card on another account, or signed out beside another card", () => {
+  test("is true for a card on another account, or signed out, beside another card", () => {
     const other = card("cursor:a", "other_account");
     const signedOut = card("cursor:b", "signed_out");
-    expect(needsSignInSwitch(other, [other], providers)).toBe(true);
+    expect(needsSignInSwitch(other, [other, signedOut], providers)).toBe(true);
     expect(needsSignInSwitch(signedOut, [signedOut, other], providers)).toBe(true);
   });
 
-  test("is false for a lone signed-out card, other failures, missing access, or no saved sign-ins", () => {
+  test("is false for a lone card, other failures, missing access, or no saved sign-ins", () => {
     const lone = card("cursor:b", "signed_out");
     expect(needsSignInSwitch(lone, [lone], providers)).toBe(false);
+    const loneOther = card("cursor:c", "other_account");
+    expect(needsSignInSwitch(loneOther, [loneOther], providers)).toBe(false);
     const failed = card("cursor:a", "temporary_error");
     expect(needsSignInSwitch(failed, [failed, lone], providers)).toBe(false);
     const required = card("cursor:a", "other_account", { access: "required" });
-    expect(needsSignInSwitch(required, [required], providers)).toBe(false);
+    expect(needsSignInSwitch(required, [required, lone], providers)).toBe(false);
     const grok = card("grok:default", "other_account");
-    expect(needsSignInSwitch(grok, [grok], providers)).toBe(false);
+    const grok2 = card("grok:second", "other_account");
+    expect(needsSignInSwitch(grok, [grok, grok2], providers)).toBe(false);
   });
 });

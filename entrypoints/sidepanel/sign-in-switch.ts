@@ -5,8 +5,9 @@ import type {
 
 /**
  * Whether a connection of a provider with saved sign-ins needs its account
- * signed in again: the browser is on another account, or signed out, and
- * this connection has no saved sign-in that works. Reconnect then saves the
+ * signed in again: the browser is on another account, or signed out, this
+ * connection has no saved sign-in that works, and the provider has another
+ * connection (a lone one has nothing to switch from). Reconnect then saves the
  * browser's current sign-in for its own connection and opens the sign-in
  * page for this one, so nothing is disconnected and History stays.
  */
@@ -22,9 +23,8 @@ export function needsSignInSwitch(
   if (availability?.savedSignIns !== true) return false;
   const outcome = instance.lastAttempt?.outcome;
   if (outcome?.kind !== "failure") return false;
-  if (outcome.category === "other_account") return true;
   return (
-    outcome.category === "signed_out" &&
+    (outcome.category === "other_account" || outcome.category === "signed_out") &&
     instances.some(
       (other) =>
         other.id !== instance.id && other.providerKind === instance.providerKind,
