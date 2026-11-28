@@ -386,10 +386,13 @@ endpoints, adding a one-time marker to each URL. While it runs, a session rule
 limited to that tab and to URLs carrying that marker sets those requests'
 Cookie header to the connection's saved sign-in and drops any cookie Cursor
 sends back. The page's own requests never carry the marker, so they are not
-changed, and the rule is removed when the read ends. The values are used only
-if `/api/auth/me` names that connection's account. Only the identity's `sub`
-(hashed, never stored) and the three dashboard answers leave the page. Without
-an open cursor.com tab, they stay at their last values.
+changed, and the rule is removed when the read ends (at most about nine
+seconds). The values are used only if `/api/auth/me` names that connection's
+account. Only the identity's `sub` (hashed, never stored) and the three
+dashboard answers leave the page. These requests run in the page's own
+context, like the other Cursor page reads, so scripts that cursor.com loads in
+that tab can see them and their answers. Without an open cursor.com tab, they
+stay at their last values.
 
 Saved sign-ins are stored in `chrome.storage.local` under a separate record
 from usage state. In Chromium builds they have the same trusted-context

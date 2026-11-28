@@ -9,6 +9,7 @@ import {
   readCursorDashboardJsonAtExpectedOrigin,
   readCursorDashboardJsonAsSavedAccount,
   readSavedCursorDashboard,
+  SAVED_READ_TIMEOUT_MS,
   savedReadRegexFilter,
   readCursorDashboardStashAtExpectedOrigin,
   startCursorDashboardStashAtExpectedOrigin,
@@ -911,5 +912,40 @@ describe("saved-account dashboard read", () => {
     none.value.queryTabs.mockResolvedValue([]);
     await expect(readSavedCursorDashboard(none.value)).resolves.toEqual({ kind: "no_tab" });
     expect(none.executeScript).not.toHaveBeenCalled();
+  });
+
+  test("gives up inside the tab rule when the tab never runs the read", async () => {
+    vi.useFakeTimers();
+    try {
+      const stuck = bridge(undefined);
+      let insideRule = false;
+      stuck.inTab.mockImplementation(async (_tabId, _filter, operation) => {
+        insideRule = true;
+        try {
+          return await operation();
+        } finally {
+          insideRule = false;
+        }
+      });
+      stuck.executeScript.mockImplementation(() => new Promise<never>(() => undefined));
+      const probe = readSavedCursorDashboard(stuck.value);
+      await vi.advanceTimersByTimeAsync(SAVED_READ_TIMEOUT_MS);
+      await expect(probe).resolves.toEqual({
+        kind: "inject_threw",
+        detail: "saved read timed out",
+      });
+      expect(insideRule).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  test("skips a frozen tab", async () => {
+    const frozen = bridge(undefined);
+    frozen.value.queryTabs.mockResolvedValue([
+      { id: 4, url: "https://cursor.com/dashboard", status: "complete", frozen: true } as never,
+    ]);
+    await expect(readSavedCursorDashboard(frozen.value)).resolves.toEqual({ kind: "tab_asleep" });
+    expect(frozen.executeScript).not.toHaveBeenCalled();
   });
 });

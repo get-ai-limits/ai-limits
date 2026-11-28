@@ -31,6 +31,8 @@ interface CursorTab {
   id?: number;
   url?: string;
   discarded?: boolean;
+  /** Chrome 132+ reports a frozen background tab, which runs no script. */
+  frozen?: boolean;
   status?: string;
 }
 
@@ -125,7 +127,7 @@ function asEndpointResult(value: unknown): CursorDashboardEndpointResult {
 }
 
 export function tabLooksAsleep(tab: CursorTab): boolean {
-  if (tab.discarded === true) return true;
+  if (tab.discarded === true || tab.frozen === true) return true;
   return tab.status !== undefined && tab.status !== "complete";
 }
 
@@ -307,6 +309,25 @@ export interface SavedDashboardBridge {
 const SAVED_READ_TABS = 1;
 
 /**
+ * The page's own timeouts only run while the page runs script, so a tab that
+ * is frozen or held by a dialog could keep the read, its tab rule, and the
+ * Cursor lock waiting. The read gives up after this, inside `inTab`, so the
+ * rule is still removed while the lock is held.
+ */
+export const SAVED_READ_TIMEOUT_MS = 9_000;
+
+function withinSavedReadTime<T>(operation: Promise<T>): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(
+      () => reject(new Error("saved read timed out")),
+      SAVED_READ_TIMEOUT_MS,
+    );
+  });
+  return Promise.race([operation, timeout]).finally(() => clearTimeout(timer));
+}
+
+/**
  * Reads the dashboard JSON for a connection the browser is not signed in to,
  * from an already-open cursor.com tab, with that connection's saved sign-in
  * on the tagged requests only. Never opens a tab. Values count only when the
@@ -335,12 +356,14 @@ export async function readSavedCursorDashboard(
       let frames: CursorScriptResult[];
       try {
         frames = await bridge.inTab(tabId, savedReadRegexFilter(marker), () =>
-          bridge.executeScript({
-            target: { tabId },
-            world: "MAIN",
-            func: readCursorDashboardJsonAsSavedAccount,
-            args: [marker],
-          }),
+          withinSavedReadTime(
+            bridge.executeScript({
+              target: { tabId },
+              world: "MAIN",
+              func: readCursorDashboardJsonAsSavedAccount,
+              args: [marker],
+            }),
+          ),
         );
       } catch (error) {
         failure = { kind: "inject_threw", detail: sanitizeInjectDetail(error) };

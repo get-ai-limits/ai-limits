@@ -46,7 +46,7 @@ Connect and manual Refresh may briefly open one inactive Kimi tab when recovery 
 
 ### Cursor
 
-Reads base usage from your signed-in Cursor session and refreshes it about every 15 minutes. To request Grok Bot and extra-credit JSON, AI Limits may run bundled read-only code in one already-open cursor.com page, including during scheduled refresh. Only Connect or manual Refresh may briefly open one inactive spending tab when none is open. It does not inspect page content, browser storage, or cookie values directly; the browser attaches signed-in Cursor cookies to those fixed same-origin requests.
+Reads base usage from your signed-in Cursor session and refreshes it about every 15 minutes. To request Grok Bot and extra-credit JSON, AI Limits may run bundled read-only code in one already-open cursor.com page, including during scheduled refresh. Only Connect or manual Refresh may briefly open one inactive spending tab when none is open. It does not inspect page content, browser storage, or cookie values directly; the browser attaches signed-in Cursor cookies to those fixed same-origin requests. For a card the browser isn't signed in to, those requests carry that card's saved sign-in instead, through an already-open cursor.com tab only.
 
 Connect and manual Refresh prefer an already-open Cursor tab. Scheduled refresh never opens one.
 
