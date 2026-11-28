@@ -682,6 +682,7 @@ dynamicApi:
 
 errors:
   signedOut: Sign in to the provider and try again.
+  savedSignInEnded: "This account isn't signed in here, and its saved sign-in is missing or has ended (Log out on the site ends it). Choose Reconnect to sign it in again."
   credentialInvalid: The API key is invalid. Enter a valid key and try again.
   credentialScopeRequired: The API key cannot read usage. Update its permissions and try again.
   challengeBlocked: Open the provider and complete its security check before trying again.

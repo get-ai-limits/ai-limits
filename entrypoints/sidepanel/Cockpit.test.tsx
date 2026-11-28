@@ -3230,6 +3230,49 @@ describe("Cockpit", () => {
     expect(screen.getAllByRole("button", { name: /^Reconnect Cursor/ })).toHaveLength(1);
   });
 
+  it("says a signed-out saved-sign-in card's sign-in ended and offers Reconnect", () => {
+    const state = createFixtureState(NOW);
+    state.providers = state.providers.map((provider) =>
+      provider.providerKind === "cursor"
+        ? { ...provider, cardinality: "multiple", savedSignIns: true }
+        : provider,
+    );
+    const cursor = state.instances.find((instance) => instance.providerKind === "cursor")!;
+    state.instances = [
+      ...state.instances.map((instance) =>
+        instance.id === cursor.id
+          ? {
+              ...instance,
+              lastAttempt: {
+                trigger: "manual_provider" as const,
+                startedAt: NOW - 2_000,
+                finishedAt: NOW - 1_000,
+                outcome: { kind: "failure" as const, category: "signed_out" as const },
+              },
+            }
+          : instance,
+      ),
+      {
+        ...cursor,
+        id: "cursor:44444444-4444-4444-8444-444444444444" as ProviderInstanceId,
+        lastAttempt: undefined,
+      },
+    ];
+    render(
+      <Cockpit
+        state={state}
+        now={NOW}
+        onDisplayModeChange={vi.fn()}
+        onRefresh={vi.fn()}
+        onConnectProvider={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText(/its saved sign-in is missing or has ended/)).toBeVisible();
+    expect(screen.queryByText("Sign in to the provider and try again.")).not.toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: /^Reconnect Cursor/ })).toHaveLength(1);
+  });
+
   it("controls automatic refresh and connected-provider disconnects", () => {
     const onAutoRefreshChange = vi.fn();
     const onDisconnectProvider = vi.fn();

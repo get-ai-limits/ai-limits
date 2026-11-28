@@ -682,6 +682,7 @@ dynamicApi:
 
 errors:
   signedOut: 请登录该服务后再试。
+  savedSignInEnded: "此浏览器未登录这个账号，而且它保存的登录不存在或已失效（在网站上退出登录会使其失效）。请选择重新连接，重新登录这个账号。"
   credentialInvalid: API 密钥无效。请输入有效密钥后再试。
   credentialScopeRequired: 此 API 密钥无法读取用量。请更新其权限后再试。
   challengeBlocked: 请打开该服务并完成安全验证后再试。
