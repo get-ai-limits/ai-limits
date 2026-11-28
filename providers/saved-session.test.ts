@@ -242,6 +242,74 @@ describe("collectWithSavedSession", () => {
     expect(api.jar().map(({ name }) => name)).toContain("Session");
   });
 
+  test("lets a saved read send tagged requests from one tab with the saved sign-in", async () => {
+    await saveSession(A, [{ name: "Session", value: "saved-a" }], 1);
+    const api = fakeCookies([cookie("Session", "live-b"), cookie("cf_clearance", "device")]);
+    const { env, rules, updateSessionRules } = environment(api);
+    let ruleDuringRead: Browser.declarativeNetRequest.Rule | undefined;
+
+    await collectWithSavedSession({
+      spec: spec(() => KEY_B),
+      instance: instance(A, KEY_A),
+      services,
+      live: vi.fn(),
+      saved: async (_fetch, page) => {
+        await page.inTab(7, "^https://cursor\\.com/api/x\\?m=1$", async () => {
+          ruleDuringRead = rules.at(-1)?.[0];
+        });
+        return success(KEY_A);
+      },
+      environment: env,
+    });
+
+    expect(ruleDuringRead).toEqual({
+      id: 2,
+      priority: 1,
+      action: {
+        type: "modifyHeaders",
+        requestHeaders: [
+          { header: "cookie", operation: "set", value: "Session=saved-a; cf_clearance=device" },
+        ],
+        responseHeaders: [{ header: "set-cookie", operation: "remove" }],
+      },
+      condition: {
+        regexFilter: "^https://cursor\\.com/api/x\\?m=1$",
+        requestDomains: ["cursor.com"],
+        resourceTypes: ["xmlhttprequest"],
+        tabIds: [7],
+      },
+    });
+    expect(updateSessionRules).toHaveBeenLastCalledWith({ removeRuleIds: [2] });
+  });
+
+  test("removes the tab rule when the saved read fails", async () => {
+    await saveSession(A, [{ name: "Session", value: "saved-a" }], 1);
+    const api = fakeCookies([cookie("Session", "live-b")]);
+    const { env, updateSessionRules } = environment(api);
+    let thrown: unknown;
+
+    await collectWithSavedSession({
+      spec: spec(() => KEY_B),
+      instance: instance(A, KEY_A),
+      services,
+      live: vi.fn(),
+      saved: async (_fetch, page) => {
+        try {
+          await page.inTab(7, "^https://cursor\\.com/api/x\\?m=1$", async () => {
+            throw new Error("tab went away");
+          });
+        } catch (error) {
+          thrown = error;
+        }
+        return success(KEY_A);
+      },
+      environment: env,
+    });
+
+    expect(thrown).toEqual(new Error("tab went away"));
+    expect(updateSessionRules).toHaveBeenLastCalledWith({ removeRuleIds: [2] });
+  });
+
   test("drops a saved sign-in whose session cookie is gone", async () => {
     await saveSession(A, [{ name: "_account", value: "workspace" }], 1);
     const live = vi.fn(async () => success(KEY_B));

@@ -81,8 +81,8 @@ Chrome attaches the signed-in Cursor cookies to those fixed same-origin
 requests. It never activates a Cursor tab, and scheduled refresh never opens
 one. Last-good Grok Bot and extra-credit values stay
 on the card until Grok Bot's weekly reset; the card says why they could not be
-refreshed. Other Cursor accounts keep their last values for these until the browser
-is signed in to them.
+refreshed. Other Cursor accounts read these through an open cursor.com tab
+with their own saved sign-in; without an open tab they keep their last values.
 
 ## Why does Grok need a grok.com page?
 

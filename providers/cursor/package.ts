@@ -16,8 +16,10 @@ import {
   type UpdatedListener,
 } from "../tab-ensure";
 import { collectCursor } from "./adapter";
+import { accountKeyFor } from "../account-key";
 import {
   collectWithSavedSession,
+  type SavedPageAccess,
   type SavedSessionEnvironment,
   type SavedSessionSpec,
 } from "../saved-session";
@@ -30,6 +32,7 @@ import {
   cursorOwnedTabCommitted,
   dashboardJsonFromProbe,
   findCursorDashboardJson,
+  readSavedCursorDashboard,
   type CursorDashboardJson,
   type CursorDashboardProbe,
 } from "./page-dashboard";
@@ -48,6 +51,14 @@ interface CursorPackageDependencies {
     allowOwnedTab: boolean;
     /** Set on scheduled reads; aborts when the read is abandoned. */
     signal?: AbortSignal;
+  }): Promise<CursorDashboardProbe>;
+  /**
+   * Reads the dashboard JSON for a connection the browser is not signed in
+   * to, from an open cursor.com tab, with that connection's saved sign-in.
+   */
+  readSavedDashboard?(options: {
+    page: SavedPageAccess;
+    accountKey: string;
   }): Promise<CursorDashboardProbe>;
   cleanupAbandonedOwnedTab?(): Promise<void>;
   /** How long scheduled refresh waits for a page read; tests shorten it. */
@@ -183,18 +194,37 @@ export function createCursorPackage(
         instance,
         services,
         live,
-        // A saved sign-in is not the browser's, so page values (read in a
-        // cursor.com tab, as the browser's account) are left as they were.
-        saved: async (fetch) =>
-          applyCursorPageMetrics(
+        // Page values come from an open cursor.com tab, whose tagged
+        // requests carry this connection's saved sign-in; without a tab
+        // they keep their last values.
+        saved: async (fetch, page) => {
+          let probe: ProbeOrSkipped = { kind: "skipped" };
+          if (
+            dependencies.readSavedDashboard &&
+            instance.accountKey !== undefined &&
+            !services.signal.aborted
+          ) {
+            try {
+              probe = await dependencies.readSavedDashboard({
+                page,
+                accountKey: instance.accountKey,
+              });
+            } catch {
+              probe = { kind: "inject_threw", detail: "readSavedDashboard threw" };
+            }
+          }
+          const dashboard =
+            probe.kind === "skipped" ? {} : dashboardJsonFromProbe(probe);
+          return applyCursorPageMetrics(
             await dependencies.collect(
               { ...adapterContext(services), fetch },
-              {},
+              dashboard,
             ),
             instance.snapshot,
-            { kind: "skipped" },
+            probe,
             services.now,
-          ),
+          );
+        },
         ...(dependencies.savedSessionEnvironment
           ? { environment: dependencies.savedSessionEnvironment }
           : {}),
@@ -269,6 +299,28 @@ export const cursorPackage = createCursorPackage({
       } : undefined,
     });
   },
+  readSavedDashboard: ({ page, accountKey }) =>
+    readSavedCursorDashboard({
+      hasPagePermission: async () => {
+        try {
+          return Boolean(
+            await browser.permissions.contains({
+              origins: [...providerDefinitions.cursor.optionalOrigins],
+              permissions: [...providerDefinitions.cursor.optionalPermissions],
+            }),
+          );
+        } catch {
+          return false;
+        }
+      },
+      queryTabs: (details) => browser.tabs.query(details),
+      executeScript: (details) => browser.scripting.executeScript(details),
+      inTab: (tabId, regexFilter, operation) =>
+        page.inTab(tabId, regexFilter, operation),
+      isConnectionAccount: async (sub) =>
+        (await accountKeyFor("cursor", sub)) === accountKey,
+      marker: () => crypto.randomUUID().replace(/-/g, ""),
+    }),
   cleanupAbandonedOwnedTab: () => {
     const tabs = cursorOwnedTabBrowser();
     return cleanupAbandonedOwnedTabs({

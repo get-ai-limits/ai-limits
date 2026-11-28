@@ -257,6 +257,43 @@ function savedSessionRule(
   } as Browser.declarativeNetRequest.Rule;
 }
 
+/**
+ * The same rule for requests a page of the site makes in one tab, limited to
+ * URLs matching `regexFilter`. Callers tag their own requests with a one-time
+ * marker in the URL, so the page's own requests are never matched.
+ */
+function savedSessionTabRule(
+  spec: SavedSessionSpec,
+  tabId: number,
+  regexFilter: string,
+  header: string,
+): Browser.declarativeNetRequest.Rule {
+  return {
+    id: spec.ruleId,
+    priority: 1,
+    action: {
+      type: "modifyHeaders",
+      requestHeaders: [{ header: "cookie", operation: "set", value: header }],
+      responseHeaders: [{ header: "set-cookie", operation: "remove" }],
+    },
+    condition: {
+      regexFilter,
+      requestDomains: [spec.cookieDomain],
+      resourceTypes: ["xmlhttprequest"],
+      tabIds: [tabId],
+    },
+  } as Browser.declarativeNetRequest.Rule;
+}
+
+/** Lets a saved read send a few tagged requests from a tab of the site. */
+export interface SavedPageAccess {
+  /**
+   * Runs `operation` while requests from `tabId` whose URL matches
+   * `regexFilter` carry this connection's saved sign-in.
+   */
+  inTab<T>(tabId: number, regexFilter: string, operation: () => Promise<T>): Promise<T>;
+}
+
 export async function removeSavedSessionRule(
   spec: SavedSessionSpec,
   rules: SessionRulesApi,
@@ -326,8 +363,14 @@ export interface SavedSessionCollectOptions {
   services: ProviderRuntimeServices;
   /** Reads with the browser's own sign-in. */
   live(): Promise<CollectionResult>;
-  /** Reads with the given fetch, which carries the saved sign-in. */
-  saved(fetch: typeof globalThis.fetch): Promise<CollectionResult>;
+  /**
+   * Reads with the given fetch, which carries the saved sign-in, and with
+   * page access for requests that must come from a page of the site.
+   */
+  saved(
+    fetch: typeof globalThis.fetch,
+    page: SavedPageAccess,
+  ): Promise<CollectionResult>;
   environment?: SavedSessionEnvironment;
 }
 
@@ -368,13 +411,23 @@ export async function collectWithSavedSession({
               spec.isDeviceCookie(name),
             )
           : [];
+        const header = cookieHeader(savedSession.cookies, device);
+        const page: SavedPageAccess = {
+          async inTab(tabId, regexFilter, operation) {
+            await environment.rules.updateSessionRules({
+              removeRuleIds: [spec.ruleId],
+              addRules: [savedSessionTabRule(spec, tabId, regexFilter, header)],
+            });
+            try {
+              return await operation();
+            } finally {
+              await removeSavedSessionRule(spec, environment.rules);
+            }
+          },
+        };
         const result = await saved(
-          savedSessionFetch(
-            spec,
-            environment,
-            services.fetch,
-            cookieHeader(savedSession.cookies, device),
-          ),
+          savedSessionFetch(spec, environment, services.fetch, header),
+          page,
         );
         // A signed-out answer is kept, not deleted: it may be a brief or
         // replay-specific failure, and the browser is no longer signed in to

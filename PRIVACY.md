@@ -374,10 +374,25 @@ bot-protection cookies for that site (Cloudflare's `__cf_bm`, `cf_clearance`,
 back. The request is sent without the browser's own
 cookies, and the rule is removed as soon as the request finishes. AI Limits
 sends these requests one at a time per site, so one account's request never
-carries another account's sign-in. Your open tabs and the browser's own
-sign-in are not affected. For Cursor, page-only Grok Bot, extra-credit, and
-usage-detail values are read only for the account the browser is signed in to. Other
-Cursor connections keep their last values for those.
+carries another account's sign-in. The browser's own sign-in is not
+affected.
+
+Cursor's Grok Bot, extra-credit, and usage-detail values come from dashboard
+requests that Cursor accepts only from a cursor.com page. For a Cursor
+connection the browser is not signed in to, AI Limits reads them from a
+cursor.com tab you already have open (it never opens one for this). A bundled
+function in that tab requests `/api/auth/me` and the three fixed dashboard
+endpoints, adding a one-time marker to each URL. While it runs, a session rule
+limited to that tab and to URLs carrying that marker sets those requests'
+Cookie header to the connection's saved sign-in and drops any cookie Cursor
+sends back. The page's own requests never carry the marker, so they are not
+changed, and the rule is removed when the read ends (at most about nine
+seconds). The values are used only if `/api/auth/me` names that connection's
+account. Only the identity's `sub` (hashed, never stored) and the three
+dashboard answers leave the page. These requests run in the page's own
+context, like the other Cursor page reads, so scripts that cursor.com loads in
+that tab can see them and their answers. Without an open cursor.com tab, they
+stay at their last values.
 
 Saved sign-ins are stored in `chrome.storage.local` under a separate record
 from usage state. In Chromium builds they have the same trusted-context

@@ -7,6 +7,10 @@ import {
   findCursorDashboardJson,
   rankCursorTabs,
   readCursorDashboardJsonAtExpectedOrigin,
+  readCursorDashboardJsonAsSavedAccount,
+  readSavedCursorDashboard,
+  SAVED_READ_TIMEOUT_MS,
+  savedReadRegexFilter,
   readCursorDashboardStashAtExpectedOrigin,
   startCursorDashboardStashAtExpectedOrigin,
   tabLooksAsleep,
@@ -789,5 +793,159 @@ describe("cursorOwnedTabCommitted", () => {
     ).toBe(false);
     expect(cursorOwnedTabCommitted({ url: "https://www.cursor.com/" })).toBe(false);
     expect(cursorOwnedTabCommitted({ url: "not a url" })).toBe(false);
+  });
+});
+
+describe("saved-account dashboard read", () => {
+  const MARKER = "0123456789abcdef0123456789abcdef";
+
+  test("matches only requests tagged with this read's marker", () => {
+    const filter = new RegExp(savedReadRegexFilter(MARKER));
+    expect(filter.test(`https://cursor.com/api/auth/me?ai-limits-read=${MARKER}`)).toBe(true);
+    expect(
+      filter.test(
+        `https://cursor.com/api/dashboard/get-sand-usage-status?ai-limits-read=${MARKER}`,
+      ),
+    ).toBe(true);
+    expect(filter.test("https://cursor.com/api/dashboard/get-sand-usage-status")).toBe(false);
+    expect(filter.test("https://cursor.com/api/auth/me?ai-limits-read=other")).toBe(false);
+    expect(filter.test(`https://cursor.com/api/usage-summary?ai-limits-read=${MARKER}`)).toBe(
+      false,
+    );
+  });
+
+  test("the page function tags every request and asks for the account first", async () => {
+    const fetchPage = vi.fn(async (input: RequestInfo | URL, _init?: RequestInit) =>
+      String(input).includes("/api/auth/me")
+        ? jsonResponse({ sub: "user_1", email: "kept-in-page@example.com" })
+        : jsonResponse({ ok: 1 }),
+    );
+    vi.stubGlobal("fetch", fetchPage);
+    vi.stubGlobal("location", { origin: "https://cursor.com" });
+    try {
+      const result = await readCursorDashboardJsonAsSavedAccount(MARKER);
+      expect(result).toMatchObject({
+        sub: "user_1",
+        grok: { ok: true, value: { ok: 1 } },
+        credits: { ok: true },
+        aggregated: { ok: true },
+      });
+      expect(JSON.stringify(result)).not.toContain("example.com");
+      const urls = fetchPage.mock.calls.map(([input]) => String(input));
+      expect(urls[0]).toBe(`https://cursor.com/api/auth/me?ai-limits-read=${MARKER}`);
+      expect(urls.every((url) => url.endsWith(`?ai-limits-read=${MARKER}`))).toBe(true);
+      expect(urls).toHaveLength(4);
+      // Only the saved sign-in rule supplies cookies.
+      expect(
+        fetchPage.mock.calls.every(([, init]) => init?.credentials === "omit"),
+      ).toBe(true);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  test("the page function skips the dashboard when no account answers", async () => {
+    const fetchPage = vi.fn(async () => new Response(null, { status: 401 }));
+    vi.stubGlobal("fetch", fetchPage);
+    vi.stubGlobal("location", { origin: "https://cursor.com" });
+    try {
+      const result = await readCursorDashboardJsonAsSavedAccount(MARKER);
+      expect(result).not.toHaveProperty("sub");
+      expect(fetchPage).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  function bridge(result: unknown, isConnectionAccount = true) {
+    const inTab = vi.fn(async (_tabId: number, _filter: string, operation: () => Promise<unknown>) =>
+      operation(),
+    );
+    const executeScript = vi.fn(async () => [{ result }]);
+    return {
+      inTab,
+      executeScript,
+      value: {
+        hasPagePermission: granted,
+        queryTabs: vi.fn(async () => [{ id: 4, url: "https://cursor.com/dashboard", status: "complete" }]),
+        executeScript,
+        inTab: inTab as never,
+        isConnectionAccount: vi.fn(async () => isConnectionAccount),
+        marker: () => MARKER,
+      },
+    };
+  }
+
+  test("reads through an open tab with the saved sign-in on tagged requests", async () => {
+    const { value, inTab, executeScript } = bridge({
+      sub: "user_1",
+      grok: { ok: true, value: { usagePercent: 10 } },
+      credits: { ok: false, status: 403 },
+      aggregated: { ok: true, value: {} },
+    });
+    const probe = await readSavedCursorDashboard(value);
+    expect(probe).toEqual({
+      kind: "read",
+      grok: { ok: true, value: { usagePercent: 10 } },
+      credits: { ok: false, status: 403 },
+      aggregated: { ok: true, value: {} },
+    });
+    expect(inTab).toHaveBeenCalledWith(4, savedReadRegexFilter(MARKER), expect.any(Function));
+    expect(executeScript).toHaveBeenCalledWith({
+      target: { tabId: 4 },
+      world: "MAIN",
+      func: readCursorDashboardJsonAsSavedAccount,
+      args: [MARKER],
+    });
+  });
+
+  test("drops values read as another account, and never opens a tab", async () => {
+    const other = bridge(
+      { sub: "user_2", grok: { ok: true, value: {} }, credits: { ok: true, value: {} }, aggregated: { ok: true, value: {} } },
+      false,
+    );
+    await expect(readSavedCursorDashboard(other.value)).resolves.toMatchObject({
+      kind: "inject_unusable",
+    });
+
+    const none = bridge(undefined);
+    none.value.queryTabs.mockResolvedValue([]);
+    await expect(readSavedCursorDashboard(none.value)).resolves.toEqual({ kind: "no_tab" });
+    expect(none.executeScript).not.toHaveBeenCalled();
+  });
+
+  test("gives up inside the tab rule when the tab never runs the read", async () => {
+    vi.useFakeTimers();
+    try {
+      const stuck = bridge(undefined);
+      let insideRule = false;
+      stuck.inTab.mockImplementation(async (_tabId, _filter, operation) => {
+        insideRule = true;
+        try {
+          return await operation();
+        } finally {
+          insideRule = false;
+        }
+      });
+      stuck.executeScript.mockImplementation(() => new Promise<never>(() => undefined));
+      const probe = readSavedCursorDashboard(stuck.value);
+      await vi.advanceTimersByTimeAsync(SAVED_READ_TIMEOUT_MS);
+      await expect(probe).resolves.toEqual({
+        kind: "inject_threw",
+        detail: "saved read timed out",
+      });
+      expect(insideRule).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  test("skips a frozen tab", async () => {
+    const frozen = bridge(undefined);
+    frozen.value.queryTabs.mockResolvedValue([
+      { id: 4, url: "https://cursor.com/dashboard", status: "complete", frozen: true } as never,
+    ]);
+    await expect(readSavedCursorDashboard(frozen.value)).resolves.toEqual({ kind: "tab_asleep" });
+    expect(frozen.executeScript).not.toHaveBeenCalled();
   });
 });
