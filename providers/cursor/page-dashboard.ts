@@ -208,6 +208,162 @@ export async function readCursorDashboardJsonAtExpectedOrigin(
   return { grok, credits, aggregated };
 }
 
+/** The query parameter that tags a saved account's page requests. */
+export const SAVED_READ_MARKER = "ai-limits-read";
+
+/**
+ * Runs in a cursor.com page for a connection that is not the browser's
+ * account. Every request carries the one-time `marker`, which the saved
+ * sign-in rule matches, so the page's own requests are left alone. It first
+ * asks which account the requests are signed in to, so the caller can check
+ * it is the connection's; only that ID's `sub` and the three dashboard
+ * answers leave the page.
+ */
+export async function readCursorDashboardJsonAsSavedAccount(
+  marker: string,
+): Promise<
+  | {
+      readonly sub?: string;
+      readonly grok: CursorDashboardEndpointResult;
+      readonly credits: CursorDashboardEndpointResult;
+      readonly aggregated: CursorDashboardEndpointResult;
+    }
+  | { readonly declined: "wrong_origin"; readonly origin: string }
+> {
+  const origin = globalThis.location.origin;
+  if (origin !== "https://cursor.com") {
+    return { declined: "wrong_origin", origin };
+  }
+  const tagged = (path: string) =>
+    `https://cursor.com${path}?ai-limits-read=${encodeURIComponent(marker)}`;
+  const request = async (
+    path: string,
+    init: RequestInit,
+  ): Promise<CursorDashboardEndpointResult> => {
+    try {
+      const response = await globalThis.fetch(tagged(path), {
+        ...init,
+        credentials: "include",
+        cache: "no-store",
+        redirect: "manual",
+        signal: AbortSignal.timeout(8_000),
+      });
+      if (!response.ok) return { ok: false, status: response.status };
+      return { ok: true, value: await response.json() };
+    } catch {
+      return { ok: false };
+    }
+  };
+  const me = await request("/api/auth/me", { method: "GET" });
+  const body = me.ok ? me.value : undefined;
+  const sub =
+    typeof body === "object" && body !== null
+      ? (body as Record<string, unknown>).sub
+      : undefined;
+  if (typeof sub !== "string" || sub.length === 0) {
+    return { grok: { ok: false }, credits: { ok: false }, aggregated: { ok: false } };
+  }
+  const post: RequestInit = {
+    method: "POST",
+    headers: { Accept: "application/json", "Content-Type": "application/json" },
+    body: "{}",
+  };
+  const [grok, credits, aggregated] = await Promise.all([
+    request("/api/dashboard/get-sand-usage-status", post),
+    request("/api/dashboard/get-credit-grants-balance", post),
+    request("/api/dashboard/get-aggregated-usage-events", post),
+  ]);
+  return { sub, grok, credits, aggregated };
+}
+
+/** Matches only requests tagged with `marker`. */
+export function savedReadRegexFilter(marker: string): string {
+  return `^https://cursor\\.com/api/(auth/me|dashboard/(get-sand-usage-status|get-credit-grants-balance|get-aggregated-usage-events))\\?${SAVED_READ_MARKER}=${marker}$`;
+}
+
+export interface SavedDashboardBridge {
+  hasPagePermission(): Promise<boolean>;
+  queryTabs(details: { url: string }): Promise<CursorTab[]>;
+  executeScript(details: {
+    target: { tabId: number };
+    world: "MAIN";
+    func: typeof readCursorDashboardJsonAsSavedAccount;
+    args: [string];
+  }): Promise<CursorScriptResult[]>;
+  /** Runs the read while the tab's tagged requests carry the saved sign-in. */
+  inTab<T>(tabId: number, regexFilter: string, operation: () => Promise<T>): Promise<T>;
+  /** Whether the `sub` the page reported is the connection's account. */
+  isConnectionAccount(sub: string): Promise<boolean>;
+  /** A fresh marker; letters and digits only. */
+  marker(): string;
+}
+
+const SAVED_READ_TABS = 2;
+
+/**
+ * Reads the dashboard JSON for a connection the browser is not signed in to,
+ * from an already-open cursor.com tab, with that connection's saved sign-in
+ * on the tagged requests only. Never opens a tab. Values count only when the
+ * page reports the connection's own account.
+ */
+export async function readSavedCursorDashboard(
+  bridge: SavedDashboardBridge,
+): Promise<CursorDashboardProbe> {
+  try {
+    if (!(await bridge.hasPagePermission())) return { kind: "permission_missing" };
+    const tabs = (await bridge.queryTabs({ url: "https://cursor.com/*" })).filter(
+      (tab) => tab.id !== undefined,
+    );
+    if (tabs.length === 0) return { kind: "no_tab" };
+    const awake = rankCursorTabs(tabs.filter((tab) => !tabLooksAsleep(tab)));
+    if (awake.length === 0) return { kind: "tab_asleep" };
+    let failure: CursorDashboardProbe = {
+      kind: "inject_empty",
+      detail: "no saved read produced a result",
+    };
+    for (const tabId of awake.slice(0, SAVED_READ_TABS)) {
+      const marker = bridge.marker();
+      if (!/^[A-Za-z0-9]{16,64}$/.test(marker)) {
+        return { kind: "inject_unusable", detail: "invalid marker" };
+      }
+      let frames: CursorScriptResult[];
+      try {
+        frames = await bridge.inTab(tabId, savedReadRegexFilter(marker), () =>
+          bridge.executeScript({
+            target: { tabId },
+            world: "MAIN",
+            func: readCursorDashboardJsonAsSavedAccount,
+            args: [marker],
+          }),
+        );
+      } catch (error) {
+        failure = { kind: "inject_threw", detail: sanitizeInjectDetail(error) };
+        continue;
+      }
+      const value = Array.isArray(frames) ? frames[0]?.result : undefined;
+      const wrongOrigin = asWrongOrigin(value);
+      if (wrongOrigin) {
+        failure = wrongOrigin;
+        continue;
+      }
+      if (typeof value !== "object" || value === null || Array.isArray(value)) {
+        failure = { kind: "inject_empty", detail: "saved read returned nothing" };
+        continue;
+      }
+      const sub = (value as { sub?: unknown }).sub;
+      if (typeof sub !== "string" || !(await bridge.isConnectionAccount(sub))) {
+        failure = { kind: "inject_unusable", detail: "saved read was another account" };
+        continue;
+      }
+      const read = asReadResult(value);
+      if (read) return read;
+    }
+    return failure;
+  } catch (error) {
+    return { kind: "inject_threw", detail: sanitizeInjectDetail(error) };
+  }
+}
+
 export function startCursorDashboardStashAtExpectedOrigin(
   currentOrigin: string = globalThis.location.origin,
 ): { readonly started: true } | { readonly declined: "wrong_origin"; readonly origin: string } {

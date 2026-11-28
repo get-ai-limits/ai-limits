@@ -4,6 +4,8 @@ import type { ProviderInstanceRecord, UsageSnapshot } from "../../domain/model";
 import type { CollectionContext, CollectionResult } from "../types";
 import type { CursorDashboardJson, CursorDashboardProbe } from "./page-dashboard";
 import { createCursorPackage } from "./package";
+import { saveSession } from "../../storage/saved-sessions";
+import type { SavedSessionEnvironment, SavedSessionSpec } from "../saved-session";
 
 const NOW = 1_800_000_000_000;
 const GROK_START = NOW - 3 * 24 * 60 * 60 * 1_000;
@@ -404,5 +406,57 @@ describe("Cursor provider package", () => {
         ],
       },
     });
+  });
+
+  test("a saved account reads page values through an open tab with its own sign-in", async () => {
+    const savedInstance = {
+      ...instance,
+      id: "cursor:00000000-0000-4000-8000-00000000000a",
+      accountKey: "a".repeat(64),
+    } as ProviderInstanceRecord;
+    await saveSession(savedInstance.id, [{ name: "Session", value: "saved-a" }], 1);
+    const savedSession: SavedSessionSpec = {
+      kind: "cursor",
+      siteUrl: "https://cursor.com/",
+      cookieDomain: "cursor.com",
+      signInUrl: "https://cursor.com/dashboard",
+      ruleId: 2,
+      isAuthCookie: (name) => name === "Session",
+      isSessionCookie: (name) => name === "Session",
+      isDeviceCookie: () => false,
+      // The browser is signed in to another account.
+      liveAccountKey: async () => "b".repeat(64),
+    };
+    const savedSessionEnvironment: SavedSessionEnvironment = {
+      cookies: async () => ({ getAll: async () => [], remove: async () => ({}) }),
+      rules: { updateSessionRules: async () => undefined },
+      extensionHost: () => "extension-id",
+    };
+    const grok = { usagePercent: 40 };
+    const readSavedDashboard = vi.fn().mockResolvedValue({
+      kind: "read",
+      grok: { ok: true, value: grok },
+      credits: { ok: false },
+      aggregated: { ok: false },
+    } satisfies CursorDashboardProbe);
+    const findDashboardJson = vi.fn();
+    const collect = vi.fn<CursorCollect>().mockResolvedValue(baseCollection());
+    const providerPackage = createCursorPackage({
+      collect,
+      findDashboardJson,
+      readSavedDashboard,
+      savedSession,
+      savedSessionEnvironment,
+    });
+
+    await providerPackage.collect(savedInstance, services("forbidden"));
+
+    expect(readSavedDashboard).toHaveBeenCalledWith({
+      page: expect.objectContaining({ inTab: expect.any(Function) }),
+      accountKey: "a".repeat(64),
+    });
+    // The browser's own page read is never used for this account.
+    expect(findDashboardJson).not.toHaveBeenCalled();
+    expect(collect).toHaveBeenCalledWith(expect.anything(), { grok });
   });
 });
