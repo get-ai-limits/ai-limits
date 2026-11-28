@@ -47,6 +47,16 @@ export const DOCUMENTS = {
     lang: "zh-CN",
     description: "关于 AI Limits 自动刷新、用量历史、API 密钥以及各 AI 服务连接方式的常见问题。",
   },
+  "CONNECTIONS.md": {
+    path: "/connections/",
+    lang: "en",
+    description: "How AI Limits connects to each AI service: what it reads, what it stores, and when a tab may open.",
+  },
+  "CONNECTIONS.zh-CN.md": {
+    path: "/zh-CN/connections/",
+    lang: "zh-CN",
+    description: "AI Limits 如何连接各个 AI 服务：读取什么、存储什么，以及何时可能打开标签页。",
+  },
   "SECURITY.md": {
     path: "/security/",
     lang: "en",
@@ -59,6 +69,7 @@ const ALTERNATES = [
   { en: "/", "zh-CN": "/zh-CN/" },
   { en: "/providers/", "zh-CN": "/zh-CN/providers/" },
   { en: "/faq/", "zh-CN": "/zh-CN/faq/" },
+  { en: "/connections/", "zh-CN": "/zh-CN/connections/" },
 ];
 
 const PROVIDERS_HREF = { en: "/providers/", "zh-CN": "/zh-CN/providers/" };

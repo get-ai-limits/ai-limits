@@ -102,7 +102,7 @@ describe("ApiKeyConnectView", () => {
     expect(steps[0]).toHaveTextContent("Open the ElevenLabs API keys page");
     expect(steps[1]).toHaveTextContent("AI Limits");
     expect(steps[1]).toHaveTextContent("User → Read");
-    expect(steps[1]).toHaveTextContent(/leave generation and write permissions off/i);
+    expect(steps[1]).toHaveTextContent(/leave generation and write off/i);
     expect(steps[2]).toHaveTextContent("Validate & connect");
 
     const input = screen.getByLabelText("ElevenLabs API key");

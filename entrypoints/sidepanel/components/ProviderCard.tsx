@@ -71,7 +71,6 @@ export interface ProviderCardProps {
     now: number;
   };
   emptyDescription: string;
-  extraDisclosure?: string;
   detailTables?: DetailTable[];
   now?: number;
   action?: {
@@ -106,7 +105,6 @@ export function ProviderCard({
   hasSnapshot,
   history: _history,
   emptyDescription,
-  extraDisclosure,
   action,
   headingLevel = 2,
   openDetailsFocusKey,
@@ -209,7 +207,6 @@ export function ProviderCard({
       {!hasSnapshot ? (
         <section className="provider-card__empty">
           <p>{emptyDescription}</p>
-          {extraDisclosure ? <p>{extraDisclosure}</p> : null}
           {attemptMessage ? <InteractionBanner>{attemptMessage}</InteractionBanner> : null}
         </section>
       ) : attemptMessage ? (
@@ -219,7 +216,6 @@ export function ProviderCard({
       {hasSnapshot && access === "required" ? (
         <div className="permission-disclosure">
           <p>{emptyDescription}</p>
-          {extraDisclosure ? <p>{extraDisclosure}</p> : null}
         </div>
       ) : null}
 

@@ -785,11 +785,14 @@ describe("Cockpit", () => {
     renderCockpit(state);
     fireEvent.click(screen.getByRole("button", { name: "Open OpenRouter details" }));
     fireEvent.click(screen.getByRole("button", { name: "Open OpenRouter history" }));
-    expect(screen.getByText(/Local quota observations/)).toBeVisible();
+    expect(screen.getByText(/Kept 30 days, on this device/)).toBeVisible();
     expect(screen.getByRole("radiogroup", { name: "Show used or left" })).toBeVisible();
 
     chooseWindow("Credits");
-    expect(screen.getByText(/Local balance observations/)).toBeVisible();
+    expect(screen.getByRole("link", { name: "About this chart" })).toHaveAttribute(
+      "href",
+      "https://get-ai-limits.com/connections/#balance-history",
+    );
     expect(
       screen.queryByRole("radiogroup", { name: "Show used or left" }),
     ).not.toBeInTheDocument();
@@ -1114,7 +1117,8 @@ describe("Cockpit", () => {
     expect(
       screen.getByRole("heading", { level: 1, name: "AI Limits" }),
     ).toBeVisible();
-    expect(screen.getByText(/One panel for every AI subscription quota/)).toBeVisible();
+    expect(screen.getByText("Nothing is read until you connect a provider.")).toBeVisible();
+    expect(screen.queryByText(/no auto-discovery or demo usage/)).not.toBeInTheDocument();
     expect(screen.getByText("Supported providers · 24")).toBeVisible();
     expect(screen.queryByRole("button", { name: "Refresh usage" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Settings" })).not.toBeInTheDocument();
@@ -1158,9 +1162,6 @@ describe("Cockpit", () => {
       screen.getByRole("heading", { level: 1, name: "Add provider" }),
     ).toBeVisible();
     expect(
-      screen.getByText("Access is granted one provider at a time"),
-    ).toBeVisible();
-    expect(
       screen.getByRole("button", { name: "Overview" }),
     ).toHaveTextContent("Overview");
 
@@ -1168,9 +1169,6 @@ describe("Cockpit", () => {
     fireEvent.click(screen.getByRole("button", { name: "Settings" }));
     expect(
       screen.getByRole("heading", { level: 1, name: "Settings" }),
-    ).toBeVisible();
-    expect(
-      screen.getByText("Everything here is local to this browser"),
     ).toBeVisible();
     expect(
       screen.getByRole("button", { name: "Overview" }),
@@ -1198,15 +1196,13 @@ describe("Cockpit", () => {
     expect(within(usage).getByRole("heading", { name: "Usage" })).toBeVisible();
     expect(within(usage).getByText("$8.20 / $20.00 spent")).toBeVisible();
     expect(screen.getByRole("button", { name: "Open Claude history" })).toBeVisible();
-    expect(screen.getByRole("heading", { name: "Connection and capabilities" })).toBeVisible();
-    expect(screen.getByText(/Reads usage from your signed-in browser session/)).toBeVisible();
+    expect(screen.getByRole("heading", { name: "Connection" })).toBeVisible();
+    expect(screen.getByRole("link", { name: "How it connects" })).toHaveAttribute(
+      "href",
+      "https://get-ai-limits.com/connections/#claude",
+    );
     expect(screen.getByRole("button", { name: "Settings for Claude" })).toBeVisible();
     expect(screen.getByRole("button", { name: "Disconnect Claude" })).toBeVisible();
-    expect(
-      screen.getByText(
-        "Disconnecting permanently deletes this provider's credentials, configuration, usage, and history.",
-      ),
-    ).toBeVisible();
   });
 
   it("renders History with compact selectors, ranges, a chart, and the current cycle", () => {
@@ -1249,7 +1245,10 @@ describe("Cockpit", () => {
     expect(within(ranges).getByRole("radio", { name: /30 days/ })).toBeVisible();
     expect(screen.getByRole("region", { name: "Usage history chart" })).toBeVisible();
     expect(screen.getByRole("region", { name: "Current cycle" })).toBeVisible();
-    expect(screen.getByText(/Only successful, normalized quota observations are plotted/)).toBeVisible();
+    expect(screen.getByRole("link", { name: "About this chart" })).toHaveAttribute(
+      "href",
+      "https://get-ai-limits.com/connections/#usage-history",
+    );
   });
 
   it("keeps Used/Left and the range radios in one compact filter group", () => {
@@ -1548,7 +1547,7 @@ describe("Cockpit", () => {
     ).toBeVisible();
     expect(
       screen.getByText(
-        "This cannot be undone. Credentials, configuration, usage, and history for this provider will be deleted immediately. Permission cleanup can be delayed or shared with another instance.",
+        "Deletes this connection's saved credentials, settings, usage and history. This can't be undone.",
       ),
     ).toBeVisible();
 
@@ -1780,8 +1779,9 @@ describe("Cockpit", () => {
     expect(screen.getByRole("button", { name: "Connect Claude" })).toBeVisible();
     expect(screen.getByRole("button", { name: "Connect Kimi" })).toBeVisible();
     expect(screen.getByRole("button", { name: "Connect Cursor" })).toBeVisible();
-    expect(screen.getAllByText(/^Can show:/)).toHaveLength(23);
-    expect(screen.getByText(/Connect asks for permission for that provider only/)).toBeVisible();
+    expect(screen.getAllByText(/^(Browser session|API key) · /)).toHaveLength(23);
+    expect(screen.getAllByRole("link", { name: /^How .+ connects$/ })).toHaveLength(24);
+    expect(screen.queryByText(/Connect asks for permission for that provider only/)).not.toBeInTheDocument();
   });
 
   it("keeps New API available when every singleton provider is connected", () => {
@@ -1882,12 +1882,12 @@ describe("Cockpit", () => {
     const chatgptRow = screen
       .getByRole("button", { name: "Connect ChatGPT" })
       .closest("article")!;
-    expect(within(chatgptRow).getByText("Browser session")).toBeVisible();
+    expect(within(chatgptRow).getByText(/^Browser session · /)).toBeVisible();
 
     const elevenLabsRow = screen
       .getByRole("button", { name: "Connect ElevenLabs" })
       .closest("article")!;
-    expect(within(elevenLabsRow).getByText("API key")).toBeVisible();
+    expect(within(elevenLabsRow).getByText(/^API key · /)).toBeVisible();
     expect(
       within(elevenLabsRow).queryByText("Browser session"),
     ).not.toBeInTheDocument();
@@ -2121,9 +2121,8 @@ describe("Cockpit", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Settings" }));
     const row = screen.getByText("ElevenLabs").closest("li")!;
-    expect(row).toHaveTextContent(/Updated just now · API key · read-only/);
+    expect(row).toHaveTextContent(/Updated just now · API key/);
     expect(row).not.toHaveTextContent("Browser session");
-    expect(within(row).getByText("API key saved")).toBeVisible();
     expect(row).not.toHaveTextContent(/\*|last|ending/i);
     expect(
       within(row).getByRole("button", { name: "Disconnect ElevenLabs" }),
@@ -2188,16 +2187,17 @@ describe("Cockpit", () => {
     expect(screen.getByRole("region", { name: "Overview" })).toBeVisible();
   });
 
-  it("shows Kimi's credential and interactive-tab disclosure on First Run and Add Provider", () => {
+  it("shows Kimi's sign-in token note and help link on First Run and Add Provider", () => {
     const connectionDisclosure =
-      "With permission, AI Limits may read the page's localStorage.access_token and refresh_token on kimi.com. It does not read Kimi cookies. The Kimi tokens are held only in memory-backed session storage until the browser exits, and the refresh token is sent only to Kimi's sign-in service (auth.kimi.com) to renew access. It stores normalized usage locally.";
-    const recoveryDisclosure =
-      "Connect and manual Refresh may briefly open one inactive Kimi tab when recovery is needed. Scheduled or automatic refresh never opens a tab.";
+      "Reads Kimi's sign-in tokens from kimi.com and renews them at auth.kimi.com. May briefly open a Kimi tab on Connect or Refresh.";
 
     renderCockpit(createEmptyFixtureState());
     let kimi = screen.getByRole("article", { name: "Kimi" });
     expect(within(kimi).getByText(connectionDisclosure)).toBeVisible();
-    expect(within(kimi).getByText(recoveryDisclosure)).toBeVisible();
+    expect(within(kimi).getByRole("link", { name: "How Kimi connects" })).toHaveAttribute(
+      "href",
+      "https://get-ai-limits.com/connections/#kimi",
+    );
     cleanup();
 
     const state = createEmptyFixtureState();
@@ -2207,7 +2207,10 @@ describe("Cockpit", () => {
 
     kimi = screen.getByRole("article", { name: "Kimi" });
     expect(within(kimi).getByText(connectionDisclosure)).toBeVisible();
-    expect(within(kimi).getByText(recoveryDisclosure)).toBeVisible();
+    expect(within(kimi).getByRole("link", { name: "How Kimi connects" })).toHaveAttribute(
+      "href",
+      "https://get-ai-limits.com/connections/#kimi",
+    );
   });
 
   it("renders connected quota pace and credits", () => {
@@ -2671,14 +2674,11 @@ describe("Cockpit", () => {
     expect(
       screen.getByRole("button", { name: "Connect ChatGPT" }),
     ).toBeVisible();
+    expect(within(chatGpt).getByText("Browser session · Message limits, Credits")).toBeVisible();
+    expect(within(chatGpt).getByRole("link", { name: "How ChatGPT connects" })).toBeVisible();
     expect(
-      within(chatGpt).getByText(
-        "Reads usage from your signed-in browser session, stores normalized usage locally, and refreshes about every 15 minutes.",
-      ),
-    ).toBeVisible();
-    expect(
-      within(screen.getByRole("article", { name: "Kimi" })).getByText(
-        "Connect and manual Refresh may briefly open one inactive Kimi tab when recovery is needed. Scheduled or automatic refresh never opens a tab.",
+      within(screen.getByRole("article", { name: "Warp" })).getByText(
+        "Warp keys can start runs billed to you. Use a separate key with an expiry.",
       ),
     ).toBeVisible();
   });
@@ -3213,7 +3213,7 @@ describe("Cockpit", () => {
     expect(
       claudeRow.querySelector('img[src="/provider-marks/claude.svg"]'),
     ).not.toBeNull();
-    expect(within(claudeRow).getByText(/refreshes about every 15 minutes/)).toBeVisible();
+    expect(claudeRow).not.toHaveTextContent(/refreshes about every 15 minutes/);
     const providerContent = claudeRow.querySelector(".settings-provider-content");
     const providerCopy = claudeRow.querySelector(".settings-provider-copy");
     const providerActions = claudeRow.querySelector(".settings-provider-actions");
@@ -3265,7 +3265,7 @@ describe("Cockpit", () => {
       screen.getByRole("button", { name: "Confirm delete all local data" }),
     ).toHaveFocus();
     expect(
-      screen.getByText("This removes stored usage and disconnects every provider."),
+      screen.getByText("This can't be undone."),
     ).toBeVisible();
     fireEvent.click(screen.getByRole("button", { name: "Cancel delete all local data" }));
     expect(
@@ -3294,7 +3294,7 @@ describe("Cockpit", () => {
     }
     expect(
       screen.getByText(
-        "Do not include cookies, access credentials, private usage data, or other secrets in an issue.",
+        "Don't paste cookies or keys in an issue.",
       ),
     ).toBeVisible();
 
@@ -3310,7 +3310,7 @@ describe("Cockpit", () => {
     ).toHaveAttribute("href", "https://github.com/get-ai-limits/ai-limits/issues");
     expect(
       screen.getByText(
-        "Do not include cookies, access credentials, private usage data, or other secrets in an issue.",
+        "Don't paste cookies or keys in an issue.",
       ),
     ).toBeVisible();
   });

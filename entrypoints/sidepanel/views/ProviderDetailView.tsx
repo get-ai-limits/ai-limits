@@ -2,11 +2,8 @@ import React, { useEffect, useRef, useState } from "react";
 
 import { l10n } from "../../../i18n/index";
 import {
-  localizeCapability,
-  localizeConnectionDisclosure,
-  localizeManualRefreshDisclosure,
+  connectionHelpUrl,
   localizeOperation,
-  providerCapabilityIds,
 } from "../../../i18n/presentation";
 import {
   type ProviderInstanceId,
@@ -250,7 +247,6 @@ export function ProviderDetailView({
                           <strong>{metric.value}</strong>
                         </div>
                       ))}
-                      <p>{l10n.t("providerDetail.countersNote")}</p>
                     </div>
                   ) : null}
                 </section>
@@ -302,20 +298,15 @@ export function ProviderDetailView({
 
         <section className="connection-surface" aria-labelledby="connection-title">
           <h2 id="connection-title">{l10n.t("providerDetail.connectionTitle")}</h2>
-          <p>{localizeConnectionDisclosure(provider.providerId)}</p>
-          <ul>
-            {providerCapabilityIds(provider.providerId).map((capabilityId) => (
-              <li key={capabilityId}>
-                {localizeCapability(provider.providerId, capabilityId)}
-              </li>
-            ))}
-          </ul>
-          {localizeManualRefreshDisclosure(provider.providerId) ? (
-            <p>{localizeManualRefreshDisclosure(provider.providerId)}</p>
-          ) : (
-            <p>{l10n.t("providerDetail.scheduledNoTab")}</p>
-          )}
-          <p>{l10n.t("providerDetail.disconnectExplanation")}</p>
+          <p>
+            <a
+              href={connectionHelpUrl(provider.providerId)}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {l10n.t("connections.howItConnects")}
+            </a>
+          </p>
           {confirmDisconnect ? (
             <div
               className="delete-confirmation connection-surface__confirm"

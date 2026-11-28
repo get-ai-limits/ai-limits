@@ -189,7 +189,6 @@ export function AddAccountView({
     <section className="screen api-key-guide add-account-guide" aria-label={title}>
       <PageHeader
         title={title}
-        subtitle={l10n.t("addAccount.subtitle")}
         backLabel={backLabel}
         onBack={onBack}
       />

@@ -30,7 +30,6 @@ common:
   defaultInstance: default
   apiKey: API key
   browserSession: Browser session
-  readOnly: read-only
   now: Now
   window: Window
   history: History
@@ -80,22 +79,18 @@ firstRun:
   brand: AI Limits
   title: Connect your providers
   introduction: Connect the providers you pay for and see every reported quota window in one place.
-  bulletPanel: One panel for every AI subscription quota you track.
-  bulletOptIn: Access is opt-in per provider. Nothing is read until you connect it.
-  bulletLocal: Readings and history stay in this browser. No account, no sync.
+  bulletOptIn: "Nothing is read until you connect a provider."
+  bulletLocal: "Your data stays in this browser. No account, no sync."
   supportedProviders: "Supported providers · {count}"
-  noDemo: Connect one provider at a time. There is no auto-discovery or demo usage; numbers appear only after a successful provider read.
 
 addProvider:
   screen: Add provider
   title: Add provider
-  subtitle: Access is granted one provider at a time
   available: "Available · {count}"
   allConnected: All supported providers are connected.
-  permissionNote: Connect asks for permission for that provider only, then attempts an authenticated read. Nothing is pre-detected, and credentials are not stored with normalized usage.
 
 connections:
-  canShow: "Can show: {capabilities}"
+  canShow: "{method} · {capabilities}"
   connectProvider: "Connect {provider}"
   reconnectProvider: "Reconnect {provider}"
   requestingPermission: Requesting permission…
@@ -104,37 +99,39 @@ connections:
   addAccount: Add account
   addAccountFor: "Add another {provider} account"
   accountsConnected: "{count} connected"
-  addAccountSavedSignInHint: "Opens a short guide: AI Limits saves the {provider} sign-in this browser uses now for its card, then you sign in to the other account. Every account keeps refreshing."
-  addAccountSessionHint: "First sign in to the account you want to add on the {provider} site. Only the account signed in there refreshes; the others keep their last numbers until you switch back."
+  addAccountSessionHint: "Sign in to the other account on {provider} first. Only the signed-in account refreshes."
+  multipleInstances: "You can add more than one instance."
+  howItConnects: "How it connects"
+  howItConnectsNamed: "How {provider} connects"
+  helpPageUrl: "https://get-ai-limits.com/connections/"
 
 addAccount:
   title: "Add another {provider} account"
-  subtitle: A browser holds one sign-in per site, so AI Limits keeps one for each account.
   back: Back
   step1Title: Allow AI Limits to save sign-ins
-  step1Copy: "Your browser asks for permission to use {provider} cookies. AI Limits saves each {provider} account's sign-in cookies (its HttpOnly cookies, except bot protection) on this device, for the card they belong to: the account signed in now, and each other account when it is read while this browser is signed in to it. It sends them only to {provider} and deletes them when you disconnect that card."
+  step1Copy: "Your browser will ask to let AI Limits use {provider} cookies. AI Limits saves each {provider} account's sign-in cookies (its HttpOnly cookies, except bot protection) on this device, sends them only to {provider}, and deletes them when you disconnect that account."
   start: Allow and continue
   starting: Saving your current sign-in…
-  declined: Nothing changed. Adding an account needs this permission; allow it when you are ready.
+  declined: "Nothing changed. Adding an account needs this permission."
   step2Title: "Save your current account and sign this browser out"
-  step2Copy: "AI Limits saves the account signed in now for its card, then signs this browser out of {provider}, on this device only. That account keeps refreshing."
+  step2Copy: "Saves this account, then signs this browser out of {provider}."
   step2Done: "Saved. This browser is signed out of {provider}."
-  notSaved: "AI Limits couldn't save the {provider} sign-in this browser uses now, so it left you signed in and changed nothing. Try again, or sign in to {provider} again first if it keeps happening."
+  notSaved: "Couldn't save the current {provider} sign-in, so nothing changed. Try again, or sign in to {provider} again first."
   step3Title: "Sign in to the other account"
-  step3Copy: "In the {provider} tab that opened, sign in with the account you want to add, not one you already added. If you use Continue with Google, pick that account's Google account. This guide moves on by itself once you're in."
+  step3Copy: "Sign in with the new account in the {provider} tab. With Continue with Google, pick that account's Google account. This moves on by itself."
   step3Waiting: Waiting for you to sign in…
   tabFailed: "The sign-in page didn't open. Open it here."
   openSignIn: "Open {provider} sign-in"
-  sameAccount: "That's an account you already added. Sign in with a different {provider} account; with Google, choose Use another account if Google picks one for you."
-  stillSignedIn: "Your current account is saved, but a {provider} tab in this browser is still signed in to it, so AI Limits can't add another account yet. Reload that tab, then try again. Don't use Log out there."
-  noLogout: "Don't use Log out on the {provider} site: it would end the saved sign-in of your other account too."
+  sameAccount: "You already added that account. Sign in with a different {provider} account; with Google, choose Use another account."
+  stillSignedIn: "A {provider} tab is still signed in to the saved account. Reload that tab, then try again. Don't use Log out there."
+  noLogout: "Don't use Log out on {provider}: it ends your other account's saved sign-in too."
   step4Title: Done
   step4Copy: Every account now refreshes on its own.
   added: "Added {label}."
   finish: Back to overview
   tryAgain: Try again
   cancel: Cancel
-  failed: "Something went wrong while adding the account. Nothing was changed; try again."
+  failed: "Something went wrong. Nothing changed; try again."
 
 overview:
   screen: Overview
@@ -144,7 +141,7 @@ overview:
   refreshNamed: "Refresh {label}"
   arrange: Arrange
   arrangeTitle: Arrange providers
-  arrangeHint: Drag a handle, or focus it and press ↑ or ↓. Hidden providers stay connected and keep refreshing.
+  arrangeHint: "Drag, or press ↑ ↓ on a handle, to reorder. Hidden providers keep refreshing."
   done: Done
   moveNamed: "Move {label}"
   showOnOverviewNamed: "Show {label} on Overview"
@@ -158,10 +155,10 @@ overview:
   show: Show
   showNamed: "Show {label}"
   allHiddenTitle: Every provider is hidden
-  allHiddenCopy: They are still connected and keep refreshing. Show them again here or in Settings.
+  allHiddenCopy: "They keep refreshing. Show them here or in Settings."
   showAll: Show all
   allExhaustedTitle: Every plan is used up for now
-  allExhaustedCopy: Plans come back here when a limit resets. To see them now, turn off Hide used-up plans in Settings.
+  allExhaustedCopy: "They come back when a limit resets. To see them now, turn off Hide used-up plans in Settings."
   usedUp: Used up
   usedUpUntil: "Used up · {reset}"
   view: View
@@ -172,11 +169,11 @@ providerDetail:
   screenUnavailable: Provider unavailable
   titleUnavailable: Provider unavailable
   subtitleUnavailable: This provider is no longer connected
-  unavailableNote: Its usage is unavailable until you connect it again from Add provider.
+  unavailableNote: "Connect it again from Add provider."
   returnToOverview: Return to Overview
   screenNamed: "{label} detail"
-  subtitle: "{provider} · Provider usage"
-  subtitleWithPlan: "{provider} · {plan} · Provider usage"
+  subtitle: "{provider}"
+  subtitleWithPlan: "{provider} · {plan}"
   refreshNamed: "Refresh {label}"
   settingsNamed: "Settings for {label}"
   showingLastKnown: Showing last known values
@@ -185,23 +182,20 @@ providerDetail:
   openHistoryNamed: "Open {label} history"
   openUsage: Usage page
   openUsageNamed: "Open the {label} usage page"
-  connectionTitle: Connection and capabilities
-  scheduledNoTab: Scheduled refresh reads the existing session without opening a tab.
-  disconnectExplanation: Disconnecting permanently deletes this provider's credentials, configuration, usage, and history.
+  connectionTitle: "Connection"
   disconnectNamed: "Disconnect {label}"
   disconnectConfirmGroup: Confirm disconnect
-  disconnectConfirmWarning: This cannot be undone. Credentials, configuration, usage, and history for this provider will be deleted immediately. Permission cleanup can be delayed or shared with another instance.
+  disconnectConfirmWarning: "Deletes this connection's saved credentials, settings, usage and history. This can't be undone."
   disconnectConfirm: Confirm disconnect
   disconnectConfirmNamed: "Confirm disconnect {label}"
   disconnectCancelNamed: "Cancel disconnect {label}"
-  countersNote: Counters and balances are stored as point-in-time observations.
 
 history:
   unavailableScreen: History unavailable
   unavailableTitle: History unavailable
   unavailableSubtitle: No current quota metric is available
   titleNamed: "{label} history"
-  subtitle: "{provider} · Local quota observations · 30-day retention on this device"
+  subtitle: "{provider} · Kept 30 days, on this device"
   range: History range
   range48h: 48 hours
   range7d: 7 days
@@ -210,6 +204,8 @@ history:
   range7dShort: 7 d
   range30dShort: 30 d
   chart: Usage history chart
+  aboutChart: "About this chart"
+  helpAnchor: "usage-history"
   scopeQuota: "{scope} quota"
   currentCycle: Current cycle
   quotaMetric: Quota metric
@@ -420,40 +416,34 @@ history:
     few: "{count} readings · stored only on this device."
     many: "{count} readings · stored only on this device."
     other: "{count} readings · stored only on this device."
-  note: Only successful, normalized quota observations are plotted. A solid line is a reading and the shaded area is quota used; a dashed stretch has no reading in between. Narrow windows draw one bar each, and the narrowest draw one bar per day. The newest 48 hours stay at collection resolution; older retained history is compacted hourly, keeping the last reading of each window, for up to 30 days on this device. Counter observations are stored but are not graphed; balance-first providers chart their balance separately.
   balance:
-    subtitle: "{provider} · Local balance observations · 30-day retention on this device"
+    subtitle: "{provider} · Kept 30 days, on this device"
     chartName: "{provider} {label} balance history"
     statusNoChange: "No change in {range}"
     statusChange: "{change} in {range}"
     statusOneReading: "Only one reading in {range}"
     topUp: "Top-up +{amount}"
+    helpAnchor: "balance-history"
     infoLine: Solid line — balance readings on a zero-based scale. Spending slopes down.
     infoTopUp: A step up is a top-up or credit.
     infoCurrency: "The currency changed at {when}; earlier readings are not shown."
     summaryKeys: Use left and right arrow keys to inspect readings.
-    note: Only successful balance readings are plotted, in the provider's currency on a zero-based scale. A rise between readings of at least 1% and at least 0.50 in the provider's currency is marked as a top-up. After a currency change, only readings in the new currency are shown. The newest 48 hours stay at collection resolution; older retained history is compacted hourly for up to 30 days on this device. Balance readings store no credentials or account identifiers.
 
 settings:
   screen: Provider settings
   title: Settings
-  subtitle: Everything here is local to this browser
   automaticRefresh: Automatic refresh
-  automaticRefreshDescription: Checks connected providers about every 15 minutes. Scheduled refresh stays non-interactive and never takes over the browser.
   automaticOn: On · about every 15 minutes
-  automaticOff: Off · refresh manually from the header
+  automaticOff: "Off"
   hideExhausted: Hide used-up plans
-  hideExhaustedDescription: Moves a plan off the Overview while every one of its usage pools is at its limit and no extra credits are left. It comes back when a limit resets. Hidden plans stay connected and keep refreshing.
+  hideExhaustedDescription: "Hides a plan until its limit resets."
   language: Language
-  languageDescription: English and Simplified Chinese only. Other browser languages fall back to English. The browser’s own menus and the extension name stay in the browser’s language.
   languageFollowChrome: Follow browser
   connectedProviders: Connected providers
   instanceSettings: "{label} settings"
   identityNamed: "{provider} · {label}"
-  freshnessMethod: "{freshness} · {method} · {readOnly}"
-  apiKeySaved: API key saved
+  freshnessMethod: "{freshness} · {method}"
   noProviders: No providers connected.
-  disconnectExplanation: Disconnecting permanently deletes this provider's credentials, configuration, usage, and history. Permission cleanup can be delayed or shared with another instance.
   renameGroup: "Rename {label}"
   instanceLabel: Instance label
   saveLabelNamed: "Save label for {label}"
@@ -470,25 +460,24 @@ settings:
   moveDown: Move down
   moveUpNamed: "Move {label} up"
   moveDownNamed: "Move {label} down"
-  orderExplanation: Providers appear on the Overview in this order. Hidden providers stay connected and keep refreshing.
+  orderExplanation: "Hidden providers keep refreshing."
   deleteTitle: Delete all local data
-  deleteExplanation: Removes every connection, all retained history, and all settings from this browser. There is no cloud copy, so this cannot be undone.
+  deleteExplanation: "Removes all connections, history and settings. There's no cloud copy."
   confirmGroup: Confirm local data deletion
-  confirmWarning: This removes stored usage and disconnects every provider.
+  confirmWarning: "This can't be undone."
   confirmDelete: Confirm delete
   confirmDeleteNamed: Confirm delete all local data
   cancelDeleteNamed: Cancel delete all local data
   deleteAll: Delete all local data
   community: Community & support
-  localOnlyNote: AI Limits has no account and no cloud sync. Quota readings, history, and preferences live only in this browser profile.
+  localOnlyNote: "No account, no cloud sync. Everything stays in this browser."
 
 footer:
   heading: Built in the open
-  copy: Inspect how provider usage is read, follow development, or help shape what comes next.
   version: "Version {version}"
   viewSource: View source
   shareFeedback: Share feedback
-  secretsWarning: Do not include cookies, access credentials, private usage data, or other secrets in an issue.
+  secretsWarning: "Don't paste cookies or keys in an issue."
 
 status:
   stale: "Stale · {freshness}"
@@ -573,6 +562,7 @@ card:
   values: "{provider} values"
   countersAndBalances: Counters and balances
   noUsageStored: "No {provider} usage has been stored yet."
+  reconnectToUpdate: "Reconnect to update."
   identityNamed: "{provider} {instance}"
 
 announcements:
@@ -631,9 +621,9 @@ apiKey:
   openKeysPage: Open API keys page
   step2Title: Create a key named AI Limits
   step2Prefix: Select
-  step2Suffix: . Leave generation and write permissions off. ElevenLabs does not publish the exact endpoint-to-scope mapping, so validation confirms access.
+  step2Suffix: ". Leave generation and write off."
   genericStep2Title: Use the least privilege available
-  genericStep2Copy: "Grant only the usage or billing read access that {provider} requires. Avoid model-generation, write, and administration scopes when the provider offers separate controls."
+  genericStep2Copy: "Give it read-only usage or billing access if {provider} offers it."
   step3Title: Paste the key and validate
   genericStep3Title: Paste the key and validate
   formName: ElevenLabs API key setup
@@ -645,7 +635,7 @@ apiKey:
   submitConnect: Validate & connect
   submitReplace: Validate & replace
   nameField: Account name
-  nameHelp: "Shown on the card so you can tell your {provider} accounts apart. You can rename it later in Settings."
+  nameHelp: "Tells your {provider} accounts apart."
   defaultAccountName: "Account {number}"
 
 newapi:
@@ -659,17 +649,15 @@ newapi:
   subtitle: Independent instance · Independent relay key
   subtitleNamed: "{label} · Independent instance · Independent relay key"
   capabilities: Key-specific quota · Capped or unlimited
-  explanation: Each New API connection keeps its own relay key, label, usage, and history. It shows key-specific granted, used, and remaining quota. Unlimited keys show absolute usage without an invented percentage. Same-origin connections share only the browser's host permission.
   formName: New API relay key setup
   labelField: Instance label (optional)
   labelPlaceholder: Personal relay
-  labelHelp: Used to distinguish this connection. If blank, AI Limits uses the reported account name or relay hostname.
+  labelHelp: "Optional. Defaults to the account name or host."
   urlField: New API site URL
   urlPlaceholder: https://new-api.example.com
-  urlHelp: Paste the homepage, dashboard URL, or an API URL such as /v1/messages. AI Limits removes known console and API suffixes, then validates the instance through /api/status. HTTPS is required, except localhost for development.
+  urlHelp: "Homepage, dashboard or API URL. HTTPS required."
   keyField: New API relay key
-  keyHelp: AI Limits calls only the read-only /api/usage/token/ endpoint and stores the key locally. The request is read-only, but the relay key itself may still call models; apply key limits in New API if needed.
-  excluded: This mode does not read account wallet, subscriptions, admin data, or other relay keys. Each configured instance is read independently.
+  keyHelp: "Stored locally. The key can still call models, so limit it in New API."
 
 dynamicApi:
   invalidSite: "{provider} did not return compatible usage data. Check the instance URL and try again."
@@ -681,15 +669,13 @@ dynamicApi:
   replaceTitle: "Replace {provider} connection"
   subtitle: "Independent instance · {capabilities}"
   subtitleNamed: "{label} · Independent instance · {capabilities}"
-  explanation: "Each {provider} connection keeps its own instance URL, API key, label, usage, and History. Same-origin connections share only the browser's host permission."
   formName: "{provider} API connection setup"
   labelPlaceholder: "Personal {provider}"
   urlField: "{provider} instance URL"
   urlPlaceholder: https://provider.example.com
-  urlHelp: "Paste the base URL for the {provider} instance. AI Limits validates and normalizes it before requesting only that instance's read-only usage endpoint. HTTPS is required, except localhost for development."
+  urlHelp: "Base URL of your {provider} instance. HTTPS required."
   keyField: "{provider} API key"
-  keyHelp: "Saved locally and sent only to the configured instance origin for its read-only usage request."
-  excluded: AI Limits does not inspect provider pages or send this key to any other origin. Each configured instance is read independently.
+  keyHelp: "Stored locally, sent only to this instance."
 
 errors:
   signedOut: Sign in to the provider and try again.
@@ -888,7 +874,6 @@ providers:
   chatgpt:
     name: ChatGPT
     connect: Connect ChatGPT
-    connectionDisclosure: Reads usage from your signed-in browser session, stores normalized usage locally, and refreshes about every 15 minutes.
     capabilities:
       messageLimits: Message limits
       credits: Credits
@@ -897,23 +882,20 @@ providers:
   claude:
     name: Claude
     connect: Connect Claude
-    connectionDisclosure: Reads usage from your signed-in browser session, stores normalized usage locally, and refreshes about every 15 minutes.
     capabilities:
       messageLimits: Message limits
       extraUsage: Extra usage
   kimi:
     name: Kimi
     connect: Connect Kimi
-    connectionDisclosure: With permission, AI Limits may read the page's localStorage.access_token and refresh_token on kimi.com. It does not read Kimi cookies. The Kimi tokens are held only in memory-backed session storage until the browser exits, and the refresh token is sent only to Kimi's sign-in service (auth.kimi.com) to renew access. It stores normalized usage locally.
-    manualRefreshDisclosure: Connect and manual Refresh may briefly open one inactive Kimi tab when recovery is needed. Scheduled or automatic refresh never opens a tab.
+    connectNote: "Reads Kimi's sign-in tokens from kimi.com and renews them at auth.kimi.com. May briefly open a Kimi tab on Connect or Refresh."
     capabilities:
       subscriptionUsage: Subscription usage
       codingLimits: Coding limits
   cursor:
     name: Cursor
     connect: Connect Cursor
-    connectionDisclosure: Reads base usage from your signed-in Cursor session and refreshes it about every 15 minutes. To request Grok Bot and extra-credit JSON, AI Limits may run bundled read-only code in one already-open cursor.com page, including during scheduled refresh. Only Connect or manual Refresh may briefly open one inactive spending tab when none is open. It does not inspect page content, browser storage, or cookie values directly; the browser attaches signed-in Cursor cookies to those fixed same-origin requests.
-    manualRefreshDisclosure: Connect and manual Refresh prefer an already-open Cursor tab. If none is open, they may briefly open one inactive spending tab. Scheduled refresh may read from an already-open Cursor tab and never opens one.
+    connectNote: "Runs read-only code in a cursor.com tab for some values. May briefly open one on Connect or Refresh."
     capabilities:
       monthlyUsage: Monthly usage
       grokBotUsage: Grok Bot usage
@@ -924,8 +906,7 @@ providers:
   grok:
     name: Grok
     connect: Connect Grok
-    connectionDisclosure: Reads usage from an already-open grok.com page. On Connect or manual Refresh, AI Limits may run bundled read-only code there, or briefly open one inactive grok.com tab if none is open. It does not inspect page content, browser storage, or cookie values directly; the browser attaches signed-in Grok cookies to those same-origin requests. Scheduled refresh may inject into an already-open grok.com tab and never opens a new one.
-    manualRefreshDisclosure: Connect and manual Refresh prefer an already-open grok.com tab. If none is open, they may briefly open one inactive grok.com tab. Scheduled refresh may inject into an already-open grok.com tab and never opens a new one.
+    connectNote: "Runs read-only code in a grok.com tab. May briefly open one on Connect or Refresh."
     capabilities:
       usagePool: Usage pool
       planTier: Plan tier
@@ -938,14 +919,12 @@ providers:
   mistral:
     name: Mistral
     connect: Connect Mistral
-    connectionDisclosure: Reads usage from your signed-in browser session, stores normalized usage locally, and refreshes about every 15 minutes.
     capabilities:
       monthSpend: Month-to-date spend
       credits: Credits
   perplexity:
     name: Perplexity
     connect: Connect Perplexity
-    connectionDisclosure: Reads usage from your signed-in browser session, stores normalized usage locally, and refreshes about every 15 minutes.
     capabilities:
       creditPools: Credit pools
     plans:
@@ -954,7 +933,6 @@ providers:
   elevenlabs:
     name: ElevenLabs
     connect: Connect ElevenLabs
-    connectionDisclosure: Uses an API key you provide, stores it locally in AI Limits, and refreshes about every 15 minutes.
     capabilities:
       monthlyCredits: Monthly credits
       voiceLimits: Voice limits
@@ -963,28 +941,24 @@ providers:
   newapi:
     name: New API
     connect: Connect New API
-    connectionDisclosure: Supports multiple independent connections. Each stores its own New API instance URL, relay key, label, usage, and History locally; same-origin connections share only the browser's host permission.
     capabilities:
       apiKeyQuota: API key quota
       unlimitedKeyUsage: Unlimited-key usage
   litellm:
     name: LiteLLM
     connect: Connect LiteLLM
-    connectionDisclosure: Supports multiple independent connections. Each stores its own LiteLLM base URL, virtual key, label, usage, and History locally; same-origin connections share only the browser's host permission.
     capabilities:
       keySpend: Key spend
       keyBudget: Key budget
   clawrouter:
     name: ClawRouter
     connect: Connect ClawRouter
-    connectionDisclosure: Supports multiple independent connections. Each stores its own ClawRouter base URL, policy key, label, usage, and History locally; same-origin connections share only the browser's host permission.
     capabilities:
       monthlyBudget: Monthly budget
       actualCost: Actual cost
   sub2api:
     name: sub2api
     connect: Connect sub2api
-    connectionDisclosure: Supports multiple independent connections. Each stores its own sub2api base URL, group key, label, usage, and History locally; same-origin connections share only the browser's host permission.
     capabilities:
       keyQuota: Key quota
       subscriptionLimits: Subscription limits
@@ -992,53 +966,46 @@ providers:
   llmProxy:
     name: LLM Proxy
     connect: Connect LLM Proxy
-    connectionDisclosure: Supports multiple independent connections. Each stores its own LLM Proxy base URL, API key, label, usage, and History locally; same-origin connections share only the browser's host permission.
     capabilities:
       remainingQuota: Remaining quota
       usageCounters: Usage counters
   deepseek:
     name: DeepSeek
     connect: Connect DeepSeek
-    connectionDisclosure: Uses an API key you provide, stores it locally in AI Limits, and refreshes about every 15 minutes.
     capabilities:
       balance: Balance
   moonshot:
     name: Moonshot
     connect: Connect Moonshot
-    connectionDisclosure: Uses an API key you provide, stores it locally in AI Limits, and refreshes about every 15 minutes.
     capabilities:
       balance: Balance
   deepinfra:
     name: DeepInfra
     connect: Connect DeepInfra
-    connectionDisclosure: Uses an API key you provide, stores it locally in AI Limits, and refreshes about every 15 minutes.
     capabilities:
       spendingLimit: Spending limit
       balance: Balance
   fireworks:
     name: Fireworks
     connect: Connect Fireworks
-    connectionDisclosure: Uses an API key you provide, stores it locally in AI Limits, and refreshes about every 15 minutes.
     capabilities:
       last30DaysSpend: Last 30 days spend
   openai:
     name: OpenAI
     connect: Connect OpenAI
-    connectionDisclosure: Uses an API key you provide, stores it locally in AI Limits, and refreshes about every 15 minutes.
     capabilities:
       last30DaysSpend: Last 30 days spend
       last30DaysRequests: Last 30 days requests
   groqcloud:
     name: GroqCloud
     connect: Connect GroqCloud
-    connectionDisclosure: Uses an API key you provide, stores it locally in AI Limits, and refreshes about every 15 minutes.
     capabilities:
       requestsPerMinute: Requests per minute
       tokensPerMinute: Tokens per minute
   openrouter:
     name: OpenRouter
     connect: Connect OpenRouter
-    connectionDisclosure: Uses an API key you provide, stores it locally in AI Limits, and refreshes about every 15 minutes. If you are signed in to openrouter.ai, it also reads promotional credits from your Credits page.
+    connectNote: "Also reads promo credits if you're signed in to openrouter.ai."
     capabilities:
       balance: Balance
       keyBudget: API key budget
@@ -1046,7 +1013,6 @@ providers:
   factory:
     name: Droid
     connect: Connect Droid
-    connectionDisclosure: Uses a Factory API key you create for Droid, stores it locally in AI Limits, and refreshes about every 15 minutes.
     capabilities:
       rateLimits: Rate limits
       extraUsage: Extra usage
@@ -1057,7 +1023,7 @@ providers:
   zai:
     name: GLM
     connect: Connect GLM
-    connectionDisclosure: Uses your GLM Coding Plan API key from Z.ai, stores it locally in AI Limits, sends it only to api.z.ai, and refreshes about every 15 minutes. Z.ai's terms ask that keys stay out of client-side code and limit the plan to supported tools, so connecting may put your Z.ai account at risk.
+    connectNote: "Z.ai's terms may not allow this. Your account could be at risk."
     capabilities:
       rateLimits: Rate limits
       mcpTools: MCP tools
@@ -1068,15 +1034,14 @@ providers:
   warp:
     name: Warp
     connect: Connect Warp
-    connectionDisclosure: Uses a Warp API key you create, stores it locally in AI Limits, sends it only to app.warp.dev, and refreshes about every 15 minutes. Warp keys cannot be limited to read-only access and can start agent runs billed to you, so create a dedicated key with an expiry.
+    connectNote: "Warp keys can start runs billed to you. Use a separate key with an expiry."
     capabilities:
       includedCredits: Included credits
       addOnCredits: Add-on credits
   gumloop:
     name: Gumloop
     connect: Connect Gumloop
-    connectionDisclosure: With permission, AI Limits may run bundled read-only code in a gumloop.com page to read Gumloop's sign-in tokens from that page's storage. It does not read Gumloop cookies. The tokens are held only in memory-backed session storage until the browser exits; the refresh token is sent only to Google's sign-in service that Gumloop uses (securetoken.googleapis.com) to renew access, and the access token only to api.gumloop.com. It refreshes about every 15 minutes and stores normalized usage locally.
-    manualRefreshDisclosure: Connect and manual Refresh prefer an already-open gumloop.com tab. If none is open, they may briefly open one inactive gumloop.com tab. Scheduled refresh may read an already-open gumloop.com tab and never opens one.
+    connectNote: "Reads Gumloop's sign-in tokens from gumloop.com and renews them through Google's sign-in service. May briefly open a gumloop.com tab on Connect or Refresh."
     capabilities:
       monthlyCredits: Monthly credits
 

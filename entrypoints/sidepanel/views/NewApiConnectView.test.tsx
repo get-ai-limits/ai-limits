@@ -35,7 +35,7 @@ describe("NewApiConnectView", () => {
       "type",
       "password",
     );
-    expect(screen.getByText(/each LiteLLM connection keeps its own instance URL/i))
+    expect(screen.getByText("Base URL of your LiteLLM instance. HTTPS required."))
       .toBeVisible();
     expect(screen.queryByText(/New API relay key setup/)).not.toBeInTheDocument();
   });
@@ -64,27 +64,20 @@ describe("NewApiConnectView", () => {
     );
   });
 
-  it("documents independent multi-instance relay-key behavior and its limits", () => {
+  it("keeps the relay-key warning short and moves the background to the help page", () => {
     renderView();
 
     expect(screen.getByRole("heading", { level: 1, name: "Connect New API" })).toBeVisible();
     expect(screen.getByText("Independent instance · Independent relay key")).toBeVisible();
-    expect(screen.getByText(/each New API connection keeps its own relay key, label, usage, and history/i)).toBeVisible();
-    expect(screen.getByText(/same-origin connections share only the browser's host permission/i)).toBeVisible();
-    expect(screen.getByText(/key-specific granted, used, and remaining quota/i)).toBeVisible();
-    expect(screen.getByText(/unlimited keys show absolute usage/i)).toBeVisible();
-    expect(screen.getByText(/does not read account wallet, subscriptions, admin data, or other relay keys/i)).toBeVisible();
-    expect(screen.getByText(/request is read-only, but the relay key itself may still call models/i)).toBeVisible();
+    expect(screen.getByText(/the key can still call models, so limit it in New API/i)).toBeVisible();
+    expect(screen.queryByText(/does not read account wallet/i)).not.toBeInTheDocument();
   });
 
   it("explains tolerant normalization while submitting the raw URL to package authority", async () => {
     const onSubmit = vi.fn(async () => "invalid_key" as const);
     renderView({ onSubmit });
 
-    expect(screen.getByText(/homepage, dashboard URL, or an API URL such as/i)).toHaveTextContent(
-      "/v1/messages",
-    );
-    expect(screen.getByText(/removes known console and API suffixes/i)).toBeVisible();
+    expect(screen.getByText("Homepage, dashboard or API URL. HTTPS required.")).toBeVisible();
 
     fireEvent.change(screen.getByLabelText("New API site URL"), {
       target: { value: "https://API.example.com/new-api/v1/messages" },

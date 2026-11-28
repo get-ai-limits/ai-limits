@@ -4,10 +4,8 @@ import { l10n, type AnnouncementTone, type SupportedLocale } from "../../i18n/in
 import { formatAmount, formatDateTime, formatNumber } from "../../i18n/format";
 import {
   localizeBalanceValue,
-  localizeConnectionDisclosure,
   localizeCounterValue,
   localizeFailure,
-  localizeManualRefreshDisclosure,
   localizeMetricLabel,
   localizePlanLabel,
   localizeProviderName,
@@ -435,14 +433,10 @@ export function providerView(
       : undefined,
     emptyDescription:
       provider.access === "required"
-        ? localizeConnectionDisclosure(provider.providerKind)
+        ? l10n.t("card.reconnectToUpdate")
         : l10n.t("card.noUsageStored", {
             provider: localizeProviderName(provider.providerKind),
           }),
-    extraDisclosure:
-      provider.access === "required"
-        ? localizeManualRefreshDisclosure(provider.providerKind)
-        : undefined,
     detailTables: snapshot?.detailTables,
     now,
     usagePageUrl: providerPresentation(provider.providerKind).usagePageUrl,

@@ -34,7 +34,6 @@ export function FirstRunView({
         <h2 id="first-run-title">{l10n.t("firstRun.title")}</h2>
         <p>{l10n.t("firstRun.introduction")}</p>
         <ul>
-          <li>{l10n.t("firstRun.bulletPanel")}</li>
           <li>{l10n.t("firstRun.bulletOptIn")}</li>
           <li>{l10n.t("firstRun.bulletLocal")}</li>
         </ul>
@@ -67,7 +66,6 @@ export function FirstRunView({
             ),
           )}
         </div>
-        <p className="illustrative-note">{l10n.t("firstRun.noDemo")}</p>
         <OpenSourceFooter showIssues={false} />
       </div>
     </section>
