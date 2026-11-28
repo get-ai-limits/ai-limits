@@ -2248,8 +2248,29 @@ section[aria-labelledby="overview-title"] .provider-list {
   font-size: 12px;
 }
 
+.provider-connect-row__help {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  margin-left: 4px;
+  vertical-align: -3px;
+  color: var(--text-muted);
+  border-radius: 50%;
+}
+
+.provider-connect-row__help:hover,
+.provider-connect-row__help:focus-visible {
+  color: var(--text);
+}
+
+.provider-connect-row__help svg {
+  width: 12px;
+  height: 12px;
+}
+
 .provider-connect-row__identity p,
-.provider-connect-row__disclosure,
 .provider-connect-row__manual-disclosure {
   margin: 2px 0 0;
   color: var(--text-muted);
@@ -2257,15 +2278,9 @@ section[aria-labelledby="overview-title"] .provider-list {
   line-height: 1.45;
 }
 
-.provider-connect-row__disclosure,
 .provider-connect-row__manual-disclosure,
 .provider-connect-row .operation-copy {
   margin-left: 36px;
-}
-
-.provider-connect-row__disclosure strong {
-  color: var(--text);
-  font-weight: 600;
 }
 
 .provider-connect-row__manual-disclosure {

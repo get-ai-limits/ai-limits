@@ -15,6 +15,7 @@ import {
   type ProviderKind,
   type ProviderOperation,
 } from "../../../domain/public-protocol";
+import { Icon } from "./Icon";
 import { ProviderMark } from "./ProviderMark";
 
 export interface ProviderConnectRowProps {
@@ -63,7 +64,21 @@ export function ProviderConnectRow({
         <div className="provider-connect-row__identity">
           <ProviderMark providerId={providerKind} size="md" />
           <div>
-            <h3 id={headingId}>{name}</h3>
+            <h3>
+              <span id={headingId}>{name}</span>
+              <a
+                className="provider-connect-row__help"
+                href={connectionHelpUrl(providerKind)}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={l10n.t("connections.howItConnectsNamed", {
+                  provider: name,
+                })}
+                title={l10n.t("connections.howItConnects")}
+              >
+                <Icon name="info" />
+              </a>
+            </h3>
             <p>
               {addsAccount
                 ? l10n.t("connections.accountsConnected", {
@@ -74,6 +89,9 @@ export function ProviderConnectRow({
                     capabilities,
                   })}
             </p>
+            {connectNote ? (
+              <p className="provider-connect-row__note">{connectNote}</p>
+            ) : null}
           </div>
         </div>
         <button
@@ -99,19 +117,6 @@ export function ProviderConnectRow({
           </span>
         </button>
       </div>
-      <p className="provider-connect-row__disclosure">
-        {connectNote ? <span>{connectNote} </span> : null}
-        <a
-          href={connectionHelpUrl(providerKind)}
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label={l10n.t("connections.howItConnectsNamed", {
-            provider: name,
-          })}
-        >
-          {l10n.t("connections.howItConnects")}
-        </a>
-      </p>
       {addsAccount && credentialKind === "none" && !savedSignIns ? (
         <p className="provider-connect-row__manual-disclosure">
           {l10n.t("connections.addAccountSessionHint", { provider: name })}
